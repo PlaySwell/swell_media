@@ -3,7 +3,7 @@ class BaseMigration < ActiveRecord::Migration
 
 		enable_extension 'hstore'
 
-		create_table :media do |t|
+		create_table :swell_media_media do |t|
 			t.references	:user 					# User who added it
 			t.references	:managed_by 			# User acct that has origin acct (e.g. youtube) rights
 			t.string		:public_id				# public id to spoof sequential id grepping
@@ -78,30 +78,30 @@ class BaseMigration < ActiveRecord::Migration
 			t.timestamps
 		end
 
-		add_index :media, :user_id
-		add_index :media, :managed_by_id
-		add_index :media, :public_id
-		add_index :media, :category_id
-		add_index :media, :organization_id
-		add_index :media, :media_origin_id
-		add_index :media, :origin_identifier
-		add_index :media, :slug, unique: true
-		add_index :media, [ :slug, :type ]
-		add_index :media, [ :status, :availability ]
+		add_index :swell_media_media, :user_id
+		add_index :swell_media_media, :managed_by_id
+		add_index :swell_media_media, :public_id
+		add_index :swell_media_media, :category_id
+		add_index :swell_media_media, :organization_id
+		add_index :swell_media_media, :media_origin_id
+		add_index :swell_media_media, :origin_identifier
+		add_index :swell_media_media, :slug, unique: true
+		add_index :swell_media_media, [ :slug, :type ]
+		add_index :swell_media_media, [ :status, :availability ]
 
 
 		# video_origin is the host service. Different origins will have different players, etc...
-		create_table :media_origins do |t|
+		create_table :swell_media_media_origins do |t|
 			t.text			:name
 			t.string		:slug
 			t.string		:affiliate_code 	# our affiliate code
 			t.string		:default_player 	# this is some indication of player skin e.g. brightcove supports different player 'skins'
 			t.string		:default_player_key
 		end
-		add_index :media_origins, :name
+		add_index :swell_media_media_origins, :name
 
 
-		create_table :media_relationships do |t|
+		create_table :swell_media_media_relationships do |t|
 			t.references 		:media
 			t.references		:related_media
 			t.references		:user
@@ -111,14 +111,14 @@ class BaseMigration < ActiveRecord::Migration
 			t.string			:status,			default: :active
 			t.timestamps
 		end
-		add_index :media_relationships, :user_id
-		add_index :media_relationships, :media_id
-		add_index :media_relationships, :category_id
-		add_index :media_relationships, :related_media_id
+		add_index :swell_media_media_relationships, :user_id
+		add_index :swell_media_media_relationships, :media_id
+		add_index :swell_media_media_relationships, :category_id
+		add_index :swell_media_media_relationships, :related_media_id
 
 
 		# to store thumbnail data....
-		create_table :media_thumbnails do |t|
+		create_table :swell_media_media_thumbnails do |t|
 			t.references 	:media
 			t.string		:name
 			t.string		:url
@@ -127,7 +127,7 @@ class BaseMigration < ActiveRecord::Migration
 			t.string		:status, 							default: :active
 			t.timestamps
 		end
-		add_index	:media_thumbnails, :media_id
+		add_index :swell_media_media_thumbnails, :media_id
 
 	end
 end
