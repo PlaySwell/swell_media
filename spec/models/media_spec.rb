@@ -29,8 +29,10 @@ describe Media do
 
 	it "author" do
 		media_a = Media.create(title: 'Active 1', properties: { 'author_name' => 'Johnny Appleseed' } )
-
 		expect(media_a.author).to eq 'Johnny Appleseed'
+
+		media_b = Media.create(title: 'Active 1', properties: nil )
+		expect(media_b.author).to eq ''
 	end
 
 
