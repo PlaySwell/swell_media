@@ -25,7 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency "kaminari"
   # TODO s.add_dependency 'paper_trail', '~> 3.0.1'
 
-  s.add_dependency "rails", "~> 4.0.4"
+  s.add_dependency "rails", "~> 4.1.0"
 
   s.add_development_dependency 'rspec-rails'
   s.add_development_dependency "sqlite3"
