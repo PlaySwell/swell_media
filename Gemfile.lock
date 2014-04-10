@@ -9,6 +9,7 @@ PATH
       friendly_id (~> 5.0.0)
       haml
       kaminari
+      pg
       rails (~> 4.0.4)
 
 GEM
@@ -77,6 +78,7 @@ GEM
     minitest (4.7.5)
     multi_json (1.9.2)
     orm_adapter (0.5.0)
+    pg (0.17.1)
     polyglot (0.3.4)
     rack (1.5.2)
     rack-test (0.6.2)

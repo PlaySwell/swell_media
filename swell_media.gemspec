@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
   s.add_dependency "friendly_id", '~> 5.0.0'
   s.add_dependency "haml"
   s.add_dependency "kaminari"
+	s.add_dependency "pg"
   # TODO s.add_dependency 'paper_trail', '~> 3.0.1'
 
   s.add_dependency "rails", "~> 4.0.4"

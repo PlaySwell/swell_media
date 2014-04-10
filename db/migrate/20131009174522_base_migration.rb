@@ -1,7 +1,7 @@
 class BaseMigration < ActiveRecord::Migration
 	def change
 
-		#enable_extension 'hstore'
+		enable_extension 'hstore'
 
 		create_table :media do |t|
 			t.references	:user 					# User who added it
@@ -73,7 +73,7 @@ class BaseMigration < ActiveRecord::Migration
 			t.string		:status, 						default: :active
 			t.string		:availability, 					default: :public 	# hidden, friends, peers,
 			t.datetime		:publish_at
-			#t.hstore		:properties
+			t.hstore		:properties
 
 			t.timestamps
 		end

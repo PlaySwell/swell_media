@@ -33,7 +33,7 @@ class Media < ActiveRecord::Base
 			return self.user.to_s
 		else
 			return ''
-		end	
+		end
 	end
 
 
