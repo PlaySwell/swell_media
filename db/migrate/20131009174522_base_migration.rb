@@ -3,6 +3,53 @@ class BaseMigration < ActiveRecord::Migration
 
 		enable_extension 'hstore'
 
+
+		create_table :swell_media_categories, force: true do |t|
+			t.references		:user 			# created_by
+			t.references 		:parent
+			t.string			:name
+			t.string			:label
+			t.string 			:type
+			t.integer 			:lft
+			t.integer 			:rgt
+			t.string			:users_name,					default: :players
+			t.text				:description
+			t.string			:status,						default: :active
+			t.string			:availability,					default: :public
+			t.integer 			:seq
+			t.string 			:slug
+
+			t.integer 			:cached_impression_count, 		default: 0, 	limit: 8
+			t.integer 			:cached_play_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_view_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_complete_count, 		default: 0, 	limit: 8
+
+			t.integer 			:cached_comment_count, 			default: 0, 	limit: 8
+
+			t.integer 			:cached_like_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_outbound_count, 		default: 0, 	limit: 8
+
+			t.integer 			:cached_investment_count, 		default: 0, 	limit: 8
+			t.integer 			:cached_investment_total, 		default: 0, 	limit: 8
+			t.integer 			:cached_share_count, 			default: 0, 	limit: 8
+
+			t.integer			:cached_vote_count,				default: 0, 	limit: 8
+			t.float				:cached_vote_score,				default: 0, 	limit: 8
+			t.integer			:cached_upvote_count,			default: 0, 	limit: 8
+			t.integer			:cached_downvote_count,			default: 0, 	limit: 8
+			t.integer			:cached_subscribe_count, 		default: 0
+
+			t.float				:computed_score,				default: 0
+			t.hstore			:properties
+			t.timestamps
+		end
+		add_index :swell_media_categories, :user_id
+		add_index :swell_media_categories, :parent_id
+		add_index :swell_media_categories, :type
+		add_index :swell_media_categories, :lft
+		add_index :swell_media_categories, :rgt
+		add_index :swell_media_categories, :slug, unique: true
+
 		create_table :swell_media_media do |t|
 			t.references	:user 					# User who added it
 			t.references	:managed_by 			# User acct that has origin acct (e.g. youtube) rights
