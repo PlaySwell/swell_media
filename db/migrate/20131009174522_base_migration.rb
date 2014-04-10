@@ -1,9 +1,56 @@
 class BaseMigration < ActiveRecord::Migration
 	def change
 
-		#enable_extension 'hstore'
+		enable_extension 'hstore'
 
-		create_table :media do |t|
+
+		create_table :swell_media_categories, force: true do |t|
+			t.references		:user 			# created_by
+			t.references 		:parent
+			t.string			:name
+			t.string			:label
+			t.string 			:type
+			t.integer 			:lft
+			t.integer 			:rgt
+			t.string			:users_name,					default: :players
+			t.text				:description
+			t.string			:status,						default: :active
+			t.string			:availability,					default: :public
+			t.integer 			:seq
+			t.string 			:slug
+
+			t.integer 			:cached_impression_count, 		default: 0, 	limit: 8
+			t.integer 			:cached_play_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_view_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_complete_count, 		default: 0, 	limit: 8
+
+			t.integer 			:cached_comment_count, 			default: 0, 	limit: 8
+
+			t.integer 			:cached_like_count, 			default: 0, 	limit: 8
+			t.integer 			:cached_outbound_count, 		default: 0, 	limit: 8
+
+			t.integer 			:cached_investment_count, 		default: 0, 	limit: 8
+			t.integer 			:cached_investment_total, 		default: 0, 	limit: 8
+			t.integer 			:cached_share_count, 			default: 0, 	limit: 8
+
+			t.integer			:cached_vote_count,				default: 0, 	limit: 8
+			t.float				:cached_vote_score,				default: 0, 	limit: 8
+			t.integer			:cached_upvote_count,			default: 0, 	limit: 8
+			t.integer			:cached_downvote_count,			default: 0, 	limit: 8
+			t.integer			:cached_subscribe_count, 		default: 0
+
+			t.float				:computed_score,				default: 0
+			t.hstore			:properties
+			t.timestamps
+		end
+		add_index :swell_media_categories, :user_id
+		add_index :swell_media_categories, :parent_id
+		add_index :swell_media_categories, :type
+		add_index :swell_media_categories, :lft
+		add_index :swell_media_categories, :rgt
+		add_index :swell_media_categories, :slug, unique: true
+
+		create_table :swell_media_media do |t|
 			t.references	:user 					# User who added it
 			t.references	:managed_by 			# User acct that has origin acct (e.g. youtube) rights
 			t.string		:public_id				# public id to spoof sequential id grepping
@@ -73,35 +120,35 @@ class BaseMigration < ActiveRecord::Migration
 			t.string		:status, 						default: :active
 			t.string		:availability, 					default: :public 	# hidden, friends, peers,
 			t.datetime		:publish_at
-			#t.hstore		:properties
+			t.hstore		:properties
 
 			t.timestamps
 		end
 
-		add_index :media, :user_id
-		add_index :media, :managed_by_id
-		add_index :media, :public_id
-		add_index :media, :category_id
-		add_index :media, :organization_id
-		add_index :media, :media_origin_id
-		add_index :media, :origin_identifier
-		add_index :media, :slug, unique: true
-		add_index :media, [ :slug, :type ]
-		add_index :media, [ :status, :availability ]
+		add_index :swell_media_media, :user_id
+		add_index :swell_media_media, :managed_by_id
+		add_index :swell_media_media, :public_id
+		add_index :swell_media_media, :category_id
+		add_index :swell_media_media, :organization_id
+		add_index :swell_media_media, :media_origin_id
+		add_index :swell_media_media, :origin_identifier
+		add_index :swell_media_media, :slug, unique: true
+		add_index :swell_media_media, [ :slug, :type ]
+		add_index :swell_media_media, [ :status, :availability ]
 
 
 		# video_origin is the host service. Different origins will have different players, etc...
-		create_table :media_origins do |t|
+		create_table :swell_media_media_origins do |t|
 			t.text			:name
 			t.string		:slug
 			t.string		:affiliate_code 	# our affiliate code
 			t.string		:default_player 	# this is some indication of player skin e.g. brightcove supports different player 'skins'
 			t.string		:default_player_key
 		end
-		add_index :media_origins, :name
+		add_index :swell_media_media_origins, :name
 
 
-		create_table :media_relationships do |t|
+		create_table :swell_media_media_relationships do |t|
 			t.references 		:media
 			t.references		:related_media
 			t.references		:user
@@ -111,14 +158,14 @@ class BaseMigration < ActiveRecord::Migration
 			t.string			:status,			default: :active
 			t.timestamps
 		end
-		add_index :media_relationships, :user_id
-		add_index :media_relationships, :media_id
-		add_index :media_relationships, :category_id
-		add_index :media_relationships, :related_media_id
+		add_index :swell_media_media_relationships, :user_id
+		add_index :swell_media_media_relationships, :media_id
+		add_index :swell_media_media_relationships, :category_id
+		add_index :swell_media_media_relationships, :related_media_id
 
 
 		# to store thumbnail data....
-		create_table :media_thumbnails do |t|
+		create_table :swell_media_media_thumbnails do |t|
 			t.references 	:media
 			t.string		:name
 			t.string		:url
@@ -127,7 +174,7 @@ class BaseMigration < ActiveRecord::Migration
 			t.string		:status, 							default: :active
 			t.timestamps
 		end
-		add_index	:media_thumbnails, :media_id
+		add_index :swell_media_media_thumbnails, :media_id
 
 	end
 end
