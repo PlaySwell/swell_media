@@ -21,7 +21,7 @@ class Media < ActiveRecord::Base
 
 
 	def self.active
-		where{ ( status.eq 'active' ) & ( availability.eq 'public' ) & ( publish_at.lteq Time.zone.now ) }
+		where(status: :active, availability: :public).where( 'publish_at <= ?', Time.zone.now )
 	end
 
 
