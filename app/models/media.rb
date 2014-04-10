@@ -12,6 +12,14 @@ class Media < ActiveRecord::Base
 
 	has_many	:media_thumbnails, dependent: :destroy
 
+	belongs_to 	:media_origin
+
+	has_many 	:media_relationships, dependent: :destroy
+	has_many	:related_media, through: :media_relationships
+	has_many 	:inverse_media_relationships, class_name: "MediaRelationship", foreign_key: :related_media_id
+	has_many 	:inverse_related_media, through: :inverse_media_relationships, source: :media
+	has_many 	:inverse_related_media, through: :inverse_media_relationships, source: :media
+
 	include FriendlyId
 	friendly_id :slugger, use: :slugged
 
