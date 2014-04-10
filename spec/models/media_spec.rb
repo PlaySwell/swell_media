@@ -27,5 +27,11 @@ describe Media do
 		expect(Media.active.order(:id)).to eq [media_a, media_b]
 	end
 
+	it "author" do
+		media_a = Media.create(title: 'Active 1', properties: { 'author_name' => 'Johnny Appleseed' } )
+
+		expect(media_a.author).to eq 'Johnny Appleseed'
+	end
+
 
 end
