@@ -1,0 +1,47 @@
+
+.blog-side-bar
+	.blog-side-search.widget-tp
+		%h3
+			%i.icon-search
+			Search our blog
+
+		= form_tag articles_path, method: :get, class: 'no-margin-bottom form-search' do
+
+			%fieldset
+				.controls.controls-row
+					= text_field_tag :q, params[:q], class: 'search-input span3', placeholder: "Input search query"
+				.controls.controls-row{ style:'margin-top:5px;' }
+					= submit_tag 'Search', class: 'btn btn-primary pull-right'
+	
+
+	.blog-categories.widget-tp
+		%h3
+			%i.fa.fa-envelope
+			Keep in Touch
+		= form_tag optins_path do
+			= text_field_tag :email, '', placeholder: 'Email', class: 'form-control'
+			= submit_tag 'Signup', class: 'btn btn-primary pull-right'
+	-#.blog-side-text-block.widget-filled.widget-yellow
+		%h3 Just some text block
+		%p Ut diam arcu, dictum ut vulputate sed, iaculis nec lorem. Fusce pharetra nisl vitae nisl ultricies ut malesuada leo fringilla.
+		%p Sed euismod, metus sed congue rutrum, justo elit malesuada quam, id pulvinar velit massa et justo. Etiam molestie nibh vitae turpis euismod ornare. Etiam dapibus ullamcorper tellus, nec suscipit eros imperdiet id.
+	
+	- if @tags.present?
+		.blog-side-tags.widget-tp
+			%h3
+				%i.icon-tags
+				Tags
+			%ul
+				- @tags.each do |tag|
+					%li
+						%a.side-tag{ href: articles_path( tagged: tag.name ) }
+							= tag.name
+
+
+	.blog-recent-tweets.widget-tp
+		%h3
+			%i.icon-twitter-sign
+			Recent Tweets
+		= render 'application/twitter_widget'
+	
+	

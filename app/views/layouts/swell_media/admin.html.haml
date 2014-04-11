@@ -1,0 +1,40 @@
+!!!strict
+
+%html{ lang: :en }
+	%head
+		%title
+			= @page_info[:title]
+		%meta{ name: "viewport", content: "width=device-width, initial-scale=1.0" }
+		%meta{ 'http-equiv' => "Content-Type", content: "text/html; charset=utf-8" }
+
+		%link{ rel: "shortcut icon", type: "image/x-icon", href: asset_path( "favicon.ico" ) }
+
+		<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+		<![endif]-->
+
+		= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css"
+		= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+		= stylesheet_link_tag 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/themes/smoothness/jquery-ui.css'
+		= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true
+
+
+		= javascript_include_tag "application", "data-turbolinks-track" => true
+		= javascript_include_tag "//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"
+
+		= csrf_meta_tags
+
+	%body.pull-top
+		%header
+			= render 'admin/navbar'
+
+		%section#content
+
+			= render 'application/flash'
+
+			= yield
+
+		= render 'admin/footer'
+
+
+= render 'application/analytics'

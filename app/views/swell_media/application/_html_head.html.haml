@@ -1,0 +1,28 @@
+%title
+	= @page_info[:title]
+%meta{charset: "utf-8"}/
+%meta{content: "IE=edge,chrome=1", "http-equiv" => "X-UA-Compatible"}
+%meta{content: "", name: "description"}
+%meta{content: "width=device-width", name: "viewport"}
+
+-# if args[:og].present?
+	%meta{ property: 'og:title', content: args[:og][:title] || @page_info[:title] }
+	%meta{ property: 'og:type', content: args[:og][:type] }
+	%meta{ property: 'og:url', content: args[:og][:url] }
+	%meta{ property: 'og:site_name', content: args[:og][:site] }
+	%meta{ property: 'og:description', content: args[:og][:description || @page_info[:description] }
+	- unless args[:og][:avatar].nil?
+		%meta{ property: "og:image", content: args[:og][:avatar][:path] }
+		%meta{ property: "og:image:width", content: args[:og][:avatar][:width] }
+		%meta{ property: "og:image:height", content: args[:og][:avatar][:height] }
+		%meta{ property: "og:image:type", content: "image/jpeg" }
+
+%link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
+%link{href: "http://fonts.googleapis.com/css?family=Abel:400|Oswald:300,400,700", media: "all", rel: "stylesheet", type: "text/css"}
+
+= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"
+= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+
+= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true
+
+= javascript_include_tag "application", "data-turbolinks-track" => true

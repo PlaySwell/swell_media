@@ -1,3 +1,11 @@
+require 'acts-as-taggable-on'
+require 'awesome_nested_set'
+require 'cancan'
+require 'devise'
+require 'friendly_id'
+require 'haml'
+require 'kaminari'
+
 module SwellMedia
 	class Engine < ::Rails::Engine
 		isolate_namespace SwellMedia

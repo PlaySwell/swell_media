@@ -1,0 +1,60 @@
+
+
+.container
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'admin', admin_index_path
+				%li
+					%strong
+						Blog Admin
+		.col-xs-2
+			%a.btn.btn-success{ data: { toggle: :modal, target: '#new_article' } }
+				%i.fa.fa-plus-square
+				New
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th
+					%th URL
+					%th Publish At
+					%th Status
+					%th
+				%tbody
+					- @articles.each do |article|
+						%tr
+							%td
+								= link_to article.title, edit_article_path( article.id )
+							%td
+								= article.slug
+							%td
+								= article.publish_at.to_s( :slashed_time )
+							%td
+								.badge{ class: article.status }
+									= article.status
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_article_path( article ) }
+												%i.fa.fa-pencil
+												Edit
+										%li
+											%a{ href: preview_article_path( article.id ) }
+												%i.fa.fa-eye
+												Preview
+										%li.divider
+										%li
+											%a{ href: article_path( article ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!
+
+
+
+
+= render 'new_modal'

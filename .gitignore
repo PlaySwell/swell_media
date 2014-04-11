@@ -11,3 +11,6 @@ test/dummy/tmp/
 test/dummy/.sass-cache
 
 .idea
+
+**/.DS_Store
+.DS_Store

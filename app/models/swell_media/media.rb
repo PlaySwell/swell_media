@@ -1,8 +1,9 @@
 module SwellMedia
 
 	class Media < ActiveRecord::Base
+		self.table_name = 'media'
 
-		before_create 	:prep_media
+		before_create 	:set_publish_at, :set_keywords
 
 		validates	:title, presence: true
 
@@ -14,14 +15,6 @@ module SwellMedia
 
 		has_many	:media_thumbnails, dependent: :destroy
 
-		belongs_to 	:media_origin
-
-		has_many 	:media_relationships, dependent: :destroy
-		has_many	:related_media, through: :media_relationships
-		has_many 	:inverse_media_relationships, class_name: "MediaRelationship", foreign_key: :related_media_id
-		has_many 	:inverse_related_media, through: :inverse_media_relationships, source: :media
-		has_many 	:inverse_related_media, through: :inverse_media_relationships, source: :media
-
 		include FriendlyId
 		friendly_id :slugger, use: :slugged
 
@@ -31,7 +24,7 @@ module SwellMedia
 
 
 		def self.active
-			where(status: :active, availability: :public).where( 'publish_at <= ?', Time.zone.now )
+			where( status: :active, availability: :public ).where( 'publish_at <= :now', now: Time.zone.now )
 		end
 
 
@@ -56,7 +49,7 @@ module SwellMedia
 		end
 
 		def url( args=nil )
-			domain = ( args.present? && args.delete( :domain ) ) || Rails.application.config.playswell_domain
+			domain = ( args.present? && args.delete( :domain ) ) || Rails.application.config.app_domain || ENV['APP_DOMAIN']
 
 			url = "http://#{domain}/#{self.slug}"
 
@@ -72,16 +65,18 @@ module SwellMedia
 
 		private
 
-		def prep_media
-			# set publish_at
-			self.publish_at ||= Time.zone.now
-
-			# set keywords
-			if self.title.present?
-				common_terms = ["able", "about", "above", "across", "after", "almost", "also", "among", "around", "back", "because", "been", "below", "came", "cannot", "come", "cool", "could", "dear", "does", "down", "each", "either", "else", "ever", "every", "find", "first", "from", "from", "gave", "give", "goodhave", "have", "hers", "however", "inside", "into", "its", "just", "least", "like", "likely", "little", "live", "long", "made", "make", "many", "might", "more", "most", "must", "neither", "number", "often", "only", "other", "our", "outside", "over", "part", "people", "place", "rather", "said", "says", "should", "show", "side", "since", "some", "sound", "take", "than", "that", "the", "their", "them",  "then", "there", "these", "they", "thing", "this", "those", "time", "twas", "under", "upon", "was", "wants", "were", "what", "whatever", "when", "where", "which", "while", "whom", "will", "with", "within", "work", "would", "write", "year", "you", "your"]
-				self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
+			def set_publish_at
+				# set publish_at
+				self.publish_at ||= Time.zone.now
 			end
-		end
+
+			def set_keywords
+				if self.title.present?
+					common_terms = ["able", "about", "above", "across", "after", "almost", "also", "among", "around", "back", "because", "been", "below", "came", "cannot", "come", "cool", "could", "dear", "does", "down", "each", "either", "else", "ever", "every", "find", "first", "from", "from", "gave", "give", "goodhave", "have", "hers", "however", "inside", "into", "its", "just", "least", "like", "likely", "little", "live", "long", "made", "make", "many", "might", "more", "most", "must", "neither", "number", "often", "only", "other", "our", "outside", "over", "part", "people", "place", "rather", "said", "says", "should", "show", "side", "since", "some", "sound", "take", "than", "that", "the", "their", "them",  "then", "there", "these", "they", "thing", "this", "those", "time", "twas", "under", "upon", "was", "wants", "were", "what", "whatever", "when", "where", "which", "while", "whom", "will", "with", "within", "work", "would", "write", "year", "you", "your"]
+					self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
+				end
+			end
+				
 
 
 

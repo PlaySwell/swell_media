@@ -7,8 +7,6 @@ module SwellMedia
 		belongs_to	:moderator, class_name: 'User'
 
 		has_many	:media
-		has_many 	:videos
-
 
 		acts_as_nested_set
 
@@ -16,14 +14,8 @@ module SwellMedia
 		friendly_id :name, use: :slugged
 
 
-
-		def self.video
-			where( name: 'video' ).last
-		end
-
-
 		def to_s
-			self.name
+			self.label
 		end
 
 		private

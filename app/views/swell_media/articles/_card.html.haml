@@ -1,0 +1,42 @@
+- cache( "card-#{article.cache_key}" ) do
+	%div[article]
+		.white-card.recent-post.clearfix.extra-padding
+			%h5.recent-post-header
+				%a{ href: article_path( article ) }
+					%span.avatar
+						= image_tag article.avatar, width: 64
+					= article.title
+			.post-info.clearfix
+				.pull-left
+					%span.post-date
+						= article.publish_at.strftime('%B %e, %Y')
+					-# %a.post-comments{href: "#"} 14 Comments
+					%span.info-item
+						Tagged:
+						- article.tags.each do |tag|
+							%a.post-tag{ href: articles_path( tagged: tag.name ) }
+								%span.label.label-info{ style: 'font-weight:regular;font-size:90%;' }
+									= tag.name
+				.pull-right
+					%a{href: articles_path( by: article.user_id ) }
+						By:
+						= article.user.avatar_tag( width: 20 )
+						= article.user
+
+			%p.post-content
+				= raw article.description
+			= link_to 'Read More >', article, class: 'btn btn-extra pull-right'
+
+			-#- if article.media_thumbnails.nil? || article.media_thumbnails.count() == 0
+			-#	.col-xs-12
+			-#		%p.post-content
+			-#			= truncate article.content, :length   => 512, :separator => /\w/, :omission => "..."
+			-#		= link_to 'Read More >', article, class: 'btn btn-extra pull-right'
+			-#- else
+			-#	.col-xs-4
+			-#		.decor-image.post-image-aside
+			-#			%img{src: article.media_thumbnails.first().content}
+			-#	.col-xs-8
+			-#		%p.post-content
+			-#			= truncate article.content, :length   => 512, :separator => /\w/, :omission => "..."
+			-#		= link_to 'Read More >', article, class: 'btn btn-extra pull-right'

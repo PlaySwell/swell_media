@@ -1,7 +1,7 @@
 
 module SwellMedia
 
-	class Article < Media
+	class Article < SwellMedia::Media
 
 	end
 

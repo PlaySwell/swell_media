@@ -1,0 +1,27 @@
+
+#mainHeader{:role => 'banner', style: 'border-bottom: 4px solid #333;'}
+	%nav.navbar.navbar-fixed-top.navbar-inverse{:role => 'navigation'}
+		.navbar-inner
+			.container
+				.navbar-header
+					%a.navbar-brand.brand{ href: root_path }
+						%i.ll-logo{ style: 'color:#ed1e5a;' }
+						= ENV['APP_NAME']
+					%button.navbar-toggle{"data-target" => ".navbar-collapse", "data-toggle" => "collapse", type: "button"}
+						%span.sr-only Toggle navigation
+						%span.icon-bar
+						%span.icon-bar
+						%span.icon-bar
+				#top-navigation.nav-collapse.subnav-collapse.navbar-collapse.collapse
+					%ul.nav.navbar-nav.navbar-right
+						%li{ class: set_css_if( path: '/' ) }
+							%a{ href: root_path }
+								Home
+
+						%li{ class: set_css_if( controller: :articles ) }
+							%a{ href: articles_path }
+								Our Blog
+
+						%li{ class: set_css_if( path: '/about' ) }
+							%a{ href: '/about' }
+								About Us

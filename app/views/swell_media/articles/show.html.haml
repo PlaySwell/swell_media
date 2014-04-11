@@ -1,0 +1,32 @@
+- cache( @media ) do
+	.single-post-w
+		%h1.post-title
+			= @media.title
+		%p.post-info
+			
+			%span.info-item
+				by
+				%a{href: articles_path( by: @media.user_id )}
+					= @media.user.avatar_tag( width: 20 )
+					= @media.user
+			%span.info-item
+				= @media.publish_at.strftime('%B %e, %Y')
+			%span.info-item
+				Tagged:
+				- @media.tags.each do |tag|
+					%a.post-tag{ href: articles_path( tagged: tag.name ) }
+						%span.label.label-info
+							= tag.name
+		- if @media.avatar.present?
+			.post-avatar{ style: 'text-align:center;' }
+				= image_tag @media.avatar
+
+		.post-content
+			= raw @media.content
+
+	- if @media.is_commentable?
+		%section#comments
+			= render 'application/fb_comments'
+
+
+

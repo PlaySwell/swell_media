@@ -1,0 +1,30 @@
+
+- if @author.present?
+	%h1
+		= pluralize @articles.count, 'Article'
+		by
+		= @author.avatar_tag( width: 36 )
+		= @author
+
+- if @query.present?
+	%h1
+		= pluralize @articles.count, 'Article'
+		matching
+		= "'#{@query}'"
+
+- if @tagged.present?
+	%h1
+		= pluralize @articles.count, 'Article'
+		tagged
+		= "'#{@tagged}'"
+
+- if @category.present?
+	%h1
+		= pluralize @articles.count, 'Article'
+		in
+		= "'#{@category}'"
+
+= raw paginate @articles
+- @articles.each do |article|
+	= render 'card', article: article
+= raw paginate @articles
