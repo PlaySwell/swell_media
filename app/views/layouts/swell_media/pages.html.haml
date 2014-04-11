@@ -24,9 +24,10 @@
 		%header#header{ style: 'height: 6em;' }
 			= render 'application/navbar'
 
-		= render 'application/flash'
+		%section#main{ style: 'margin-top:2em;'}
+			= render 'application/flash'
 
-		= yield
+			= yield
 		%br
 		%br
 		%br

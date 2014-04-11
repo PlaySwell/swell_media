@@ -1,4 +1,3 @@
-
 #mainHeader{:role => 'banner', style: 'border-bottom: 4px solid #333;'}
 	%nav.navbar.navbar-fixed-top.navbar-inverse{:role => 'navigation'}
 		.navbar-inner
@@ -14,14 +13,14 @@
 						%span.icon-bar
 				#top-navigation.nav-collapse.subnav-collapse.navbar-collapse.collapse
 					%ul.nav.navbar-nav.navbar-right
-						%li{ class: set_css_if( path: '/' ) }
-							%a{ href: '/' }
-								Home
+						%li{ class: set_css_if( path: admin_index_path ) }
+							%a{ href: admin_index_path }
+								Admin
 
 						%li{ class: set_css_if( controller: :articles ) }
-							%a{ href: swell_media.articles_path }
-								Our Blog
+							%a{ href: swell_media.admin_articles_path }
+								Blog
 
-						%li{ class: set_css_if( path: '/about' ) }
-							%a{ href: '/about' }
-								About Us
+						%li{ class: set_css_if( controller: :pages ) }
+							%a{ href: swell_media.admin_pages_path }
+								Pages

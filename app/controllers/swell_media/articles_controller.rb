@@ -6,7 +6,7 @@ module SwellMedia
 		def admin
 			authorize!( :admin, Article )
 			@articles = Article.order( publish_at: :desc ).page( params[:page] )
-			render layout: 'admin'
+			render layout: 'swell_media/admin'
 		end
 
 		def create
@@ -34,7 +34,7 @@ module SwellMedia
 		def edit
 			authorize!( :admin, Article )
 
-			render layout: 'admin'
+			render layout: 'swell_media/admin'
 		end
 
 		def index

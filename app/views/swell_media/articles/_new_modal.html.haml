@@ -6,7 +6,7 @@
 					&times;
 				%h4.modal-title
 					New Article
-			= form_for Article.new do |f|
+			= form_for SwellMedia::Article.new do |f|
 				.modal-body
 					= f.label :title
 					= f.text_field :title, class: 'form-control'

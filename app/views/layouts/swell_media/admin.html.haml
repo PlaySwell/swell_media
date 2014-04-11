@@ -24,17 +24,16 @@
 
 		= csrf_meta_tags
 
-	%body.pull-top
-		%header
-			= render 'admin/navbar'
+	%body
+		%header#header
+			= render 'swell_media/admin/navbar'
 
-		%section#content
+		%section#main{ style: 'margin-top:4em;' }
 
-			= render 'application/flash'
+			= render 'swell_media/application/flash'
 
 			= yield
 
-		= render 'admin/footer'
+		= render 'swell_media/admin/footer'
 
 
-= render 'application/analytics'

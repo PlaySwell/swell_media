@@ -6,14 +6,14 @@
 %html{ lang: :en }
 	%head
 		= render 'swell_media/application/html_head', args: {}
+	
 	%body
 		= render 'swell_media/application/fb_js_sdk'
 		%header#header
 			= render 'swell_media/application/navbar'
 
-		= render 'swell_media/application/flash'
-
 		%section#main{ style: 'margin-top:2em;' }
+			= render 'swell_media/application/flash'
 			= yield
 		%br
 		%br

@@ -1,0 +1,72 @@
+
+
+.container
+	.row
+		.col-sm-6
+			.panel.panel-default
+				.panel-heading
+					.pull-left
+						%h3.panel-title
+							= link_to 'Blog', admin_articles_path
+					.pull-right
+						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_article' } }
+							%i.fa.fa-plus-square
+							New
+					.clearfix
+				.panel-body
+					%table.table
+						- @articles.each do |article|
+							%tr
+								%td
+									%a{ href: edit_article_path( article ) }
+										= article.slug
+								%td{ style: 'width:20px;'}
+									%a{ href: edit_article_path( article ) }
+										%i.fa.fa-pencil
+								%td{ style: 'width:20px;'}
+									%a{ href: preview_article_path( article ) }
+										%i.fa.fa-eye
+				.panel-footer
+
+
+		.col-sm-6
+			.panel.panel-default
+				.panel-heading
+					.pull-left
+						%h3.panel-title
+							= link_to 'Pages', admin_pages_path
+					.pull-right
+						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_page' } }
+							%i.fa.fa-plus-square
+							New
+					.clearfix
+				.panel-body
+					%table.table
+						- @pages.each do |page|
+							%tr
+								%td
+									%a{ href: edit_page_path( page ) }
+										= page.slug
+								%td{ style: 'width:20px;'}
+									%a{ href: edit_page_path( page ) }
+										%i.fa.fa-pencil
+								%td{ style: 'width:20px;'}
+									%a{ href: preview_page_path( page ) }
+										%i.fa.fa-eye
+
+				.panel-footer
+
+
+
+
+
+
+
+
+
+
+
+
+= render 'swell_media/articles/new_modal'
+
+= render 'swell_media/pages/new_modal'
