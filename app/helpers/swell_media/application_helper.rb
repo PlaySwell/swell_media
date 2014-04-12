@@ -1,5 +1,6 @@
 module SwellMedia
 	module ApplicationHelper
+	  	
 	  	def set_css_if( args={} )
 			class_name = args[:class] || 'active'
 
@@ -11,5 +12,6 @@ module SwellMedia
 				return class_name if controller_name == args[:controller].to_s
 			end
 		end
+
 	end
 end

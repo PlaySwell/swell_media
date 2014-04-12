@@ -1,15 +1,7 @@
+
 module SwellMedia
-	class ApplicationController < ActionController::Base
-
-		before_filter :set_page_info
-
-
-		rescue_from CanCan::AccessDenied do |exception|
-			set_flash exception.message, :error
-			redirect_to "/"
-		end
-
-
+	module ApplicationControllerExtensions
+		
 		def set_flash( msg, code=:success, *objs )
 			if flash[code].blank?
 				flash[code] = "<p>#{msg}</p>"
@@ -26,10 +18,10 @@ module SwellMedia
 
 		def set_page_info( args={} )
 			@page_info = args
-			@page_info[:title] ||= 'playswell'
-			@page_info[:description] ||= 'Share Your Love' 
+			@page_info[:title] ||= ENV['APP_NAME']
+			@page_info[:description] ||= ENV['APP_DESCRIPTION'] 
 		end
-		
 
 	end
+
 end
