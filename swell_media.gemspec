@@ -20,13 +20,14 @@ Gem::Specification.new do |s|
   s.add_dependency "awesome_nested_set", '~> 3.0.0.rc.3'
   s.add_dependency "cancan"
   s.add_dependency "devise"
+  s.add_dependency "fog"
   s.add_dependency "friendly_id", '~> 5.0.0'
   s.add_dependency "haml"
   s.add_dependency "kaminari"
 	s.add_dependency "pg"
   # TODO s.add_dependency 'paper_trail', '~> 3.0.1'
-
   s.add_dependency "rails", "~> 4.1.0"
+  s.add_dependency 'sitemap_generator'
 
   s.add_development_dependency 'rspec-rails'
   s.add_development_dependency "sqlite3"
