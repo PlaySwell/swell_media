@@ -1,5 +1,5 @@
 module SwellMedia
-	class ArticlesController < SwellMedia::MediaController
+	class ArticlesController < MediaController
 		before_filter :authenticate_user!, except: [ :index, :show ]
 		before_filter :get_article, except: [ :admin, :create, :index ]
 

@@ -20,21 +20,17 @@
 
 		= javascript_include_tag "application", "data-turbolinks-track" => true
 	%body
-		= render 'application/fb_js_sdk'
 		%header#header{ style: 'height: 6em;' }
-			= render 'application/navbar'
+			= render 'swell_media/application/navbar'
 
 		%section#main{ style: 'margin-top:2em;'}
-			= render 'application/flash'
+			= render 'swell_media/application/flash'
 
 			= yield
 		%br
 		%br
 		%br
-		%br
-		%br
-		%br
-		%br
+
 
 		= javascript_include_tag "js/jquery-1.8.3.min.js", "data-turbolinks-track" => true
 		= javascript_include_tag "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js", "data-turbolinks-track" => true
@@ -42,7 +38,10 @@
 		= javascript_include_tag "js/lightbox.js", "data-turbolinks-track" => true
 		= javascript_include_tag "js/main.js", "data-turbolinks-track" => true
 
-		= render 'application/footer'
+		= render 'swell_media/application/footer'
 
 
-= render 'application/analytics'
+= render 'swell_media/application/analytics'
+
+
+Pages Layout

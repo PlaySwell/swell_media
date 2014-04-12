@@ -2,7 +2,7 @@
 # each lives at a root url /slug and show is delegated to media controller
 
 module SwellMedia
-	class PagesController < ApplicationController
+	class PagesController < MediaController
 		
 		before_filter :authenticate_user!, except: [ :show ]
 		before_filter :get_page, except: [ :admin, :create, :index ]

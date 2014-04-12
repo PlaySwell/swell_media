@@ -43,28 +43,16 @@ module SwellMedia
 		end
 
 
-		def random
-			@media = Media.active.order( 'random()' ).last
-			redirect_to @media.url
-		end
-
-
 		def show
 			set_page_info title: @media.title, description: @media.description
 
 			@tags = @media.class.active.tag_counts
 
-			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "swell_media#{@media.class.name.underscore.pluralize}"
+			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
 			render "#{@media.class.name.underscore.pluralize}/show", layout: layout
 
 		end
-
-
-		def update
-			authorize!( :admin, Media )
-		end
-
 
 
 		private
