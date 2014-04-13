@@ -64,6 +64,8 @@ module SwellMedia
 
 			@articles = @articles.page( params[:page] )
 
+			set_page_info title: "#{ENV['APP_NAME']} Blog"
+
 		end
 
 		def update
