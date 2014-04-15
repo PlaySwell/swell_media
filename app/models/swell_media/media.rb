@@ -5,9 +5,9 @@ module SwellMedia
 
 		before_create 	:set_publish_at, :set_keywords
 
-		validates	:title, presence: true
+		validates		:title, presence: true
 
-		attr_accessor	:path
+		attr_accessor	:slug_pref
 
 		belongs_to	:user
 		belongs_to 	:managed_by, class_name: 'User'
@@ -39,24 +39,29 @@ module SwellMedia
 			end
 		end
 
+		def path( args={} )
+			path = "/#{self.slug}"
+
+			if args.present? && args.delete_if{ |k, v| k.blank? || v.blank? }
+				path += '?' unless args.empty?
+				path += args.map{ |k,v| "#{k}=#{v}"}.join( '&' )
+			end
+			return path
+		end
 
 		def slugger
-			self.path.present? ? self.path : self.title
+			self.slug_pref.present? ? self.slug_pref : self.title
 		end
 
 		def to_s
 			self.title
 		end
 
-		def url( args=nil )
-			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN']
+		def url( args={} )
+			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN'] || 'localhost:3000'
 
-			url = "http://#{domain}/#{self.slug}"
-
-			if args.present? && args.delete_if{ |k, v| k.blank? || v.blank? }
-				url += '?' unless args.empty?
-				url += args.map{ |k,v| "#{k}=#{v}"}.join( '&' )
-			end
+			path = self.path( args )
+			url = "http://#{domain}#{self.path}"
 
 			return url
 

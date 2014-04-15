@@ -46,7 +46,7 @@ module SwellMedia
 		def update
 			authorize!( :admin, Page )
 			
-			@page.slug = nil if params[:page][:path].present? || params[:page][:title] != @page.title
+			@page.slug = nil if params[:page][:slug_pref].present? || params[:page][:title] != @page.title
 			@page.attributes = page_params
 
 			if @page.save
@@ -60,7 +60,7 @@ module SwellMedia
 
 		private
 			def page_params
-				params.require( :page ).permit( :title, :subtitle, :path, :description, :content, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
+				params.require( :page ).permit( :title, :subtitle, :slug_pref, :description, :content, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
 			end
 
 			def get_page

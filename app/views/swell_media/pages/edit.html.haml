@@ -26,10 +26,10 @@
 
 				.form-group
 					.input-group
-						= f.label :path, 'URL for this page:'
+						= f.label :slug_pref, 'URL for this page:'
 						%span.input-group-addon
 							http://playswell.com/
-						= f.text_field :path, class: 'form-control', placeholder: @page.slug
+						= f.text_field :slug_pref, class: 'form-control', placeholder: @page.slug
 
 
 				.form-group
