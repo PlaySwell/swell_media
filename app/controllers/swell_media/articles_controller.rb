@@ -1,12 +1,12 @@
 module SwellMedia
-	class ArticlesController < MediaController
+	class ArticlesController < SwellMedia::MediaController
 		before_filter :authenticate_user!, except: [ :index, :show ]
 		before_filter :get_article, except: [ :admin, :create, :index ]
 
 		def admin
 			authorize!( :admin, Article )
 			@articles = Article.order( publish_at: :desc ).page( params[:page] )
-			render layout: 'swell_media/admin'
+			render layout: 'admin'
 		end
 
 		def create
@@ -34,7 +34,7 @@ module SwellMedia
 		def edit
 			authorize!( :admin, Article )
 
-			render layout: 'swell_media/admin'
+			render layout: 'admin'
 		end
 
 		def index

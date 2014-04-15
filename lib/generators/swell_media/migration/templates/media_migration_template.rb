@@ -27,6 +27,21 @@ class SwellMediaMigration < ActiveRecord::Migration
 		add_index :categories, :rgt
 		add_index :categories, :slug, unique: true
 
+
+		create_table :contacts do |t|
+			t.string		:email
+			t.string		:subject
+			t.text			:message
+			t.string		:ip
+			t.string		:contact_type
+			t.string		:http_referrer
+			t.string		:status, 		default: :active 
+			t.hstore		:properties
+			t.timestamps
+		end
+		add_index :contacts, :email
+
+
 		create_table :media do |t|
 			t.references	:user 					# User who added it
 			t.references	:managed_by 			# User acct that has origin acct (e.g. youtube) rights
@@ -107,7 +122,8 @@ class SwellMediaMigration < ActiveRecord::Migration
 
 
 		create_table :tags do |t|
-			t.string :name
+			t.string 			:name
+			t.integer 			:taggings_count, default: 0
 		end
 		add_index :tags, :name, unique: true
 

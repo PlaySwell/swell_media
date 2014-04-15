@@ -49,7 +49,7 @@ module SwellMedia
 		end
 
 		def url( args=nil )
-			domain = ( args.present? && args.delete( :domain ) ) || Rails.application.config.app_domain || ENV['APP_DOMAIN']
+			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN']
 
 			url = "http://#{domain}/#{self.slug}"
 

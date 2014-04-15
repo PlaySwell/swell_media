@@ -7,7 +7,7 @@
 				.panel-heading
 					.pull-left
 						%h3.panel-title
-							= link_to 'Blog', admin_articles_path
+							= link_to 'Blog', swell_media.admin_articles_path
 					.pull-right
 						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_article' } }
 							%i.fa.fa-plus-square
@@ -18,13 +18,13 @@
 						- @articles.each do |article|
 							%tr
 								%td
-									%a{ href: edit_article_path( article ) }
+									%a{ href: swell_media.edit_article_path( article ) }
 										= article.slug
 								%td{ style: 'width:20px;'}
-									%a{ href: edit_article_path( article ) }
+									%a{ href: swell_media.edit_article_path( article ) }
 										%i.fa.fa-pencil
 								%td{ style: 'width:20px;'}
-									%a{ href: preview_article_path( article ) }
+									%a{ href: swell_media.preview_article_path( article ) }
 										%i.fa.fa-eye
 				.panel-footer
 
@@ -34,7 +34,7 @@
 				.panel-heading
 					.pull-left
 						%h3.panel-title
-							= link_to 'Pages', admin_pages_path
+							= link_to 'Pages', swell_media.admin_pages_path
 					.pull-right
 						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_page' } }
 							%i.fa.fa-plus-square
@@ -45,14 +45,34 @@
 						- @pages.each do |page|
 							%tr
 								%td
-									%a{ href: edit_page_path( page ) }
+									%a{ href: swell_media.edit_page_path( page ) }
 										= page.slug
 								%td{ style: 'width:20px;'}
-									%a{ href: edit_page_path( page ) }
+									%a{ href: swell_media.edit_page_path( page ) }
 										%i.fa.fa-pencil
 								%td{ style: 'width:20px;'}
-									%a{ href: preview_page_path( page ) }
+									%a{ href: swell_media.preview_page_path( page ) }
 										%i.fa.fa-eye
+
+				.panel-footer
+
+		.col-sm-6
+			.panel.panel-default
+				.panel-heading
+					.pull-left
+						%h3.panel-title
+							= link_to 'Contacts', swell_media.admin_contacts_path
+					.clearfix
+				.panel-body
+					%table.table
+						- @contacts.each do |contact|
+							%tr
+								%td
+									%a{ href: swell_media.edit_contact_path( contact ) }
+										= contact.email
+								%td{ style: 'width:20px;'}
+									%a{ href: swell_media.edit_contact_path( contact ) }
+										%i.fa.fa-pencil
 
 				.panel-footer
 
@@ -65,8 +85,3 @@
 
 
 
-
-
-= render 'swell_media/articles/new_modal'
-
-= render 'swell_media/pages/new_modal'

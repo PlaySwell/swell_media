@@ -6,17 +6,17 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
+	
 	%body
-		%header#header{ style: 'height: 6em;' }
-			= render 'application/navbar'
+		= render 'application/fb_js_sdk'
+		%header#header
+			= render 'admin/navbar'
 
-		%section#main{ style: 'margin-top:4em;'}
+		%section#main{ style: 'margin-top:4em;' }
 			= render 'application/flash'
-
 			= yield
 		%br
 		%br
-		%br
 
-		= render 'application/footer'
-
+		%footer#footer
+			= render 'application/footer'

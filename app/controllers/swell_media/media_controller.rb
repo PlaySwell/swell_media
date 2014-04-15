@@ -1,9 +1,11 @@
 module SwellMedia
 	class MediaController < ApplicationController
-		before_filter :authenticate_user!, except: [  :index, :random, :show ]
-		before_filter :get_media, only: [ :show ]
+		# only used for global admin (any media) and preview.
+		# media#show should route to root controller for naked paths (e.g. domain/slug )
+		# or to the controller of choice for scoped paths (e.g. domain/blog/id to articles#show )
 
-		
+		before_filter :authenticate_user!, except: [  :index, :random, :show ]
+
 		def admin
 			authorize!( :admin, Media )
 			@media = Media.order( publish_at: :desc )
@@ -39,41 +41,12 @@ module SwellMedia
 		def preview
 			authorize!( :admin, Media )
 			@media = Media.friendly.find( params[:id] )
+			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 			render "#{@media.class.name.underscore.pluralize}/show"
 		end
 
 
-		def show
-			set_page_info title: @media.title, description: @media.description
-
-			@tags = @media.class.active.tag_counts
-
-			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
-
-			render "#{@media.class.name.underscore.pluralize}/show", layout: layout
-
-		end
-
-
 		private
-
-			def get_media
-				if params[:id].present?
-					if params[:id].match( /sitemap/i )
-						redirect_to "https://s3-us-west-2.amazonaws.com/todo_app_name/com/sitemaps/sitemap.xml.gz"
-						return false
-					else
-						begin
-							@media = Media.active.friendly.find( params[:id] )
-						rescue
-							raise ActionController::RoutingError.new( 'Not Found' )
-						end
-					end
-				else
-					@media = Page.homepage
-				end
-
-			end
 
 			def media_params
 				params.require( :media ).permit( :title, :subtitle, :path, :content, :status, :publish_at, :show_title )

@@ -1,7 +1,8 @@
 module SwellMedia
 
 	class Category < ActiveRecord::Base
-
+		self.table_name = 'categories'
+		
 		before_save :set_label
 
 		belongs_to	:moderator, class_name: 'User'

@@ -2,7 +2,7 @@
 # each lives at a root url /slug and show is delegated to media controller
 
 module SwellMedia
-	class PagesController < MediaController
+	class PagesController < SwellMedia::MediaController
 		
 		before_filter :authenticate_user!, except: [ :show ]
 		before_filter :get_page, except: [ :admin, :create, :index ]
@@ -10,12 +10,12 @@ module SwellMedia
 		def admin
 			authorize! :admin, SwellMedia::Page
 			@pages = Page.page( params[:page] )
-			render layout: 'swell_media/admin'
+			render layout: 'admin'
 		end
 
 
 		def create
-			authorize!( :admin, Media )
+			authorize!( :admin, Page )
 			@page = Page.new( page_params )
 			@page.publish_at ||= Time.zone.now
 			@page.status = 'draft'
@@ -29,9 +29,17 @@ module SwellMedia
 		end
 
 
+		def destroy
+			authorize!( :admin, Page )
+			@page.update( status: 'deleted' )
+			set_flash 'Page Deleted'
+			redirect_to :back
+		end
+
+
 		def edit
-			@page = Page.friendly.find( params[:id] )
-			render layout: 'swell_media/admin'
+			authorize!( :admin, Page )
+			render layout: 'admin'
 		end
 
 

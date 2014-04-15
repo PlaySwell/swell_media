@@ -1,0 +1,25 @@
+.container
+	.row
+		.col-sm-8
+
+			%h3.headline.first-child
+				%span
+					Contact
+			%p
+				We'd love to hear from you!
+
+			= form_for @contact do |f|
+				.form-group
+					= f.label :email
+					= f.text_field :email, placeholder: 'Your Email', class: 'form-control'
+				.form-group
+					= f.label :subject
+					= f.text_field :subject, placeholder: 'Subject', class: 'form-control'
+				.form-group
+					= f.label :message
+					= f.text_area :message, rows: 3, class: 'form-control'
+
+				= f.submit 'Send', class: 'btn btn-lg btn-red'
+
+
+		.col-sm-4

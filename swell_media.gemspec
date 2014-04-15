@@ -10,8 +10,8 @@ Gem::Specification.new do |s|
   s.authors     = ["Gk Parish-Philp", "Michael Ferguson"]
   s.email       = ["gk@playswell.com"]
   s.homepage    = "http://playswell.com"
-  s.summary     = "Summary of SwellMedia."
-  s.description = "Description of SwellMedia."
+  s.summary     = "A simple CMS for Rails."
+  s.description = "A simple CMS for Rails."
 
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.rdoc"]
   s.test_files = Dir["spec/**/*"]
@@ -29,6 +29,7 @@ Gem::Specification.new do |s|
   s.add_dependency "rails", "~> 4.1.0"
   s.add_dependency 'sitemap_generator'
 
-  s.add_development_dependency 'rspec-rails'
   s.add_development_dependency "sqlite3"
+  s.add_development_dependency 'rspec-rails'
+
 end
