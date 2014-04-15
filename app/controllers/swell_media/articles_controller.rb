@@ -72,7 +72,7 @@ module SwellMedia
 		def update
 			authorize!( :admin, Article )
 			
-			@article.slug = nil if params[:article][:path].present? || params[:article][:title] != @article.title
+			@article.slug = nil if params[:article][:slug_pref].present? || params[:article][:title] != @article.title
 			@article.attributes = article_params
 
 			if @article.save
@@ -88,7 +88,7 @@ module SwellMedia
 
 		private
 			def article_params
-				params.require( :article ).permit( :title, :subtitle, :path, :description, :content, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
+				params.require( :article ).permit( :title, :subtitle, :slug_pref, :description, :content, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
 			end
 
 			def get_article
