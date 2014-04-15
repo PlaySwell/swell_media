@@ -68,6 +68,7 @@ module SwellMedia
 
 		end
 
+
 		def update
 			authorize!( :admin, Article )
 			

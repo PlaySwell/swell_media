@@ -1,0 +1,17 @@
+
+!!!strict
+%head
+	%meta{ content: "text/html; charset=UTF-8", 'http-equiv' => "Content-Type" }
+%body
+	You have a new contact!
+	%br
+	%b From:
+	= @contact.email
+	%br
+	%b Subejct:
+	= @contact.subject
+	%br
+	%br
+	%b Message:
+	%br
+	= raw @contact.message

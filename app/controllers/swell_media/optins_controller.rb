@@ -14,7 +14,7 @@ module SwellMedia
 				#list_id = mail_api.lists.list( list_name: 'Pre-Launch' )['data'].first['id']
 				#mail_api.lists.subscribe( { id: '27437bba9b', email: { email: email }, double_optin: true } )
 
-				#AdminMailer.new_contact( contact ).deliver
+				ContactMailer.new_contact( contact ).deliver
 
 				set_flash "Thanks for signing up!"
 				redirect_to :back
