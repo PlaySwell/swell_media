@@ -9,7 +9,7 @@ module SwellMedia
 
 		def admin
 			authorize! :admin, SwellMedia::Page
-			@pages = Page.page( params[:page] )
+			@pages = Page.order( publish_at: :desc ).page( params[:page] )
 			render layout: 'admin'
 		end
 
