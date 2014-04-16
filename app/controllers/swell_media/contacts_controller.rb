@@ -16,7 +16,7 @@ module SwellMedia
 
 			if @contact.save
 				
-				ContactMailer.new_contact( contact ).deliver
+				SwellMedia::ContactMailer.new_contact( @contact ).deliver
 
 				set_flash 'Thanks for your message!'
 				redirect_to '/'
