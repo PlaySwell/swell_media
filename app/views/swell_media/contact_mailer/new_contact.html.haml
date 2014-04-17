@@ -4,15 +4,21 @@
 %head
 	%meta{ content: "text/html; charset=UTF-8", 'http-equiv' => "Content-Type" }
 %body
-	You have a new contact!
-	%br
-	%b From:
-	= @contact.email
-	%br
-	%b Subejct:
-	= @contact.subject
-	%br
-	%br
-	%b Message:
-	%br
-	= raw @contact.message
+	%p
+		You have a new
+		= @contact.contact_type || 'contact'
+		!
+	%p
+		%b From:
+		= @contact.email
+	
+	- if @contact.subject.present?
+		%p
+			%b Subject:
+			= @contact.subject
+	
+	- if @contact.message.present?
+		%p
+			%b Message:
+			%br
+			= raw @contact.message
