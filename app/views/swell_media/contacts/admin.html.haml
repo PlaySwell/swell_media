@@ -1,16 +1,41 @@
 .container
 	.row
-		%h3
-			Contacts
-
-		%table.table
-			%thead
-				%th Email
-				%th Type
-				%th Date
-			%tbody
-				- @contacts.each do |contact|
-					%tr
-						%td= contact.email
-						%td= contact.contact_type
-						%td= contact.created_at.to_s( :long )
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					%strong
+						Contact Admin
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th Type
+					%th Email
+					%th Date
+					%th
+				%tbody
+					- @contacts.each do |contact|
+						%tr
+							%td
+								= contact.contact_type || 'contact'
+							%td
+								= link_to contact.email, edit_contact_path( contact )
+							%td
+								= contact.created_at.to_s( :long )
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_contact_path( contact ) }
+												%i.fa.fa-pencil
+												Edit
+										%li.divider
+										%li
+											%a{ href: contact_path( contact ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!

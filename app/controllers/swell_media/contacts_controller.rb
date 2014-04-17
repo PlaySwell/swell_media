@@ -26,6 +26,11 @@ module SwellMedia
 			end
 		end
 
+		def edit
+			@contact = Contact.find( params[:id] )
+			render layout: 'admin'
+		end
+
 
 		def new
 			@contact = Contact.new	
