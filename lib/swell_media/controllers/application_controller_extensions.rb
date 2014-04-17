@@ -1,4 +1,4 @@
-
+1
 module SwellMedia
 	module ApplicationControllerExtensions
 		
