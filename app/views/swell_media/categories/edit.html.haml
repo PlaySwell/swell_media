@@ -1,1 +1,35 @@
-edit.html.haml
+
+
+
+.container
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					= link_to 'Category Admin', admin_categories_path
+				%li
+					%strong
+						Edit
+						= @category.name
+	
+	= form_for @category do |f|
+	
+		.row
+			.col-xs-8
+				.form-group
+					= f.text_field :name, class: 'form-control'
+
+				.form-group
+					= f.label :description
+					= f.text_area :description, class: 'form-control', rows: 4
+
+
+			.col-xs-4
+				.boxFocus
+					.form-group
+						= f.label :status
+						= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'
+					.form-group
+						= f.submit 'Update', class: 'btn btn-primary'

@@ -28,7 +28,7 @@
 					.input-group
 						= f.label :slug_pref, 'URL for this article:'
 						%span.input-group-addon
-							http://playswell.com/
+							= ENV['APP_DOMAIN']
 						= f.text_field :slug_pref, class: 'form-control', placeholder: @article.slug
 
 				.form-group
@@ -57,6 +57,9 @@
 					.form-group
 						= f.label :publish_at
 						= f.text_field :publish_at, class: 'form-control datepicker'
+					.form-group
+						= f.label :category_id
+						= f.collection_select :category_id, SwellMedia::Category.active.order( :name ), :id, :name, { include_blank: '-- Select -- ' }, class: 'form-control'
 					.form-group
 						= f.label :status
 						= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'

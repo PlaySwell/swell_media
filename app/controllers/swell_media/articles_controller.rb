@@ -88,7 +88,7 @@ module SwellMedia
 
 		private
 			def article_params
-				params.require( :article ).permit( :title, :subtitle, :slug_pref, :description, :content, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
+				params.require( :article ).permit( :title, :subtitle, :slug_pref, :description, :content, :category_id, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
 			end
 
 			def get_article
