@@ -64,8 +64,6 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.text			:content
 			t.string		:slug
 
-			t.integer		:reward_threshold,				default: 100  # if product needs this many kudos to be offered as a reward
-
 			t.boolean 		:is_commentable, 				default: true
 			t.boolean		:is_sticky,						default: false 		# for forum topics
 			t.boolean		:show_title,					default: true
@@ -74,20 +72,6 @@ class SwellMediaMigration < ActiveRecord::Migration
 
 			t.string		:duration
 			t.integer		:price
-
-			t.integer 		:cached_impression_count, 		default: 0, 	limit: 8
-
-			t.integer 		:cached_comment_count, 			default: 0, 	limit: 8
-
-			t.integer		:cached_vote_count,				default: 0, 	limit: 8
-			t.float			:cached_vote_score,				default: 0
-			t.integer		:cached_upvote_count,			default: 0, 	limit: 8
-			t.integer		:cached_downvote_count,			default: 0, 	limit: 8
-
-			t.float			:score,							default: 0
-			t.float			:previous_score,				default: 0
-			t.float 		:decayed_score,					default: 0
-			t.datetime		:score_updated_at
 
 			t.string		:status, 						default: :active
 			t.string		:availability, 					default: :public 	# hidden, friends, peers,

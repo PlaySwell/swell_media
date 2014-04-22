@@ -60,6 +60,29 @@
 
 				.panel-footer
 
+		.col-sm-6
+			.panel.panel-default
+				.panel-heading
+					.pull-left
+						%h3.panel-title
+							= link_to 'Contacts', swell_media.admin_contacts_path
+					.clearfix
+				.panel-body
+					%table.table
+						- @contacts.each do |contact|
+							%tr
+								%td
+									%a{ href: swell_media.edit_contact_path( contact ) }
+										= contact.email
+								%td{ style: 'width:20px;'}
+									%a{ href: swell_media.edit_contact_path( contact ) }
+										%i.fa.fa-pencil
+						- if @contacts.empty?
+							%tr
+								%td
+									No Contacts Yet
+
+				.panel-footer
 
 
 = render 'swell_media/articles/new_modal'

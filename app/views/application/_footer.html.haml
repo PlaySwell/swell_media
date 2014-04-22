@@ -1,9 +1,19 @@
 
 .container
 	.row
-		.col-xs-12
+		.col-xs-8
 			.copyright
 				©
 				= Time.now.year
 				= ENV['APP_NAME']
 				All rights reserved.
+		.col-xs-4
+			- if current_user.present?
+				Hi
+				= "#{current_user}!"
+
+				= link_to 'Admin', '/admin'
+				|
+				= link_to 'Logout', '/logout'
+			- else
+				= link_to 'Admin', '/login'
