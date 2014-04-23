@@ -3,7 +3,7 @@ module SwellMedia
 	class Category < ActiveRecord::Base
 		self.table_name = 'categories'
 		
-		before_save :set_label
+		before_save :set_display
 
 		belongs_to	:moderator, class_name: 'User'
 
@@ -28,8 +28,8 @@ module SwellMedia
 
 		private
 
-			def set_label
-				self.label ||= self.name.capitalize
+			def set_display
+				self.display ||= self.name.capitalize
 			end
 
 	end

@@ -1,7 +1,7 @@
 - cache( "row-#{article.cache_key}" ) do
 	%div[article]{ style: 'margin-top:1em;margin-bottom:1em;'}
 		.artile-title{ style: 'font-size:125%;'}
-			= link_to article.title, article
+			= link_to article.title, article.url
 
 		%span.post-date
 			%a{href: articles_path( by: article.user_id ) }

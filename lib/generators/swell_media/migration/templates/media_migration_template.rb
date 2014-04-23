@@ -7,7 +7,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.references		:user 			# created_by
 			t.references 		:parent
 			t.string			:name
-			t.string			:label
+			t.string			:display
 			t.string 			:type
 			t.integer 			:lft
 			t.integer 			:rgt
