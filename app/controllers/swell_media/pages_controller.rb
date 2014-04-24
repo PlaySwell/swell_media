@@ -9,7 +9,17 @@ module SwellMedia
 
 		def admin
 			authorize! :admin, SwellMedia::Page
-			@pages = Page.order( publish_at: :desc ).page( params[:page] )
+			
+			sort_by = params[:sort_by] || 'publish_at'
+			sort_dir = params[:sort_dir] || 'desc'
+
+			@pages = Page.order( "#{sort_by} #{sort_dir}" )
+
+			if params[:q].present?
+				@pages = @pages.where( "array[:q] && keywords", q: params[:q].downcase )
+			end
+
+			@pages = @pages.page( params[:page] )
 			render layout: 'admin'
 		end
 

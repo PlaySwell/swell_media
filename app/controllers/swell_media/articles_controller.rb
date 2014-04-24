@@ -5,7 +5,17 @@ module SwellMedia
 
 		def admin
 			authorize!( :admin, Article )
-			@articles = Article.order( publish_at: :desc ).page( params[:page] )
+			sort_by = params[:sort_by] || 'publish_at'
+			sort_dir = params[:sort_dir] || 'desc'
+
+			@articles = Article.order( "#{sort_by} #{sort_dir}" )
+
+			if params[:q].present?
+				@articles = @articles.where( "array[:q] && keywords", q: params[:q].downcase )
+			end
+
+			@articles = @articles.page( params[:page] )
+
 			render layout: 'admin'
 		end
 
