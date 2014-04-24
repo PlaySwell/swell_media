@@ -72,6 +72,8 @@
 						- @contacts.each do |contact|
 							%tr
 								%td
+									= contact.contact_type || 'contact'
+								%td
 									%a{ href: swell_media.edit_contact_path( contact ) }
 										= contact.email
 								%td{ style: 'width:20px;'}

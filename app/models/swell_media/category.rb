@@ -16,12 +16,6 @@ module SwellMedia
 		include FriendlyId
 		friendly_id :name, use: :slugged
 
-
-		def self.active
-			where( status: :active )
-		end
-
-
 		
 
 		def to_s
