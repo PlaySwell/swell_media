@@ -13,8 +13,8 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.integer 			:rgt
 			t.string			:users_name,					default: :players
 			t.text				:description
-			t.string			:status,						default: :active
-			t.string			:availability,					default: :public
+			t.integer			:status, 						default: 0
+			t.integer			:availability, 					default: 0 	# anyone, logged_in, just_me
 			t.integer 			:seq
 			t.string 			:slug
 			t.hstore			:properties
@@ -73,8 +73,8 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:duration
 			t.integer		:price
 
-			t.string		:status, 						default: :active
-			t.string		:availability, 					default: :public 	# hidden, friends, peers,
+			t.integer		:status, 						default: 0
+			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
 			t.datetime		:publish_at
 			t.hstore		:properties
 
@@ -99,7 +99,8 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.integer		:height
 			t.integer		:width
 			t.string		:caption
-			t.string		:status, 							default: :active
+			t.integer		:status, 						default: 0
+			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
 			t.timestamps
 		end
 		add_index :media_thumbnails, :media_id

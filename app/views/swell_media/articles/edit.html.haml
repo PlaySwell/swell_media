@@ -50,7 +50,7 @@
 
 
 			.col-xs-4
-				.boxFocus
+				.well
 					.form-group
 						= f.label :user_id, 'Author'
 						= f.collection_select :user_id, User.godmins, :id, :name, {}, class: 'form-control'
@@ -62,7 +62,10 @@
 						= f.collection_select :category_id, SwellMedia::Category.active.order( :name ), :id, :name, { include_blank: '-- Select -- ' }, class: 'form-control'
 					.form-group
 						= f.label :status
-						= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'
+						= f.collection_select :status, SwellMedia::Article.statuses, :first, :first, {}, class: 'form-control'
+					.form-group
+						= f.label :availability
+						= f.collection_select :availability, SwellMedia::Article.availabilities, :first, :first, {}, class: 'form-control'
 					.form-group
 						= f.label :tag_list, 'Tags:'
 						= f.text_field :tag_list, placeholder: 'Separate tags with commas', class: 'form-control'

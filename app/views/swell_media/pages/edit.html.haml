@@ -37,13 +37,16 @@
 
 
 			.col-xs-4
-				.boxFocus
+				.well
 					.form-group
 						= f.label :publish_at
 						= f.text_field :publish_at, class: 'form-control datepicker'
 					.form-group
 						= f.label :status
-						= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'
+						= f.collection_select :status, SwellMedia::Page.statuses, :first, :first, {}, class: 'form-control'
+					.form-group
+						= f.label :availability
+						= f.collection_select :availability, SwellMedia::Page.availabilities, :first, :first, {}, class: 'form-control'
 					.form-group
 						= f.check_box :show_title, {}, 'true', 'false'
 						Show Title?

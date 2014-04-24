@@ -2,6 +2,9 @@ module SwellMedia
 	class User < ActiveRecord::Base
 		self.table_name = 'users'
 
+		enum status: { 'active' => 0, 'revoked' => 1, 'archive' => 2, 'trash' => 3 }
+
+
 		attr_accessor	:login
 
 		### FILTERS		--------------------------------------------

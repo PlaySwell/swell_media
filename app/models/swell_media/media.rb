@@ -3,6 +3,9 @@ module SwellMedia
 	class Media < ActiveRecord::Base
 		self.table_name = 'media'
 
+		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
+		enum availability: { 'anyone' => 0, 'logged_in_users' => 1, 'just_me' => 2 }
+
 		before_create 	:set_publish_at, :set_keywords
 
 		validates		:title, presence: true
@@ -23,8 +26,8 @@ module SwellMedia
 		acts_as_taggable
 
 
-		def self.active
-			where( status: :active, availability: :public ).where( 'publish_at <= :now', now: Time.zone.now )
+		def self.published
+			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
 		end
 
 

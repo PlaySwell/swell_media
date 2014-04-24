@@ -14,7 +14,7 @@ class UsersMigration < ActiveRecord::Migration
 			t.string		:refresh_token
 			t.string		:secret
 			t.datetime		:expires_at
-			t.string		:status,		default: :active
+			t.integer		:status,		default: 0
 			t.timestamps
 		end
 		add_index :oauth_credentials, :user_id
@@ -64,7 +64,7 @@ class UsersMigration < ActiveRecord::Migration
 			t.string		:state 
 			t.string		:zip 
 			t.string		:phone
-			t.string		:status,				default: :active
+			t.integer		:status,				default: 0
 
 			t.integer		:level,					default: 1
 			t.integer		:max_investment,		default: 10

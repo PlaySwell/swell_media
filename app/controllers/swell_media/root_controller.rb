@@ -9,7 +9,7 @@ module SwellMedia
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
-			render "#{@media.class.name.underscore.pluralize}/show", layout: layout
+			render "#{@media.class.name.underscore.pluralize}/show", layout: layout rescue render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
 
 		end
 
@@ -22,7 +22,7 @@ module SwellMedia
 						return false
 					else
 						begin
-							@media = Media.active.friendly.find( params[:id] )
+							@media = Media.published.friendly.find( params[:id] )
 						rescue
 							raise ActionController::RoutingError.new( 'Not Found' )
 						end
