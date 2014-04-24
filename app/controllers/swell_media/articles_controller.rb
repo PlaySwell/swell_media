@@ -16,6 +16,7 @@ module SwellMedia
 			@article.user = current_user
 			@article.status = 'draft'
 			if @article.save
+				record_user_event( 'publish', user: current_user, on: @media, content: "published <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
 				set_flash 'Article Created'
 				redirect_to edit_article_path( @article )
 			else

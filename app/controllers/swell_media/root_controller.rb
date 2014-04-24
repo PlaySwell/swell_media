@@ -7,6 +7,8 @@ module SwellMedia
 
 			@tags = @media.class.active.tag_counts
 
+			record_user_event( 'impression', user: current_user, on: @media, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
+
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
 			render "#{@media.class.name.underscore.pluralize}/show", layout: layout rescue render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
