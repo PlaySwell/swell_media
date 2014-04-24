@@ -26,6 +26,13 @@ module SwellMedia
 			end
 		end
 
+		def destroy
+			@contact = Contact.find( params[:id] )
+			@contact.destroy
+			set_flash "#{@contact.contact_type || 'contact'} from #{@contact.email} Deleted"
+			redirect_to :back
+		end
+
 		def edit
 			@contact = Contact.find( params[:id] )
 			render layout: 'admin'

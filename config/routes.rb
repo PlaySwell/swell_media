@@ -22,13 +22,8 @@ SwellMedia::Engine.routes.draw do
 		get :preview, on: :member
 	end
 
-
-	# devise_scope :user do
-	# 	get '/login' => 'sessions#new', as: 'login'
-	# 	get '/logout' => 'sessions#destroy', as: 'logout'
-	# end
-	# devise_for :users, :controllers => { :sessions => 'sessions' }
-
+	resources :imports
+	resources :exports
 
 	# quick catch-all route for static pages
 	# set root route to field any media

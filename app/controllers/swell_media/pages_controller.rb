@@ -31,8 +31,8 @@ module SwellMedia
 
 		def destroy
 			authorize!( :admin, Page )
-			@page.update( status: 'deleted' )
-			set_flash 'Page Deleted'
+			@page.update( status: 'trash' )
+			set_flash 'Page Trashed'
 			redirect_to :back
 		end
 

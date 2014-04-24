@@ -32,8 +32,8 @@ module SwellMedia
 
 		def destroy
 			authorize!( :admin, Media )
-			@media.update( status: 'deleted' )
-			set_flash 'Media Deleted'
+			@media.update( status: 'trash' )
+			set_flash 'Article Trashed'
 			redirect_to :back
 		end
 
