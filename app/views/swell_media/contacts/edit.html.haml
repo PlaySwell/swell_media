@@ -13,11 +13,14 @@
 						= @contact.contact_type || 'contact'
 						From
 						= @contact.email
-
+		.col-xs-2
+			.pull-right
+				= link_to 'Delete', @contact, method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
+				
 	= form_for @contact do |f|
-		%fieldset{ disabled: true }
-			.row
-				.col-xs-8
+		.row
+			.col-xs-8
+				%fieldset{ disabled: true }
 					.form-group
 						= f.text_field :email, class: 'form-control disabled'
 
@@ -29,24 +32,3 @@
 					.form-group
 						= f.label :message
 						= f.text_area :message, class: 'form-control disabled', rows: 4
-
-
-				.col-xs-4
-					-#.boxFocus
-						.form-group
-							= f.label :user_id, 'Author'
-							= f.collection_select :user_id, User.godmins, :id, :name, {}, class: 'form-control'
-						.form-group
-							= f.label :publish_at
-							= f.text_field :publish_at, class: 'form-control datepicker'
-						.form-group
-							= f.label :status
-							= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'
-						.form-group
-							= f.label :tag_list, 'Tags:'
-							= f.text_field :tag_list, placeholder: 'Separate tags with commas', class: 'form-control'
-						.form-group
-							= f.check_box :is_commentable, {}, 'true', 'false'
-							Allow Comments?
-						.form-group
-							= f.submit 'Update', class: 'btn btn-primary'
