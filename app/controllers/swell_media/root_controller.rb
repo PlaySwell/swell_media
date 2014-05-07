@@ -7,11 +7,17 @@ module SwellMedia
 
 			@tags = @media.class.active.tag_counts
 
+			@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name ) if defined?( SwellSocial )
+
 			record_user_event( 'impression', user: current_user, on: @media, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
-			render "#{@media.class.name.underscore.pluralize}/show", layout: layout rescue render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
+			begin
+				render "#{@media.class.name.underscore.pluralize}/show", layout: layout
+			rescue
+				render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
+			end
 
 		end
 

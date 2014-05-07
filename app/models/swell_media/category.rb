@@ -19,7 +19,7 @@ module SwellMedia
 		
 
 		def to_s
-			self.label
+			self.display
 		end
 
 		private

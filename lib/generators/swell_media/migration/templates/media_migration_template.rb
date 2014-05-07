@@ -71,7 +71,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.text			:keywords, 	array: true, 		default: []
 
 			t.string		:duration
-			t.integer		:price
+			t.integer		:price,							default: 0
 
 			t.integer		:status, 						default: 0
 			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
