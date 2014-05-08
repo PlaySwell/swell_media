@@ -25,6 +25,11 @@ module SwellMedia
 			@article.publish_at ||= Time.zone.now
 			@article.user = current_user
 			@article.status = 'draft'
+
+			if name = params[:article][:category_name]
+				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' )
+			end
+
 			if @article.save
 				record_user_event( 'publish', user: current_user, on: @article, content: "published <a href='#{@article.url}'>#{@article.to_s}</a>" ) if defined?( SwellPlay )
 				set_flash 'Article Created'
@@ -88,6 +93,10 @@ module SwellMedia
 			
 			@article.slug = nil if params[:article][:slug_pref].present? || params[:article][:title] != @article.title
 			@article.attributes = article_params
+
+			if name = params[:article][:category_name]
+				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' )
+			end
 
 			if @article.save
 				set_flash 'Article Updated'

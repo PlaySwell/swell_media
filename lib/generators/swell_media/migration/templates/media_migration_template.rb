@@ -7,13 +7,12 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.references		:user 			# created_by
 			t.references 		:parent
 			t.string			:name
-			t.string			:display
 			t.string 			:type
 			t.integer 			:lft
 			t.integer 			:rgt
 			t.string			:users_name,					default: :players
 			t.text				:description
-			t.integer			:status, 						default: 0
+			t.integer			:status, 						default: 1
 			t.integer			:availability, 					default: 0 	# anyone, logged_in, just_me
 			t.integer 			:seq
 			t.string 			:slug
@@ -125,3 +124,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 
 	end
 end
+
+
+
+

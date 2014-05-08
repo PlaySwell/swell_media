@@ -60,6 +60,7 @@
 					.form-group
 						= f.label :category_id
 						= f.collection_select :category_id, SwellMedia::Category.active.order( :name ), :id, :name, { include_blank: '-- Select -- ' }, class: 'form-control'
+						= f.text_field :category_name, class: 'form-control'
 					.form-group
 						= f.label :status
 						= f.collection_select :status, SwellMedia::Article.statuses, :first, :first, {}, class: 'form-control'
