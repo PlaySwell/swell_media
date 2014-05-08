@@ -101,6 +101,9 @@ module SwellMedia
 			return !!self.roles.find_by_name( role.to_s )
 		end
 
+		def possessive
+	    	self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
+		end
 
 		def role
 			self.roles.last.try( :name ) || 'None'
