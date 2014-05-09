@@ -11,6 +11,9 @@ ready = $ ->
 		dateFormat: 'dd MM, yy'
 
 
+	if not not $('#article_category_id').val()
+		$('#article_category_name').hide()
+
 	$('#article_category_id').change ->
 		if not not $(@).val()
 			$('#article_category_name').hide()
