@@ -3,7 +3,7 @@ module SwellMedia
 		before_filter :get_media
 
 		def show
-			set_page_info title: @media.title, description: @media.description
+			
 
 			@tags = @media.class.active.tag_counts
 
@@ -13,6 +13,8 @@ module SwellMedia
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
+			set_page_info title: @media.title, description: @media.description
+			
 			begin
 				render "#{@media.class.name.underscore.pluralize}/show", layout: layout
 			rescue

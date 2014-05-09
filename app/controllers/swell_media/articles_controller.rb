@@ -27,7 +27,7 @@ module SwellMedia
 			@article.status = 'draft'
 
 			if name = params[:article][:category_name]
-				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' )
+				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' ) unless name.blank?
 			end
 
 			if @article.save
@@ -95,7 +95,7 @@ module SwellMedia
 			@article.attributes = article_params
 
 			if name = params[:article][:category_name]
-				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' )
+				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' ) unless name.blank?
 			end
 
 			if @article.save
