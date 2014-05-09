@@ -25,7 +25,11 @@ module SwellMedia
 
 		def destroy
 			authorize!( :admin, Category )
-			@category.update( status: 'deleted' )
+			if @category.trash?
+				@category.destroy
+			else
+				@category.update( status: :trash )
+			end
 			set_flash 'Category Deleted'
 			redirect_to :back
 		end

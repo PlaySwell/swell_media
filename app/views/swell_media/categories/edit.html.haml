@@ -30,6 +30,6 @@
 				.boxFocus
 					.form-group
 						= f.label :status
-						= f.select :status, [[ 'draft', 'draft' ], [ 'active', 'active' ], [ 'disabled', 'disabled' ] ], {}, class: 'form-control'
+						= f.collection_select :status, SwellMedia::Category.statuses, :first, :first, {}, class: 'form-control'
 					.form-group
 						= f.submit 'Update', class: 'btn btn-primary'
