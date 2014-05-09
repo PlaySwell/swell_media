@@ -6,6 +6,8 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
+		= stylesheet_link_tag "swell_media/admin", media: "all", "data-turbolinks-track" => true
+		= javascript_include_tag "swell_media/admin"
 	
 	%body
 		= render 'application/fb_js_sdk'
