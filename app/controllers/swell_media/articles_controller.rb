@@ -54,8 +54,8 @@ module SwellMedia
 		end
 
 		def index
-			@articles = Article.active.order( publish_at: :desc )
-			@tags = Article.active.tag_counts
+			@articles = Article.published.order( publish_at: :desc )
+			@tags = Article.published.tag_counts
 
 			if @tagged = params[:tagged]
 				@articles = @articles.tagged_with( @tagged )
