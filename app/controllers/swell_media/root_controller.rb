@@ -4,7 +4,6 @@ module SwellMedia
 
 		def show
 			
-
 			@tags = @media.class.active.tag_counts
 
 			@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name ) if defined?( SwellSocial )
@@ -17,7 +16,7 @@ module SwellMedia
 			
 			begin
 				render "#{@media.class.name.underscore.pluralize}/show", layout: layout
-			rescue
+			rescue ActionView::MissingTemplate
 				render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
 			end
 
