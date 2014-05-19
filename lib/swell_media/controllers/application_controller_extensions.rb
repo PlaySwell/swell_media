@@ -41,9 +41,9 @@ module SwellMedia
 				session[:dest] = params[:dest]
 			elsif (		current_user.nil? &&
 						not( request.fullpath.match( /\/users/ ) ) &&
-						request.fullpath != login_path &&
-						request.fullpath != register_path &&
-						request.fullpath != logout_path &&
+						not( request.fullpath.match( /\/login/ ) ) &&
+						not( request.fullpath.match( /\/logout/ ) ) &&
+						not( request.fullpath.match( /\/register/ ) ) &&
 						!request.xhr? ) # don't store ajax calls
 				session[:dest] = request.fullpath
 			end
