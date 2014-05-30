@@ -40,6 +40,7 @@ module SwellMedia
 			if params[:dest].present?
 				session[:dest] = params[:dest]
 			elsif (		current_user.nil? &&
+						request.get? &&
 						not( request.fullpath.match( /\/users/ ) ) &&
 						not( request.fullpath.match( /\/login/ ) ) &&
 						not( request.fullpath.match( /\/logout/ ) ) &&
