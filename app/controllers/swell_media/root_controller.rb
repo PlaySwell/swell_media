@@ -8,7 +8,7 @@ module SwellMedia
 
 			@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name ) if defined?( SwellSocial )
 
-			record_user_event( 'impression', user: current_user, on: @media, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
+			record_user_event( 'impression', user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
