@@ -15,7 +15,7 @@ module SwellMedia
 		
 
 		def to_s
-			self.display
+			self.name
 		end
 
 	end

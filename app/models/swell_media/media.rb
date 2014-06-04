@@ -62,9 +62,9 @@ module SwellMedia
 
 		def url( args={} )
 			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN'] || 'localhost:3000'
-
+			protocol = ( args.present? && args.delete( :protocol ) ) || 'http'
 			path = self.path( args )
-			url = "http://#{domain}#{self.path}"
+			url = "#{protocol}://#{domain}#{self.path( args )}"
 
 			return url
 
