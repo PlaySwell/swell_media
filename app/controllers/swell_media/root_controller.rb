@@ -6,7 +6,11 @@ module SwellMedia
 			
 			@tags = @media.class.active.tag_counts
 
-			@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name ) if defined?( SwellSocial )
+			if defined?( SwellSocial )
+				@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name )
+
+				@media_comments = @media_comments.joins( taggings: [:tag] ).where( 'tags.name = ?', params[:comment_tag] ) if params[:comment_tag]
+			end
 
 			record_user_event( 'impression', user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
 
