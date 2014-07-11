@@ -5,17 +5,21 @@
 %meta{content: "", name: "description"}
 %meta{content: "width=device-width", name: "viewport"}
 
--# if args[:og].present?
-	%meta{ property: 'og:title', content: args[:og][:title] || @page_info[:title] }
+- unless args[:og].nil?
+	%meta{ property: 'og:title', content: (args[:og][:title] || @page_info[:title]) }
 	%meta{ property: 'og:type', content: args[:og][:type] }
 	%meta{ property: 'og:url', content: args[:og][:url] }
 	%meta{ property: 'og:site_name', content: args[:og][:site] }
-	%meta{ property: 'og:description', content: args[:og][:description || @page_info[:description] }
+	%meta{ property: 'og:description', content: args[:og][:description] || @page_info[:description] }
 	- unless args[:og][:avatar].nil?
-		%meta{ property: "og:image", content: args[:og][:avatar][:path] }
-		%meta{ property: "og:image:width", content: args[:og][:avatar][:width] }
-		%meta{ property: "og:image:height", content: args[:og][:avatar][:height] }
-		%meta{ property: "og:image:type", content: "image/jpeg" }
+		- unless args[:og][:avatar][:path].nil?
+			%meta{ property: "og:image", content: args[:og][:avatar][:path] }
+		- unless args[:og][:avatar][:width].nil?
+			%meta{ property: "og:image:width", content: args[:og][:avatar][:width] }
+		- unless args[:og][:avatar][:height].nil?
+			%meta{ property: "og:image:height", content: args[:og][:avatar][:height] }
+		- unless args[:og][:avatar][:type].nil?
+			%meta{ property: "og:image:type", content: args[:og][:avatar][:type] }
 
 %link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
 %link{href: "http://fonts.googleapis.com/css?family=Abel:400|Oswald:300,400,700", media: "all", rel: "stylesheet", type: "text/css"}
