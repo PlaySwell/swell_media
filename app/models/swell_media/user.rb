@@ -56,6 +56,13 @@ module SwellMedia
 			self.roles << role_to_add
 		end
 
+		def avatar_else_gravitar( opts={} )
+
+			default = opts[:default] || 'identicon'
+			gravatar = "http://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{default}"
+
+			avatar || gravatar
+		end
 
 		def avatar_tag( opts={} )
 			return self.gravatar_tag( opts ) if self.avatar.blank?
