@@ -58,16 +58,27 @@ module SwellMedia
 
 
 		def avatar_tag( opts={} )
-			return self.gravatar_tag( opts ) if self.avatar.blank?
-
 			tag = "<img src="
-			tag += "'" + self.avatar + "' "
+			tag += "'" + self.avatar_url( opts ) + "' "
 			for key, value in opts do
 				tag += key.to_s + "='" + value.to_s + "' "
 			end
 			tag += "/>"
 			return tag.html_safe
 			
+		end
+
+
+		def avatar_url( opts={} )
+			# abstracts avatar path (uses gravatar if no avatar)
+			# call as avatar_url( use_gravatar: true ) to over-ride avatar and force gravatar
+			opts[:default] ||= 'identicon'
+
+			if opts[:use_gravatar] || self.avatar.blank?
+				return "http://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{opts[:default]}"
+			else
+				return self.avatar
+			end
 		end
 
 
@@ -85,17 +96,6 @@ module SwellMedia
 			self.last_name = name_array.join( ' ' )
 		end
 
-		def gravatar_tag( opts={} )
-			default = opts[:default] || 'identicon'
-			gravatar = "http://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{default}"
-			tag = "<img src="
-			tag += "'" + gravatar + "' "
-			for key, value in opts do
-				tag += key.to_s + "='" + value.to_s + "' "
-			end
-			tag += "/>"
-			return tag.html_safe
-		end
 
 		def has_role?( role )
 			return !!self.roles.find_by_name( role.to_s )
