@@ -47,7 +47,6 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:public_id				# public id to spoof sequential id grepping
 			t.references 	:category
 
-			t.references	:parent_obj, 	polymorphic: true # for comments
 			t.references	:parent 				# for nested_set (podcasts + episodes, conversations, etc.)
 			t.integer		:lft
 			t.integer		:rgt
