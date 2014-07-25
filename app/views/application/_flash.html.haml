@@ -1,11 +1,16 @@
 
-- unless flash.nil? || flash.empty?
-	.container
-		.row
-			.col-xs-12.col-sm-10.col-sm-offset-1.animated.fadeInDown.delay-2#flash
+.container#flash-container{ style: ( flash.nil? || flash.empty? ? 'display:none' : nil ) }
+	.row
+		.col-xs-12.col-sm-10.col-sm-offset-1.animated.fadeInDown.delay-2#flash
+
+			- unless flash.nil? || flash.empty?
 				- flash.each do |key, value|
 					- next if value.blank?
 					.alert.alert-dismissable{ class: "alert-#{key}" }
 						%button.close{ type: "button", 'aria-hidden' => true, data: { dismiss: "alert" } }
 							&times;
 						= raw value
+			.alert.alert-dismissable.alert-template{ style: 'display:none' }
+				%button.close{ type: "button", 'aria-hidden' => true, data: { dismiss: "alert" } }
+					&times;
+				[html]
