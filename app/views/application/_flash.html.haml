@@ -9,8 +9,5 @@
 					.alert.alert-dismissable{ class: "alert-#{key}" }
 						%button.close{ type: "button", 'aria-hidden' => true, data: { dismiss: "alert" } }
 							&times;
-						= raw value
-			.alert.alert-dismissable.alert-template{ style: 'display:none' }
-				%button.close{ type: "button", 'aria-hidden' => true, data: { dismiss: "alert" } }
-					&times;
-				[html]
+						%span.alert-body
+							= raw value
