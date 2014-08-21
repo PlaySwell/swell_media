@@ -111,8 +111,12 @@ module SwellMedia
 			end
 		end
 
-		def possessive
-	    	self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
+		def possessive( field=nil )
+			if field.try( :to_s ) == 'first_name'
+				self.first_name + ( 's' == self.first_name[-1,1] ? "'" : "'s" )
+			else
+	    		self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
+	    	end
 		end
 
 		def role
