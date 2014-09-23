@@ -9,7 +9,7 @@ module SwellMedia
 	 		elsif session[:dest].present?
 	 			return session[:dest].to_s
 	 		else
-	 			return dash_index_path
+	 			return '/'
 	 		end
 		end
 
