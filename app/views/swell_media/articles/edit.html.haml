@@ -51,9 +51,9 @@
 
 			.col-xs-4
 				.well
-					.form-group
+					-#.form-group
 						= f.label :user_id, 'Author'
-						= f.collection_select :user_id, User.godmins, :id, :name, {}, class: 'form-control'
+						= f.collection_select :user_id, User.where( "role > 1" ), :id, :name, {}, class: 'form-control'
 					.form-group
 						= f.label :publish_at
 						= f.text_field :publish_at, value: @article.publish_at.to_s( :full_time ), class: 'form-control datepicker'

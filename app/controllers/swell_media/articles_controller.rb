@@ -4,7 +4,7 @@ module SwellMedia
 		before_filter :get_article, except: [ :admin, :create, :index ]
 
 		def admin
-			authorize!( :admin, Article )
+			authorize( Article )
 			sort_by = params[:sort_by] || 'publish_at'
 			sort_dir = params[:sort_dir] || 'desc'
 
@@ -48,7 +48,7 @@ module SwellMedia
 		end
 
 		def edit
-			authorize!( :admin, Article )
+			authorize( @article )
 
 			render layout: 'admin'
 		end
@@ -89,7 +89,7 @@ module SwellMedia
 
 
 		def update
-			authorize!( :admin, Article )
+			authorize( @article )
 			
 			@article.slug = nil if params[:article][:slug_pref].present? || params[:article][:title] != @article.title
 			@article.attributes = article_params

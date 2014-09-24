@@ -1,10 +1,10 @@
 
 module SwellMedia
 	module ApplicationControllerExtensions
-		
+		include Pundit
 		
 		def after_sign_in_path_for( resource )
-	 		if resource.has_role?( :admin )
+	 		if resource.admin? || resource.contributor?
 	 			return admin_index_path
 	 		elsif session[:dest].present?
 	 			return session[:dest].to_s

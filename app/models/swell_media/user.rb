@@ -3,7 +3,7 @@ module SwellMedia
 		self.table_name = 'users'
 
 		enum status: { 'active' => 0, 'revoked' => 1, 'archive' => 2, 'trash' => 3 }
-
+		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
 		attr_accessor	:login
 
@@ -19,9 +19,6 @@ module SwellMedia
 		validates_length_of			:password, within: Devise.password_length, allow_blank: true, if: :encrypted_password_changed?
 
 		### RELATIONSHIPS   	--------------------------------------
-		has_many 	:user_roles, dependent: :destroy
-		has_many	:roles, through: :user_roles
-
 		
 
 		### Plugins  	---------------------------------------------
@@ -50,11 +47,6 @@ module SwellMedia
 
 
 		### Instance Methods  	--------------------------------------
-
-		def add_role( role )
-			role_to_add = Role.where( name: role.to_s ).first_or_create
-			self.roles << role_to_add
-		end
 
 
 		def avatar_tag( opts={} )
@@ -97,10 +89,6 @@ module SwellMedia
 		end
 
 
-		def has_role?( role )
-			return !!self.roles.find_by_name( role.to_s )
-		end
-
 		def his_her
 			if self.gender =~ /\Af/
 				return 'her'
@@ -117,10 +105,6 @@ module SwellMedia
 			else
 	    		self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
 	    	end
-		end
-
-		def role
-			self.roles.last.try( :name ) || 'None'
 		end
 
 		

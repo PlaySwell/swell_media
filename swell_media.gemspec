@@ -18,7 +18,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency "acts-as-taggable-on"
   s.add_dependency "awesome_nested_set", '~> 3.0.0.rc.3'
-  s.add_dependency "cancan"
   s.add_dependency 'coffee-rails', '~> 4.0.0'
   s.add_dependency "devise"
   s.add_dependency "fog"
@@ -26,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency "haml"
   s.add_dependency "kaminari"
 	s.add_dependency "pg"
+  s.add_dependency "pundit"
   # TODO s.add_dependency 'paper_trail', '~> 3.0.1'
   s.add_dependency "rails", "~> 4.1.0"
   s.add_dependency 'sass-rails', '~> 4.0.0'

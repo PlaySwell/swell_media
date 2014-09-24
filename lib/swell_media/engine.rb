@@ -1,11 +1,10 @@
 require 'acts-as-taggable-on'
 require 'awesome_nested_set'
-require 'cancan'
 require 'devise'
 require 'friendly_id'
 require 'haml'
 require 'kaminari'
-
+require 'pundit'
 require 'swell_media/controllers/application_controller_extensions'
 
 module SwellMedia
