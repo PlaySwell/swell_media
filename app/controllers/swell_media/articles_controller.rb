@@ -20,7 +20,7 @@ module SwellMedia
 		end
 
 		def create
-			authorize!( :admin, Article )
+			authorize( Article )
 			@article = Article.new( article_params )
 			@article.publish_at ||= Time.zone.now
 			@article.user = current_user
@@ -41,7 +41,7 @@ module SwellMedia
 		end
 
 		def destroy
-			authorize!( :admin, Article )
+			authorize( Article )
 			@article.update( status: 'deleted' )
 			set_flash 'Article Deleted'
 			redirect_to :back
@@ -69,7 +69,9 @@ module SwellMedia
 				@articles = @articles.where( user_id: @author.id )
 			end
 
-			if params[:category].present? && @category = Category.friendly.find( params[:category] )		
+			cat = params[:category] || params[:cat]
+
+			if cat.present? && @category = Category.friendly.find( cat )		
 				@articles = @articles.where( category_id: @category.id )
 			end
 

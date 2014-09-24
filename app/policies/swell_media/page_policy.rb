@@ -1,5 +1,5 @@
 module SwellMedia
-	class ArticlePolicy < ApplicationPolicy
+	class PagePolicy < ApplicationPolicy
 		
 		def admin?
 			user.admin?

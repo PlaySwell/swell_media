@@ -20,6 +20,15 @@
 			.col-xs-8
 				.form-group
 					= f.text_field :name, class: 'form-control'
+				
+				.form-group
+					= f.label :avatar
+					.col-sm-4
+						= image_tag @category.avatar, class: 'img img-responsive'
+					.col-sm-8
+						= f.text_field :avatar, class: 'form-control'
+					.clearfix
+
 
 				.form-group
 					= f.label :description

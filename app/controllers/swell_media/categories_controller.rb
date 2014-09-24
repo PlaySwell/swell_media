@@ -4,13 +4,13 @@ module SwellMedia
 		before_filter :get_category, except: [ :admin, :create, :index ]
 
 		def admin
-			authorize! :admin, SwellMedia::Category
+			authorize( Category )
 			@categories = Category.page( params[:page] )
 			render layout: 'admin'
 		end
 
 		def create
-			authorize!( :admin, Category )
+			authorize( Category )
 			@category = Category.new( category_params )
 			@category.user_id = current_user.id
 
@@ -24,7 +24,7 @@ module SwellMedia
 		end
 
 		def destroy
-			authorize!( :admin, Category )
+			authorize( @category )
 			if @category.trash?
 				@category.destroy
 			else
@@ -35,12 +35,12 @@ module SwellMedia
 		end
 
 		def edit
-			authorize!( :admin, Category )
+			authorize( @category )
 			render layout: 'admin'
 		end
 
 		def update
-			authorize!( :admin, Category )
+			authorize( @category )
 			@category.attributes = category_params
 
 			if @category.save
@@ -55,7 +55,7 @@ module SwellMedia
 
 		private
 			def category_params
-				params.require( :category ).permit( :name, :parent_id, :description, :status ) # todo
+				params.require( :category ).permit( :name, :parent_id, :description, :avatar, :status ) # todo
 			end
 
 			def get_category

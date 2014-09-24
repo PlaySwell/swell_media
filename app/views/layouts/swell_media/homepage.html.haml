@@ -6,8 +6,14 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
+		= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+		= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+
+		= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true
+
+		= javascript_include_tag "application", "data-turbolinks-track" => true
+		= javascript_include_tag '//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'
 	%body
-		= render 'application/fb_js_sdk'
 		%header#header
 			= render 'application/navbar'
 

@@ -8,7 +8,7 @@ module SwellMedia
 		before_filter :get_page, except: [ :admin, :create, :index ]
 
 		def admin
-			authorize! :admin, SwellMedia::Page
+			authorize( Page )
 			
 			sort_by = params[:sort_by] || 'publish_at'
 			sort_dir = params[:sort_dir] || 'desc'
@@ -25,7 +25,7 @@ module SwellMedia
 
 
 		def create
-			authorize!( :admin, Page )
+			authorize( Page )
 			@page = Page.new( page_params )
 			@page.publish_at ||= Time.zone.now
 			@page.status = 'draft'
@@ -40,7 +40,7 @@ module SwellMedia
 
 
 		def destroy
-			authorize!( :admin, Page )
+			authorize( @page )
 			@page.update( status: 'trash' )
 			set_flash 'Page Trashed'
 			redirect_to :back
@@ -48,13 +48,13 @@ module SwellMedia
 
 
 		def edit
-			authorize!( :admin, Page )
+			authorize!( @page )
 			render layout: 'admin'
 		end
 
 
 		def update
-			authorize!( :admin, Page )
+			authorize!( @page )
 			
 			@page.slug = nil if params[:page][:slug_pref].present? || params[:page][:title] != @page.title
 			@page.attributes = page_params

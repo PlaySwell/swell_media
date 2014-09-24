@@ -1,5 +1,5 @@
 module SwellMedia
-	class ArticlePolicy < ApplicationPolicy
+	class CategoryPolicy < ApplicationPolicy
 		
 		def admin?
 			user.admin?
@@ -10,15 +10,15 @@ module SwellMedia
 		end
 
 		def destroy?
-			user.admin? or record.author == user
+			user.admin?
 		end
 
 		def edit?
-			user.admin? or record.author == user
+			user.admin?
 		end
 
 		def update?
-			user.admin? or record.author == user
+			user.admin?
 		end
 	end
 end
