@@ -22,7 +22,10 @@
 		.row
 			.col-xs-8
 				.form-group
-					= f.text_field :title, class: 'form-control'
+					= f.text_field :title, class: 'form-control input-lg'
+				.form-group
+					= f.label :subtitle
+					= f.text_field :subtitle, class: 'form-control'
 
 				.form-group
 					.input-group
@@ -33,7 +36,7 @@
 
 				.form-group
 					.input-group
-					= f.label :avatar, 'Thumbnail:'
+					= f.label :avatar, 'Image:'
 					.row
 						.col-sm-2
 							= image_tag @article.avatar, class: 'img-responsive'

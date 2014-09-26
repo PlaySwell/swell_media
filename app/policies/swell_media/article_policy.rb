@@ -17,6 +17,10 @@ module SwellMedia
 			user.admin? or record.author == user
 		end
 
+		def preview?
+			user.admin? or record.author == user
+		end
+
 		def update?
 			user.admin? or record.author == user
 		end
