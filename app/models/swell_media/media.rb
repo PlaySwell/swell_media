@@ -8,7 +8,7 @@ module SwellMedia
 
 		before_save	:set_publish_at, :set_keywords_and_tags
 
-		validates		:title, presence: true
+		validates		:title, presence: true, unless: :allow_blank_title
 
 		attr_accessor	:slug_pref
 
@@ -92,6 +92,10 @@ module SwellMedia
 
 				
 
+			end
+
+			def allow_blank_title
+				false
 			end
 				
 
