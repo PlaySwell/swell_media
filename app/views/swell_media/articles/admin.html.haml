@@ -28,10 +28,9 @@
 				%thead
 					%th
 					%th
-						URL
-						%a{ href: admin_articles_path( sort_by: 'slug', sort_dir: 'asc' ) }
+						%a{ href: admin_articles_path( sort_by: 'title', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_articles_path( sort_by: 'slug', sort_dir: 'desc' ) }
+						%a{ href: admin_articles_path( sort_by: 'title', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th
 						Publish At
@@ -40,19 +39,25 @@
 						%a{ href: admin_articles_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th Status
+					%th Category
+					%th Tags
 					%th
 				%tbody
 					- @articles.each do |article|
 						%tr
 							%td
-								= link_to article.title, edit_article_path( article.id )
+								= image_tag article.avatar, width: 50, class: 'img img-rounded'
 							%td
-								= article.slug
+								= link_to article.title, edit_article_path( article.id )
 							%td
 								= article.publish_at.to_s( :slashed_time )
 							%td
 								.badge{ class: article.status }
 									= article.status
+							%td
+								= article.category.try( :name ) || 'None'
+							%td
+								= article.tag_list
 							%td
 								.btn-group
 									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
