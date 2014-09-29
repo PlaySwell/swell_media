@@ -10,6 +10,10 @@ module SwellMedia
 
 			@articles = Article.order( "#{sort_by} #{sort_dir}" )
 
+			if params[:status].present? && params[:status] != 'all'
+				@articles = eval "@articles.#{params[:status]}"
+			end
+
 			if params[:q].present?
 				@articles = @articles.where( "array[:q] && keywords", q: params[:q].downcase )
 			end

@@ -5,6 +5,8 @@ module SwellMedia
 
 		attr_accessor	:category_name
 
+		before_save 	:set_cached_word_count
+
 		def category_name=( name )
 			self.category = SwellMedia::Category.where( name: name ).first_or_create
 		end
@@ -22,6 +24,14 @@ module SwellMedia
 			ActionView::Base.full_sanitizer.sanitize( self.content ).scan(/[\w-]+/).size
 		end
 
+
+		private
+
+			def set_cached_word_count
+				if self.respond_to?( :cached_word_count )
+					self.cached_word_count = self.word_count
+				end
+			end
 	end
 
 end

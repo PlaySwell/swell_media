@@ -7,6 +7,8 @@ class RoleRefactorMigration < ActiveRecord::Migration
 
 		remove_column :categories, :users_name
 
+		add_column :media, :cached_word_count, :integer
+
 		drop_table :roles
 
 		drop_table :user_roles
