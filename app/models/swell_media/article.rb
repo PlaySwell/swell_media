@@ -21,6 +21,7 @@ module SwellMedia
 		end
 
 		def word_count
+			return 0 if self.content.blank?
 			ActionView::Base.full_sanitizer.sanitize( self.content ).scan(/[\w-]+/).size
 		end
 

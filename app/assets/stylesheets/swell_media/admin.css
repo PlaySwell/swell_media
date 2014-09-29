@@ -11,3 +11,19 @@
  *= require_self
  *= require_tree ./summernote
  */
+
+.active.badge{ 
+	background-color: #5a5;
+}
+
+.draft.badge{ 
+	background-color: #EC971F;
+}
+
+.archive.badge{ 
+	background-color: #aaa;
+}
+
+.trash.badge{ 
+	background-color: #a55;
+}

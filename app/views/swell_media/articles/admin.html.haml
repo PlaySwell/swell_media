@@ -18,7 +18,7 @@
 			= raw paginate @articles
 		.col-xs-6
 			= form_tag admin_articles_path, method: :get, class: 'pull-right form-inline' do
-				= select_tag :status, options_from_collection_for_select( SwellMedia::Article.statuses, :first, :first, params[:status] ), class: 'form-control'
+				= select_tag :status, options_from_collection_for_select( SwellMedia::Article.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
 				= text_field_tag :q, params[:q], class: 'form-control'
 				= submit_tag 'Search', class: 'btn btn-primary'
 				= link_to 'Clear', admin_articles_path, class: 'btn btn-default btn-xs'
@@ -34,7 +34,7 @@
 						%a{ href: admin_articles_path( sort_by: 'title', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th
-						Publish At
+						Publish
 						%a{ href: admin_articles_path( sort_by: 'publish_at', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
 						%a{ href: admin_articles_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
