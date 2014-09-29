@@ -28,10 +28,17 @@ module SwellMedia
 		end
 
 
-		def set_page_info( args={} )
-			@page_info = args
-			@page_info[:title] ||= ENV['APP_NAME']
-			@page_info[:description] ||= ENV['APP_DESCRIPTION'] 
+		def set_page_meta( args={} )
+			args[:og] ||= {}
+			@page_meta = args
+			
+			@page_meta[:title] ||= ENV['APP_NAME']
+			@page_meta[:description] ||= ENV['APP_DESCRIPTION']
+
+			@page_meta[:og][:site_name] ||= ENV['APP_NAME']
+			@page_meta[:og][:title] ||= @page_meta[:title]
+			@page_meta[:og][:type] ||= 'article' # blog, website
+			@page_meta[:og][:url] ||= request.url
 
 		end
 

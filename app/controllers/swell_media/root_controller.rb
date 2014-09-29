@@ -16,8 +16,12 @@ module SwellMedia
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
-			set_page_info title: @media.title, description: @media.description
-			
+			if @media.slug == 'homepage'
+				set_page_meta( title: "#{ENV['APP_NAME']}", og: { type: 'website', image: @media.avatar } )
+			else
+				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: @media.description, og: { description: @media.subtitle, image: @media.avatar } )
+			end
+
 			begin
 				render "#{@media.class.name.underscore.pluralize}/show", layout: layout
 			rescue ActionView::MissingTemplate

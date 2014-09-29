@@ -41,7 +41,7 @@ module SwellMedia
 
 		def new
 			@contact = Contact.new	
-			set_page_info title: 'Contact'
+			set_page_meta title: 'Contact'
 		end
 
 

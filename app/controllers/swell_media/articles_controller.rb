@@ -89,7 +89,7 @@ module SwellMedia
 
 			@articles = @articles.page( params[:page] )
 
-			set_page_info title: "#{ENV['APP_NAME']} Blog"
+			set_page_meta title: "#{ENV['APP_NAME']} Blog", og: { type: 'blog' }
 
 		end
 
