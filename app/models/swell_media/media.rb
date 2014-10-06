@@ -6,7 +6,7 @@ module SwellMedia
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 0, 'logged_in_users' => 1, 'just_me' => 2 }
 
-		before_save	:set_publish_at, :set_keywords_and_tags
+		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_word_count
 
 		validates		:title, presence: true, unless: :allow_blank_title
 
@@ -70,8 +70,19 @@ module SwellMedia
 
 		end
 
+		def word_count
+			return 0 if self.content.blank?
+			ActionView::Base.full_sanitizer.sanitize( self.content ).scan(/[\w-]+/).size
+		end
+
 
 		private
+
+			def set_cached_word_count
+				if self.respond_to?( :cached_word_count )
+					self.cached_word_count = self.word_count
+				end
+			end
 
 			def set_publish_at
 				# set publish_at
@@ -82,8 +93,8 @@ module SwellMedia
 				common_terms = ["able", "about", "above", "across", "after", "almost", "also", "among", "around", "back", "because", "been", "below", "came", "cannot", "come", "cool", "could", "dear", "does", "down", "each", "either", "else", "ever", "every", "find", "first", "from", "from", "gave", "give", "goodhave", "have", "hers", "however", "inside", "into", "its", "just", "least", "like", "likely", "little", "live", "long", "made", "make", "many", "might", "more", "most", "must", "neither", "number", "often", "only", "other", "our", "outside", "over", "part", "people", "place", "rather", "said", "says", "should", "show", "side", "since", "some", "sound", "take", "than", "that", "the", "their", "them",  "then", "there", "these", "they", "thing", "this", "those", "time", "twas", "under", "upon", "was", "wants", "were", "what", "whatever", "when", "where", "which", "while", "whom", "will", "with", "within", "work", "would", "write", "year", "you", "your"]
 				
 				# auto-tag hashtags
-				unless self.description.blank?
-					hashtags = self.description.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
+				unless self.content.blank?
+					hashtags = self.content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
 					self.tag_list << hashtags
 				end
 

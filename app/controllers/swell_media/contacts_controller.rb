@@ -18,6 +18,11 @@ module SwellMedia
 				
 				SwellMedia::ContactMailer.new_contact( @contact ).deliver
 
+				if ENV['MAILCHIMP_DEFAULT_LIST_ID'].present? && params[:optin].present?
+					mail_api = Gibbon::API.new
+					mail_api.lists.subscribe( { id: ENV['MAILCHIMP_DEFAULT_LIST_ID'], email: { email: email }, double_optin: true } )
+				end
+
 				set_flash 'Thanks for your message!'
 				redirect_to '/'
 			else
