@@ -1,8 +1,10 @@
 module SwellMedia
 	class ContactsController < ApplicationController
+		
+		skip_before_filter :verify_authenticity_token, :only => [ :create ]
+
 		before_filter :authenticate_user!, only: [ :admin, :edit, :update, :destroy ]
 
-	
 		def admin
 			authorize! :admin, Contact
 			@contacts = Contact.order( 'created_at desc' )
@@ -18,16 +20,16 @@ module SwellMedia
 				
 				SwellMedia::ContactMailer.new_contact( @contact ).deliver
 
-				if ENV['MAILCHIMP_DEFAULT_LIST_ID'].present? && params[:optin].present?
+				if ENV['MAILCHIMP_DEFAULT_LIST_ID'].present? && ( params[:optin].present? || @contact.contact_type == 'optin' )
 					mail_api = Gibbon::API.new
 					mail_api.lists.subscribe( { id: ENV['MAILCHIMP_DEFAULT_LIST_ID'], email: { email: email }, double_optin: true } )
 				end
 
-				set_flash 'Thanks for your message!'
+				set_flash 'Thanks!'
 				redirect_to '/'
 			else
-				set_flash 'There was a problem with your message', :danger, @contact
-				render :new
+				set_flash 'There was a problem...', :danger, @contact
+				redirect_to :back
 			end
 		end
 
@@ -53,7 +55,11 @@ module SwellMedia
 		private
 
 			def contact_params
-				params.require( :contact ).permit( :email, :subject, :message )
+				if params[:contact].present?
+					params.require( :contact ).permit( :email, :subject, :message, :contact_type )
+				else
+					return { email: params[:email], subject: params[:subject], message: params[:message], contact_type: params[:contact_type] }
+				end
 			end
 	end
 end

@@ -48,13 +48,13 @@ module SwellMedia
 
 
 		def edit
-			authorize!( @page )
+			authorize( @page )
 			render layout: 'admin'
 		end
 
 
 		def update
-			authorize!( @page )
+			authorize( @page )
 			
 			@page.slug = nil if params[:page][:slug_pref].present? || params[:page][:title] != @page.title
 			@page.attributes = page_params

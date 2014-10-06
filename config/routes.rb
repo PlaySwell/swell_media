@@ -16,8 +16,6 @@ SwellMedia::Engine.routes.draw do
 
 	resources :contacts, concerns: :admin
 
-	resources :optins, only: :create
-
 	resources :pages, concerns: :admin do
 		get :preview, on: :member
 	end
