@@ -20,6 +20,10 @@ SwellMedia::Engine.routes.draw do
 		get :preview, on: :member
 	end
 
+	resources :media_assets do
+		post :callback_create, on: :collection
+	end
+
 	resources :imports
 	resources :exports
 
