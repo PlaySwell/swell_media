@@ -1,7 +1,0 @@
-- asset = SwellMedia::MediaAsset.new
-- asset.upload.key = "#{asset.upload.store_dir}#{asset.upload.construct_new_file_name( extension: args[:media_asset_extension] )}"
-- asset.upload.success_action_redirect = callback_create_media_assets_url( { 'media_asset[media_id]' => media.id, :host => args[:host] }.merge( ( args[:media_asset] || {} ).map{ |k, v| ["media_asset[#{k.to_s}]", v] } ) )
-
-= direct_upload_form_for asset.upload do |f|
-	= f.file_field :upload
-	= f.submit 'Upload'

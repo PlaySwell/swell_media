@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-class MediaAssetUploader < CarrierWave::Uploader::Base
+class AssetUploader < CarrierWave::Uploader::Base
 	include CarrierWaveDirect::Uploader
 
   # Override the directory where uploaded files will be stored.

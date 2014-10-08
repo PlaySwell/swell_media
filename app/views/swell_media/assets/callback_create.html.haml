@@ -1,0 +1,7 @@
+:javascript
+	if( window.parent.jQuery ) {
+		window.parent.jQuery('#'+window.name).prev().trigger('swell_media.asset.upload','#{@asset.url}')
+	}
+	else if( window.parent.new_media_asset ){
+		window.parent.new_media_asset(window.name,'#{@asset.url}')
+	}
