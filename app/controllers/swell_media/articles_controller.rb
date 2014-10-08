@@ -46,7 +46,7 @@
 
 		def destroy
 			authorize( Article )
-			@article.update( status: 'deleted' )
+			@article.trash!
 			set_flash 'Article Deleted'
 			redirect_to :back
 		end

@@ -6,7 +6,7 @@ module SwellMedia
 		before_filter :authenticate_user!, only: [ :admin, :edit, :update, :destroy ]
 
 		def admin
-			authorize! :admin, Contact
+			authorize( Contact )
 			@contacts = Contact.order( 'created_at desc' )
 
 			render layout: 'admin'
@@ -14,6 +14,7 @@ module SwellMedia
 
 
 		def create
+			authorize( Contact )
 			@contact = Contact.new( contact_params )
 
 			if @contact.save
@@ -35,6 +36,7 @@ module SwellMedia
 
 		def destroy
 			@contact = Contact.find( params[:id] )
+			authorize( @contact )
 			@contact.destroy
 			set_flash "#{@contact.contact_type || 'contact'} from #{@contact.email} Deleted"
 			redirect_to admin_contacts_path
@@ -42,6 +44,7 @@ module SwellMedia
 
 		def edit
 			@contact = Contact.find( params[:id] )
+			authorize( @ontact )
 			render layout: 'admin'
 		end
 

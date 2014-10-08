@@ -1,6 +1,10 @@
 module SwellMedia
 
 	class Asset < ActiveRecord::Base
+		# this class is for externally hosted (generally media) assets....
+		# e.g. photos, video, audio files, web links, etc...
+		# intended to be used with CarrierWave / S3 
+
 		self.table_name = 'assets'
 
 		mount_uploader :uploader, AssetUploader, mount_on: :upload

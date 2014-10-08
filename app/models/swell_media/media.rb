@@ -6,7 +6,7 @@ module SwellMedia
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 0, 'logged_in_users' => 1, 'just_me' => 2 }
 
-		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_word_count
+		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
 
 		validates		:title, presence: true, unless: :allow_blank_title
 
@@ -16,7 +16,7 @@ module SwellMedia
 		belongs_to 	:managed_by, class_name: 'User'
 		belongs_to 	:category
 
-		has_many	:media_thumbnails, dependent: :destroy
+		has_many	:assets, as: :parent_obj, dependent: :destroy
 
 		include FriendlyId
 		friendly_id :slugger, use: :slugged
@@ -40,6 +40,11 @@ module SwellMedia
 			else
 				return ''
 			end
+		end
+
+		def char_count
+			return 0 if self.content.blank?
+			ActionView::Base.full_sanitizer.sanitize( self.content ).size
 		end
 
 		def path( args={} )
@@ -78,9 +83,13 @@ module SwellMedia
 
 		private
 
-			def set_cached_word_count
+			def set_cached_counts
 				if self.respond_to?( :cached_word_count )
 					self.cached_word_count = self.word_count
+				end
+
+				if self.respond_to?( :cached_char_count )
+					self.cached_char_count = self.char_count
 				end
 			end
 
