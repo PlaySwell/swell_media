@@ -7,22 +7,24 @@ module SwellMedia
 
 		self.table_name = 'assets'
 
-		mount_uploader :uploader, AssetUploader, mount_on: :upload
+		mount_uploader :uploader, AssetUploader, mount_on: :upload if defined?(CarrierWave)
 
 
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 
 		belongs_to	:user
-		belongs_to :parent_obj, polymorphic: true
+		belongs_to 	:parent_obj, polymorphic: true
 
 		def url
-			uploader.url || origin_url
+			try(:uploader).try(:url) || origin_url
 		end
 
 		def key=(key)
-			filename = key[self.uploader.store_dir.length..-1]
-			self.uploader.filename = filename
-			super(key)
+			if defined?(CarrierWave)
+				filename = key[self.uploader.store_dir.length..-1]
+				self.uploader.filename = filename
+				super(key)
+			end
 		end
 
 	end

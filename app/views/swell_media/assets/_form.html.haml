@@ -1,9 +1,23 @@
 - asset = SwellMedia::Asset.new
-- filename = asset.uploader.construct_new_file_name( args[:extension] )
-- asset.uploader.key = "#{asset.uploader.store_dir}#{filename}"
-- asset.uploader.success_action_redirect = swell_media.callback_create_assets_url( { 'asset[parent_obj_id]' => object.id, 'asset[parent_obj_type]' => object.class.name.to_s, :host => args[:host] }.merge( Hash[( args[:asset] || {} ).map{ |k, v| ["asset[#{k.to_s}]", v] }] ) )
 
-= direct_upload_form_for asset.uploader, html: (args[:html] || {}).merge( { target: filename, id: args[:id] } ) do |f|
-	= f.file_field :upload
-	= f.submit 'Upload'
-%iframe{ id: filename, name: filename, style: 'height:0;width:0;border:0;' }
+
+- if !asset.try(:uploader) || args[:submit]
+	= form_for asset, :html => {:multipart => true} do |f|
+		= f.file_field :avatar
+		= f.hidden_field :avatar_cache
+		= f.submit 'Upload'
+
+- elsif asset.try(:uploader)
+	- filename = asset.uploader.construct_new_file_name( args[:extension] )
+	- asset.uploader.key = "#{asset.uploader.store_dir}#{filename}"
+	- asset.uploader.success_action_redirect = swell_media.callback_create_assets_url( { 'asset[parent_obj_id]' => object.id, 'asset[parent_obj_type]' => object.class.name.to_s, :host => args[:host] }.merge( Hash[( args[:asset] || {} ).map{ |k, v| ["asset[#{k.to_s}]", v] }] ) )
+
+	- if args[:async]
+		= direct_upload_form_for asset.uploader, html: (args[:html] || {}).merge( { target: filename, id: args[:id] } ) do |f|
+			= f.file_field :upload
+			= f.submit 'Upload'
+		%iframe{ id: filename, name: filename, style: 'height:0;width:0;border:0;' }
+	- else
+		= direct_upload_form_for asset.uploader, html: (args[:html] || {}).merge( { id: args[:id] } ) do |f|
+			= f.file_field :upload
+			= f.submit 'Upload'
