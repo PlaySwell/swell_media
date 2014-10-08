@@ -3,8 +3,13 @@
 
 - if !asset.try(:uploader) || args[:submit]
 	= form_for asset, :html => {:multipart => true} do |f|
+		= f.hidden_field :parent_obj_id, value: object.id
+		= f.hidden_field :parent_obj_type, value: object.class.base_class.name.to_s
 		= f.file_field :uploader
 		= f.hidden_field :uploader_cache
+		- if args[:asset]
+			- args[:asset].each do |attribute, value|
+				= f.hidden_field attribute.to_sym, value: value
 		= f.submit 'Upload'
 
 - elsif asset.try(:uploader)
