@@ -11,11 +11,18 @@ module SwellMedia
 
 
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
-		
+
+		belongs_to	:user
 		belongs_to :parent_obj, polymorphic: true
 
 		def url
 			uploader.url || origin_url
+		end
+
+		def key=(key)
+			filename = key[self.uploader.store_dir.length..-1]
+			self.uploader.filename = filename
+			super(key)
 		end
 
 	end

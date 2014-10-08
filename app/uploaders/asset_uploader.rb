@@ -17,6 +17,10 @@ class AssetUploader < CarrierWave::Uploader::Base
 		@name
 	end
 
+	def filename=(filename)
+		@name = filename
+	end
+
 	#def extension_white_list
 	#	%w(jpg jpeg gif png)
 	#end
