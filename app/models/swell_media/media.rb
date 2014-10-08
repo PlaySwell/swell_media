@@ -16,7 +16,7 @@ module SwellMedia
 		belongs_to 	:managed_by, class_name: 'User'
 		belongs_to 	:category
 
-		has_many	:media_thumbnails, dependent: :destroy
+		has_many	:assets, as: :parent_obj, dependent: :destroy
 
 		include FriendlyId
 		friendly_id :slugger, use: :slugged
