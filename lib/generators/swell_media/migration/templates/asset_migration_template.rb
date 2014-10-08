@@ -17,7 +17,7 @@ class AssetMigration < ActiveRecord::Migration
 			t.string		:origin_identifier
 			t.text			:origin_url
 
-			t.text		:upload # location for CW
+			t.text			:upload # location for CW
 
 			t.integer		:height
 			t.integer		:width

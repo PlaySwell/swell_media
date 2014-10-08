@@ -7,13 +7,9 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+		= render 'application/header_styles'
 
-		= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true
-
-		= javascript_include_tag "application", "data-turbolinks-track" => true
-		= javascript_include_tag '//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'
+		= render 'application/header_scripts'
 		
 	%body
 		%header#header{ style: 'height: 6em;' }
