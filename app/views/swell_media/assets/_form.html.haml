@@ -3,8 +3,8 @@
 
 - if !asset.try(:uploader) || args[:submit]
 	= form_for asset, :html => {:multipart => true} do |f|
-		= f.file_field :avatar
-		= f.hidden_field :avatar_cache
+		= f.file_field :uploader
+		= f.hidden_field :uploader_cache
 		= f.submit 'Upload'
 
 - elsif asset.try(:uploader)

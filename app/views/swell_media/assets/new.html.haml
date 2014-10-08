@@ -1,0 +1,4 @@
+= form_for @asset, :html => {:multipart => true} do |f|
+	= f.file_field :uploader
+	= f.hidden_field :uploader_cache
+	= f.submit 'Upload'
