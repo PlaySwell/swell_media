@@ -30,6 +30,9 @@ Gem::Specification.new do |s|
   s.add_dependency "rails", "~> 4.1.0"
   s.add_dependency 'sass-rails', '~> 4.0.0'
   s.add_dependency 'sitemap_generator'
+
+  s.add_dependency 'jquery-rails'
+  s.add_dependency 'jquery-ui-rails'
 	s.add_dependency 'medium-editor-rails'
 	s.add_dependency 'hashids'
 
