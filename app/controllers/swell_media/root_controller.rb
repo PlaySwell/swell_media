@@ -40,8 +40,8 @@ module SwellMedia
 					else
 						begin
 
-							@media = Media.published.friendly.find( Media.id_from_slug(params[:id]) )
-						rescue
+							@media = Media.published.friendly.find( params[:id] )
+						rescue => e
 							raise ActionController::RoutingError.new( 'Not Found' )
 						end
 					end
