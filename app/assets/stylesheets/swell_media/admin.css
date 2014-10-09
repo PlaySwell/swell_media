@@ -10,6 +10,7 @@
  *
  *= require_self
  *= require_tree ./summernote
+ *= require ./medium-editor-input/medium-editor-input
  */
 
 .active.badge{ 

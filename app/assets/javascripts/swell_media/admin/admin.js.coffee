@@ -7,6 +7,8 @@ ready = $ ->
 	$('.editor-small').summernote
 		toolbar: [ ['style', ['bold', 'italic', 'underline', 'clear']] ]
 
+	$('.medium-editor').mediumEditorInput()
+
 	$('.datepicker').datetimepicker
 		dateFormat: 'dd MM, yy'
 
