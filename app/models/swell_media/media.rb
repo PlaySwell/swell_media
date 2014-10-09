@@ -33,13 +33,15 @@ module SwellMedia
 		acts_as_taggable
 
 		def self.id_from_slug( slug )
+			#puts "id_from_slug #{slug} #{slug.class.name}"
 			return nil if slug.nil? || !slug.is_a?(String)
 			hashid = slug.split('-').last
-			puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
+			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
 			SwellMedia::HASHIDS.decrypt(hashid).first
 		end
 
 		def self.find(*args)
+			#puts 'SwellMedia::Media.find'
 			id = args.first
 			return super if args.count != 1 || Media.id_from_slug(id).nil?
 			super(Media.id_from_slug(id))
