@@ -42,13 +42,7 @@ module SwellMedia
 
 							@media = Media.published.friendly.find( Media.id_from_slug(params[:id]) )
 						rescue
-							#backwards compatibility
-							begin
-
-								@media = Media.published.friendly.find( params[:id] )
-							rescue
-								raise ActionController::RoutingError.new( 'Not Found' )
-							end
+							raise ActionController::RoutingError.new( 'Not Found' )
 						end
 					end
 				else

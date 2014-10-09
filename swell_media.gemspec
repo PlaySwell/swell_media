@@ -31,6 +31,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'sass-rails', '~> 4.0.0'
   s.add_dependency 'sitemap_generator'
 	s.add_dependency 'medium-editor-rails'
+	s.add_dependency 'hashids'
 
   s.add_development_dependency "sqlite3"
   s.add_development_dependency 'rspec-rails'

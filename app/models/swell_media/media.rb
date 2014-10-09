@@ -38,6 +38,12 @@ module SwellMedia
 			SwellMedia::HASHIDS.decrypt(hashid).first
 		end
 
+		def self.find(*args)
+			id = args.first
+			return super if args.count != 1 || Media.id_from_slug(id).nil?
+			super(Media.id_from_slug(id))
+		end
+
 		def self.published
 			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
 		end
