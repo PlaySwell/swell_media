@@ -14,8 +14,8 @@ jQuery.fn.mediumEditorInput = (args) ->
 		$textarea.addClass('medium-editor-textarea')
 		$textarea.after('<div class="medium-editor-input" style="outline: none;min-height:200px;" ></div>')
 		$editable = $($textarea.next()[0])
-		content = $($textarea.val())
-		$editable.html( if content.is('.medium-editor-content') then content.html() else $textarea.val() )
+		content = $('<div></div>').html($textarea.val())
+		$editable.html( if content.children().first().is('.medium-editor-content') then content.children().first().html() else $textarea.val() )
 		args = $editable.data("medium-editor-input") or { cleanPastedHTML: true, buttonLabels: 'fontawesome', buttons: ['bold', 'italic', 'underline', 'anchor', 'header1', 'header2', 'quote'] }
 
 		args.extensions = {
