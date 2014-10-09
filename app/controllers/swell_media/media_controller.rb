@@ -55,8 +55,12 @@ module SwellMedia
 
 		def destroy
 			authorize( Media )
-			@media.trash!
-			set_flash 'Media Deleted'
+			if params[:permanent]
+				@media.destroy
+			else
+				@media.trash!
+			end
+			set_flash "#{@media.class.name.demodulize} Deleted"
 			redirect_to :back
 		end
 

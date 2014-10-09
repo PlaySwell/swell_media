@@ -65,7 +65,7 @@ module SwellMedia
 
 		def char_count
 			return 0 if self.content.blank?
-			ActionView::Base.full_sanitizer.sanitize( self.content ).size
+			self.sanitized_content.size
 		end
 
 		def path( args={} )
@@ -97,6 +97,10 @@ module SwellMedia
 			!ENV['SLUGS_INCLUDE_HASHID']
 		end
 
+		def sanitized_content
+			ActionView::Base.full_sanitizer.sanitize( self.content )
+		end
+
 		def static_slug?
 			!ENV['SLUGS_UPDATE']
 		end
@@ -117,7 +121,7 @@ module SwellMedia
 
 		def word_count
 			return 0 if self.content.blank?
-			ActionView::Base.full_sanitizer.sanitize( self.content ).scan(/[\w-]+/).size
+			self.sanitized_content.scan(/[\w-]+/).size
 		end
 
 
@@ -152,7 +156,7 @@ module SwellMedia
 				
 				# auto-tag hashtags
 				unless self.content.blank?
-					hashtags = self.content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
+					hashtags = self.sanitized_content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
 					self.tag_list << hashtags
 				end
 
