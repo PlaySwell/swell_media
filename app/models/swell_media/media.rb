@@ -8,6 +8,13 @@ module SwellMedia
 
 		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
 
+		after_save :reslug
+		after_create {
+			@created = true
+			reslug
+			@created = false
+		}
+
 		validates		:title, presence: true, unless: :allow_blank_title
 
 		attr_accessor	:slug_pref
@@ -25,6 +32,11 @@ module SwellMedia
 
 		acts_as_taggable
 
+		def self.id_from_slug( slug )
+			hashid = slug.split('-').last
+			puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
+			SwellMedia::HASHIDS.decrypt(hashid).first
+		end
 
 		def self.published
 			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
@@ -58,7 +70,26 @@ module SwellMedia
 		end
 
 		def slugger
-			self.slug_pref.present? ? self.slug_pref : self.title
+
+			the_slug = self.slug_pref.present? ? self.slug_pref : self.title
+
+			if self.id && !self.plain_slug?
+				if the_slug.blank?
+					the_slug = SwellMedia::HASHIDS.encrypt(self.id)
+				else
+					the_slug = "#{the_slug} #{SwellMedia::HASHIDS.encrypt(self.id)}"
+				end
+			end
+
+			the_slug
+		end
+
+		def plain_slug?
+			!ENV['SLUGS_INCLUDE_HASHID']
+		end
+
+		def static_slug?
+			!ENV['SLUGS_UPDATE']
 		end
 
 		def to_s
@@ -82,6 +113,15 @@ module SwellMedia
 
 
 		private
+
+			def reslug
+				if !@reslugged && ( !self.static_slug? || (@created && !self.plain_slug?) )
+					self.slug = nil
+					@reslugged = true
+					self.save!
+					@reslugged = false
+				end
+			end
 
 			def set_cached_counts
 				if self.respond_to?( :cached_word_count )

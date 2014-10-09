@@ -104,6 +104,7 @@ GEM
       activerecord (>= 4.0.0)
     haml (4.0.5)
       tilt
+    hashids (0.3.0)
     hike (1.2.3)
     i18n (0.6.9)
     inflecto (0.0.2)
@@ -199,6 +200,7 @@ DEPENDENCIES
   devise
   factory_girl_rails (~> 4.0)
   friendly_id (~> 5.0.0)
+  hashids
   rspec-rails
   sqlite3
   swell_media!

@@ -22,3 +22,5 @@ gem "friendly_id", '~> 5.0.0'
 
 gem "rspec-rails"
 gem "factory_girl_rails", "~> 4.0"
+
+gem 'hashids'
