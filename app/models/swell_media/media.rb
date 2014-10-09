@@ -33,6 +33,7 @@ module SwellMedia
 		acts_as_taggable
 
 		def self.id_from_slug( slug )
+			return nil if slug.nil?
 			hashid = slug.split('-').last
 			puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
 			SwellMedia::HASHIDS.decrypt(hashid).first
