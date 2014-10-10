@@ -10,8 +10,8 @@ module SwellMedia
 
 		def create
 
-			@asset = Asset.create( params.require( :asset ).permit( :parent_obj_id, :parent_obj_type, :use, :asset_type, :title, :description, :type, :sub_type, :status, :uploader, :uploader_cache ) )
-			@asset.uploader = params[:file] if params[:file] && params[:asset][:uploader].nil?
+			@asset = Asset.create( params.require( :asset ).permit( :parent_obj_id, :parent_obj_type, :use, :asset_type, :title, :description, :type, :sub_type, :status, :uploader ).merge( file: params[:file] ) )
+
 			@asset.user = current_user
 			@asset.save
 

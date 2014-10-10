@@ -19,6 +19,13 @@ module SwellMedia
 			try(:uploader).try(:url) || origin_url
 		end
 
+		def file=(file)
+			if file.present? && defined?(CarrierWave)
+				self.uploader.filename = nil
+				self.uploader = file
+			end
+		end
+
 		def key=(key)
 			if defined?(CarrierWave)
 				filename = key[self.uploader.store_dir.length..-1]
