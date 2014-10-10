@@ -32,13 +32,7 @@ module SwellMedia
 
 		acts_as_taggable
 
-		def self.id_from_slug( slug )
-			#puts "id_from_slug #{slug} #{slug.class.name}"
-			return nil if slug.nil? || !slug.is_a?(String)
-			hashid = slug.split('-').last
-			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
-			SwellMedia::HASHIDS.decrypt(hashid).first
-		end
+		
 
 		def self.find(*args)
 			#puts 'SwellMedia::Media.find'
@@ -47,10 +41,20 @@ module SwellMedia
 			super(Media.id_from_slug(id))
 		end
 
+		def self.id_from_slug( slug )
+			#puts "id_from_slug #{slug} #{slug.class.name}"
+			return nil if slug.nil? || !slug.is_a?(String)
+			hashid = slug.split('-').last
+			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
+			SwellMedia::HASHIDS.decrypt(hashid).first
+		end
+
 		def self.published
 			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
 		end
 
+
+		# Instance Methods
 
 
 		def author
@@ -61,6 +65,24 @@ module SwellMedia
 			else
 				return ''
 			end
+		end
+
+		def avatar_asset_file=(file)
+			asset = Asset.new(use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.uploader = file
+			asset.save
+			self.avatar = asset.try(:url)
+		end
+
+		def avatar_asset_url
+			nil
+		end
+
+		def avatar_asset_url=(url)
+			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.save unless asset.nil?
+			puts "avatar_asset_url= asset: #{asset}"
+			self.avatar = asset.try(:url) || url
 		end
 
 		def char_count
@@ -78,6 +100,10 @@ module SwellMedia
 			return path
 		end
 
+		def plain_slug?
+			!ENV['SLUGS_INCLUDE_HASHID']
+		end
+
 		def slugger
 
 			the_slug = self.slug_pref.present? ? self.slug_pref : self.title
@@ -91,10 +117,6 @@ module SwellMedia
 			end
 
 			the_slug
-		end
-
-		def plain_slug?
-			!ENV['SLUGS_INCLUDE_HASHID']
 		end
 
 		def sanitized_content
@@ -124,23 +146,6 @@ module SwellMedia
 			self.sanitized_content.scan(/[\w-]+/).size
 		end
 
-		def avatar_asset_file=(file)
-			asset = Asset.new(use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
-			asset.uploader = file
-			asset.save
-			self.avatar = asset.try(:url)
-		end
-
-		def avatar_asset_url
-			nil
-		end
-
-		def avatar_asset_url=(url)
-			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
-			asset.save unless asset.nil?
-			puts "avatar_asset_url= asset: #{asset}"
-			self.avatar = asset.try(:url) || url
-		end
 
 
 		private

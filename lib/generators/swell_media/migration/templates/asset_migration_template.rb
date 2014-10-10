@@ -10,7 +10,7 @@ class AssetMigration < ActiveRecord::Migration
 
 			t.string		:type # jic want to sti someday....
 			t.string		:sub_type # to use e.g. to designate one image as primary avatar
-			t.string		:use, default: nil
+			t.string		:use, default: nil  # e.g. avatar, thumbnail
 			t.string		:asset_type, default: 'image'
 
 			t.string		:origin_name
