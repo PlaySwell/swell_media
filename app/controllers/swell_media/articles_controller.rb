@@ -117,7 +117,7 @@
 
 		private
 			def article_params
-				params.require( :article ).permit( :title, :subtitle, :slug_pref, :description, :content, :category_id, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar )
+				params.require( :article ).permit( :title, :subtitle, :slug_pref, :description, :content, :category_id, :status, :publish_at, :show_title, :is_commentable, :user_id, :tag_list, :avatar, :avatar_asset_file, :avatar_asset_url )
 			end
 
 			def get_article
