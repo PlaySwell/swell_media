@@ -18,8 +18,10 @@ module SwellMedia
 
 			if @media.slug == 'homepage'
 				set_page_meta( title: "#{ENV['APP_NAME']}", og: { type: 'website', image: @media.avatar } )
-			else
+			elsif @media.title.present?
 				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: @media.description, og: { description: @media.subtitle, image: @media.avatar } )
+			else
+				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: @media.content, og: { description: @media.content, image: @media.avatar } )
 			end
 
 			begin

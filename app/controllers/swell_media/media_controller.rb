@@ -4,8 +4,8 @@ module SwellMedia
 		# media#show should route to root controller for naked paths (e.g. domain/slug )
 		# or to the controller of choice for scoped paths (e.g. domain/blog/id to articles#show )
 
-		before_filter :authenticate_user!, except: [  :index, :random, :show ]
-		before_filter :get_media, except: [ :admin, :create, :index ]
+		before_filter :authenticate_user!, only: [ :admin, :create, :destroy, :edit, :update ]
+		before_filter :get_media, only: [ :destroy, :edit, :preview, :update ]
 
 		def admin
 			authorize( Media )
