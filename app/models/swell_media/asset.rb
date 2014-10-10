@@ -27,6 +27,31 @@ module SwellMedia
 			end
 		end
 
+		def self.initialize_from_url( url, args = {} )
+			asset = Asset.where("? LIKE ('%' || upload)",url).first
+
+			#if the asset exists, and its parent_obj is different than the one provided... copy the asset for this new parent_obj
+			if asset && ( args[:parent_obj] && args[:parent_obj] != asset.parent_obj || ( (args[:parent_obj_id] && args[:parent_obj_id] != asset.parent_obj_id) || (args[:parent_obj_type] && args[:parent_obj_type] != asset.parent_obj_type) ) )
+
+				#puts "copying existing asset #{url}"
+				asset = Asset.new( { upload: asset.upload, origin_url: asset.origin_url }.merge(args) )
+
+			elsif asset
+				#puts "using existing asset #{url}"
+			end
+
+			if asset.nil?
+
+				#puts "creating new asset #{url}"
+				asset = Asset.new( args )
+				asset.origin_url = url
+				asset.remote_uploader_url = url if defined?(CarrierWave)
+
+			end
+
+			asset
+		end
+
 	end
 	
 end

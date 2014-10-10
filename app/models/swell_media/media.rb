@@ -124,6 +124,21 @@ module SwellMedia
 			self.sanitized_content.scan(/[\w-]+/).size
 		end
 
+		def avatar_asset_file=(file)
+			asset = Asset.new(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.uploader = file
+			asset.save
+			self.avatar = asset.try(:url)
+		end
+
+		def avatar_asset_url=(url)
+			puts "avatar_asset_url= #{url}"
+			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.save unless asset.nil?
+			puts "avatar_asset_url= asset: #{asset}"
+			self.avatar = asset.try(:url) || url
+		end
+
 
 		private
 
