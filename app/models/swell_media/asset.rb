@@ -36,6 +36,7 @@ module SwellMedia
 
 		def self.initialize_from_url( url, args = {} )
 			asset = Asset.where("? LIKE ('%' || upload)",url).first
+			asset = Asset.where(origin_url: url).first unless asset.nil?
 
 			#if the asset exists, and its parent_obj is different than the one provided... copy the asset for this new parent_obj
 			if asset && ( args[:parent_obj] && args[:parent_obj] != asset.parent_obj || ( (args[:parent_obj_id] && args[:parent_obj_id] != asset.parent_obj_id) || (args[:parent_obj_type] && args[:parent_obj_type] != asset.parent_obj_type) ) )
