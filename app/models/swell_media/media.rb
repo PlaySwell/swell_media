@@ -147,7 +147,6 @@ module SwellMedia
 		end
 
 
-
 		private
 
 			def reslug
