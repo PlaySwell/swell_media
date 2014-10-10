@@ -132,13 +132,15 @@ module SwellMedia
 		end
 
 		def avatar_asset_url
-			nil
+			self.avatar
 		end
 
 		def avatar_asset_url=(url)
-			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
-			asset.save unless asset.nil?
-			puts "avatar_asset_url= asset: #{asset}"
+			unless url.nil? || url.blank?
+				asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+				asset.save unless asset.nil?
+				puts "avatar_asset_url= asset: #{asset}"
+			end
 			self.avatar = asset.try(:url) || url
 		end
 
