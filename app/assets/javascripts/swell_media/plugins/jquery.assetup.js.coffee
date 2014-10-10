@@ -41,7 +41,11 @@ jQuery.fn.assetup = (args) ->
 				console.log progress, e, data if window.console
 			done: (e, data) ->
 				console.log data.result if window.console
-				$for.val(data.result).change()
+				$for.each ()->
+					if $(this).is('img')
+						$(this).attr('src',data.result)
+					else
+						$(this).val(data.result).change()
 				$form.remove()
 
 		)

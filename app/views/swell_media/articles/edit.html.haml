@@ -39,10 +39,14 @@
 					= f.label :avatar, 'Image:'
 					.row
 						.col-sm-2
-							= image_tag @article.avatar, class: 'img-responsive'
+							= image_tag @article.avatar, class: 'img-responsive', id: 'article_avatar'
+							%div{ style: 'text-align:center;padding:0.3em;' }
+								%a{ href: '#', data: { toggle: :assetup, for: '#article_avatar_asset_url,#article_avatar', asset: { asset_type: 'image', use: 'avatar', status: 'active', parent_obj_id: @article.id, parent_obj_type: @article.class.base_class.name }.to_json, params: { authenticity_token: form_authenticity_token() }.to_json } }
+									%i.fa.fa-upload
+									upload
 						.col-sm-10
-							= f.text_field :avatar_asset_url, class: 'form-control', placeholder: 'Full Path to Image'
-
+							= f.hidden_field :avatar_asset_url, class: 'form-control'
+							= text_field_tag :avatar_text_field, '', class: 'form-control', placeholder: 'Full Path to Image', data: { inputfor: '#article_avatar_asset_url' }
 
 				.form-group
 					= f.label :description, 'Summary'
