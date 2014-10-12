@@ -7,7 +7,7 @@
 					&times;
 				%h4.modal-title
 					New Page
-			= form_for SwellMedia::Page.new do |f|
+			= form_for SwellMedia::Page.new, url: swell_media.pages_path do |f|
 				.modal-body
 					= f.label :title
 					= f.text_field :title, class: 'form-control'
