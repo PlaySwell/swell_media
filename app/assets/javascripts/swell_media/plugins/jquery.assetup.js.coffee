@@ -21,7 +21,7 @@ jQuery.fn.assetup = (args) ->
 		form_id = "new_asset_"+(assetup_counter++)
 
 		$('body').append("""
-		<form accept-charset="UTF-8" action="/assets?response=url&#{$.param(params)}" class="new_asset" enctype="multipart/form-data" id="#{form_id}" method="post">
+		<form accept-charset="UTF-8" action="/assets?response=url&#{$.param(params)}" class="new_asset" enctype="multipart/form-data" id="#{form_id}" method="post" style="display:none;">
 					<div style="display:none"><input name="utf8" type="hidden" value="✓"><!--<input name="authenticity_token" type="hidden" value="r/4R6o85mAPcpp6nFjya/v9VjI/0314YxgVxkYM2vPk=">--></div>
 					<input name="file" type="file">
           <input name="commit" type="submit" value="Upload">
