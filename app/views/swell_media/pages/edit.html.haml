@@ -30,6 +30,21 @@
 							http://playswell.com/
 						= f.text_field :slug_pref, class: 'form-control', placeholder: @page.slug
 
+				
+				.form-group
+					.input-group
+					= f.label :avatar, 'Image:'
+					.row
+						.col-sm-2
+							= image_tag @page.avatar, class: 'img-responsive', id: 'media_avatar'
+							%div{ style: 'text-align:center;padding:0.3em;' }
+								%a{ href: '#', data: { toggle: :assetup, for: '#media_avatar_asset_url,#media_avatar', asset: { asset_type: 'image', use: 'avatar', status: 'active', parent_obj_id: @page.id, parent_obj_type: @page.class.base_class.name }.to_json, params: { authenticity_token: form_authenticity_token() }.to_json } }
+									%i.fa.fa-upload
+									upload
+						.col-sm-10
+							= f.hidden_field :avatar_asset_url, class: 'form-control'
+							= text_field_tag :avatar_text_field, '', class: 'form-control', placeholder: 'Full Path to Image', data: { inputfor: '#media_avatar_asset_url' }
+
 				.form-group
 					= f.text_area :content, class: 'form-control editor-full', rows: 12
 
