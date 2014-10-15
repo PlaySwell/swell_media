@@ -32,21 +32,14 @@ module SwellMedia
 
 		acts_as_taggable
 
-		
-
-		def self.find(*args)
-			#puts 'SwellMedia::Media.find'
-			id = args.first
-			return super if args.count != 1 || Media.id_from_slug(id).nil?
-			super(Media.id_from_slug(id))
+		def self.friendly
+			super.all.extending(FinderMethods)
 		end
 
-		def self.id_from_slug( slug )
-			#puts "id_from_slug #{slug} #{slug.class.name}"
-			return nil if slug.nil? || !slug.is_a?(String)
-			hashid = slug.split('-').last
-			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
-			SwellMedia::HASHIDS.decrypt(hashid).first
+		def self.find(*args)
+			id = args.first
+			return super if args.count != 1 || FinderMethods.id_from_slug(id).nil?
+			super(FinderMethods.id_from_slug(id))
 		end
 
 		def self.published
@@ -196,6 +189,25 @@ module SwellMedia
 			end
 				
 
+
+	end
+
+	module FinderMethods
+
+
+		def find(*args)
+			id = args.first
+			return super if args.count != 1 || FinderMethods.id_from_slug(id).nil?
+			super(FinderMethods.id_from_slug(id))
+		end
+
+		def self.id_from_slug( slug )
+			#puts "id_from_slug #{slug} #{slug.class.name}"
+			return nil if slug.nil? || !slug.is_a?(String)
+			hashid = slug.split('-').last
+			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
+			SwellMedia::HASHIDS.decode(hashid).first
+		end
 
 	end
 

@@ -15,6 +15,8 @@ module SwellMedia
 		belongs_to	:user
 		belongs_to 	:parent_obj, polymorphic: true
 
+		has_many	:assets, as: :parent_obj, dependent: :destroy
+
 		def url
 			try(:uploader).try(:url) || origin_url
 		end
