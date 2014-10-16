@@ -14,8 +14,9 @@ if defined?(CarrierWave)
 		# Override the filename of the uploaded files:
 		# Avoid using model.id or version_name here, see uploader/store.rb for details.
 		def filename
+			@name = model.upload
 			@name ||= construct_new_file_name(file.extension) if original_filename
-			@name ||= construct_new_file_name()
+			#@name ||= construct_new_file_name()
 			@name
 		end
 
