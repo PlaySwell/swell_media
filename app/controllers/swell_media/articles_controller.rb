@@ -89,7 +89,7 @@
 
 			@articles = @articles.page( params[:page] )
 
-			set_page_meta title: "#{ENV['APP_NAME']} Blog", og: { type: 'blog' }
+			set_page_meta title: "#{ENV['APP_NAME']} Blog", og: { type: 'blog' }, twitter: { card: 'summary' }
 
 		end
 

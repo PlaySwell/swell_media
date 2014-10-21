@@ -101,7 +101,7 @@ module SwellMedia
 
 			@media = @media.page( params[:page] )
 
-			set_page_meta title: "Media", og: { type: 'blog' }
+			set_page_meta title: "Media", og: { type: 'blog' }, twitter: { card: 'summary' }
 
 		end
 
