@@ -30,6 +30,7 @@ module SwellMedia
 
 		def set_page_meta( args={} )
 			args[:og] ||= {}
+			args[:twitter] ||= {}
 			@page_meta = args
 			
 			@page_meta[:title] ||= ENV['APP_NAME']
@@ -39,6 +40,9 @@ module SwellMedia
 			@page_meta[:og][:title] ||= @page_meta[:title]
 			@page_meta[:og][:type] ||= 'article' # blog, website
 			@page_meta[:og][:url] ||= request.url
+
+			@page_meta[:twitter][:card] ||= 'summary'
+			@page_meta[:twitter][:site] ||= ENV['TWITTER_SITE']
 
 		end
 
