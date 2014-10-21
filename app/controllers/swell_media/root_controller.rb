@@ -17,11 +17,11 @@ module SwellMedia
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
 			if @media.slug == 'homepage'
-				set_page_meta( title: "#{ENV['APP_NAME']}", og: { type: 'website', image: @media.avatar } )
+				set_page_meta( title: "#{ENV['APP_NAME']}", twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { type: 'website', image: @media.avatar } )
 			elsif @media.title.present?
-				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.description), og: { description: @media.subtitle, image: @media.avatar } )
+				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.description), twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: @media.subtitle, image: @media.avatar } )
 			else
-				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: @media.content, og: { description: ActionView::Base.full_sanitizer.sanitize(@media.content), image: @media.avatar } )
+				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: @media.content, twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: ActionView::Base.full_sanitizer.sanitize(@media.content), image: @media.avatar } )
 			end
 
 			begin
