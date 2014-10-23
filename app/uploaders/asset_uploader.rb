@@ -5,6 +5,10 @@ if defined?(CarrierWave)
 	class AssetUploader < CarrierWave::Uploader::Base
 		include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
 
+		def asset_host
+			ENV['ASSET_HOST'] || super
+		end
+
 		# Override the directory where uploaded files will be stored.
 		# This is a sensible default for uploaders that are meant to be mounted:
 		def store_dir
