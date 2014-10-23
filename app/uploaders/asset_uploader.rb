@@ -5,6 +5,8 @@ if defined?(CarrierWave)
 	class AssetUploader < CarrierWave::Uploader::Base
 		include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
 
+		storage :fog
+
 		def asset_host
 			ENV['ASSET_HOST'] || super
 		end
