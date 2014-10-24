@@ -5,23 +5,20 @@
 %meta{content: @page_meta[:description], name: "description"}
 %meta{content: "width=device-width", name: "viewport"}
 
-- unless @page_meta[:og].empty?
+- if @page_meta[:og].present?
 	%meta{ property: 'og:title', content: @page_meta[:og][:title] }
-	%meta{ property: 'twitter:title', content: @page_meta[:og][:title] }
-
 	%meta{ property: 'og:type', content: @page_meta[:og][:type] }
-	%meta{ property: 'twitter:card', content: @page_meta[:twitter][:card] }
-
 	%meta{ property: 'og:site_name', content: @page_meta[:og][:site_name] }
-	%meta{ property: 'twitter:site', content: @page_meta[:twitter][:site] }
-
 	%meta{ property: 'og:url', content: @page_meta[:og][:url] }
-	%meta{ property: 'twitter:url', content: @page_meta[:og][:site] }
-
 	%meta{ property: 'og:description', content: @page_meta[:og][:description] || @page_meta[:description] }
-	%meta{ property: 'twitter:description', content: @page_meta[:og][:description] || @page_meta[:description] }
-
 	%meta{ property: "og:image", content: @page_meta[:og][:image] }
+
+- if @page_meta[:twitter].present?
+	%meta{ property: 'twitter:title', content: @page_meta[:og][:title] }
+	%meta{ property: 'twitter:card', content: @page_meta[:twitter][:card] }
+	%meta{ property: 'twitter:site', content: @page_meta[:twitter][:site] }
+	%meta{ property: 'twitter:url', content: @page_meta[:og][:site] }
+	%meta{ property: 'twitter:description', content: @page_meta[:og][:description] || @page_meta[:description] }
 	%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
 
 %link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
