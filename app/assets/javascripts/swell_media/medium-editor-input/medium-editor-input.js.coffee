@@ -31,7 +31,7 @@ jQuery.fn.mediumEditorInput = (args) ->
 		$editable = $($textarea.next()[0])
 		content = $('<div></div>').html($textarea.val())
 		$editable.html( if content.children().first().is('.medium-editor-content') then content.children().first().html() else $textarea.val() )
-		args = $editable.data("medium-editor-input") or { cleanPastedHTML: true, buttonLabels: 'fontawesome', buttons: ['bold', 'italic', 'underline', 'anchor', 'header1', 'header2', 'quote', 'embedMedia'] }
+		args = $editable.data("medium-editor-input") or { cleanPastedHTML: true, buttonLabels: 'fontawesome', buttons: ['bold', 'italic', 'header1', 'header2', 'justifyCenter', 'quote', 'anchor', 'embedMedia'] }
 
 		args.extensions = {
 			'embedMedia':  new SwellMediumButton(
