@@ -11,15 +11,17 @@
 	%meta{ property: 'og:site_name', content: @page_meta[:og][:site_name] }
 	%meta{ property: 'og:url', content: @page_meta[:og][:url] }
 	%meta{ property: 'og:description', content: @page_meta[:og][:description] || @page_meta[:description] }
-	%meta{ property: "og:image", content: @page_meta[:og][:image] }
+	- if @page_meta[:og][:image]
+		%meta{ property: 'og:image', content: @page_meta[:og][:image] }
 
 - if @page_meta[:twitter].present?
 	%meta{ property: 'twitter:title', content: @page_meta[:og][:title] }
 	%meta{ property: 'twitter:card', content: @page_meta[:twitter][:card] }
 	%meta{ property: 'twitter:site', content: @page_meta[:twitter][:site] }
 	%meta{ property: 'twitter:url', content: @page_meta[:og][:site] }
-	%meta{ property: 'twitter:description', content: @page_meta[:og][:description] || @page_meta[:description] }
-	%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
+	%meta{ property: 'twitter:description', content: @page_meta[:twitter][:description] || @page_meta[:og][:description] || @page_meta[:description] }
+	- if @page_meta[:og][:image]
+		%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
 
 %link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
 
