@@ -22,6 +22,7 @@
 	%meta{ property: 'twitter:description', content: @page_meta[:twitter][:description] || @page_meta[:og][:description] || @page_meta[:description] }
 	- if @page_meta[:og][:image]
 		%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
+		%meta{ property: 'twitter:image:src', content: @page_meta[:og][:image] }
 
 %link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
 
