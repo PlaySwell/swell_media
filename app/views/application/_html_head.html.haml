@@ -24,6 +24,6 @@
 		%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
 		%meta{ property: 'twitter:image:src', content: @page_meta[:og][:image] }
 
-%link{ rel: "shortcut icon", href: asset_path( 'favicon.ico' ) }
+= favicon_link_tag 'favicon.ico'
 
 = csrf_meta_tags
