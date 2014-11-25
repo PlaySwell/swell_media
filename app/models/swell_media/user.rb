@@ -5,6 +5,8 @@ module SwellMedia
 		enum status: { 'active' => 0, 'revoked' => 1, 'archive' => 2, 'trash' => 3 }
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
+		has_many	:assets, as: :parent_obj, dependent: :destroy
+
 		attr_accessor	:login
 
 		### FILTERS		--------------------------------------------
@@ -48,6 +50,25 @@ module SwellMedia
 
 		### Instance Methods  	--------------------------------------
 
+		def avatar_asset_file=( file )
+			return false unless file.present?
+			asset = Asset.new(use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.uploader = file
+			asset.save
+			self.avatar = asset.try(:url)
+		end
+
+		def avatar_asset_url
+			nil
+		end
+
+		def avatar_asset_url=( url )
+			return false unless url.present?
+			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset.save unless asset.nil?
+			puts "avatar_asset_url= asset: #{asset}"
+			self.avatar = asset.try(:url) || url
+		end
 
 		def avatar_tag( opts={} )
 			tag = "<img src="
