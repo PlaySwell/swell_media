@@ -18,7 +18,7 @@
 	%meta{ property: 'twitter:title', content: @page_meta[:og][:title] }
 	%meta{ property: 'twitter:card', content: @page_meta[:twitter][:card] }
 	%meta{ property: 'twitter:site', content: @page_meta[:twitter][:site] }
-	%meta{ property: 'twitter:url', content: @page_meta[:og][:site] }
+	%meta{ property: 'twitter:url', content: @page_meta[:og][:url] }
 	%meta{ property: 'twitter:description', content: @page_meta[:twitter][:description] || @page_meta[:og][:description] || @page_meta[:description] }
 	- if @page_meta[:og][:image]
 		%meta{ property: 'twitter:image', content: @page_meta[:og][:image] }
