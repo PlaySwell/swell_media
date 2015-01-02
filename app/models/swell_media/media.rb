@@ -42,8 +42,8 @@ module SwellMedia
 			super(FinderMethods.id_from_slug(id))
 		end
 
-		def self.published
-			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
+		def self.published( args = {} )
+			where( "#{args[:table_name] || 'media'}.publish_at <= :now", now: Time.zone.now ).active.anyone
 		end
 
 
