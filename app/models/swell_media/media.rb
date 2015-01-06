@@ -105,7 +105,7 @@ module SwellMedia
 
 			if self.id && !self.plain_slug?
 				if the_slug.blank?
-					the_slug = SwellMedia::HASHIDS.encrypt(self.id)
+					the_slug = SwellMedia::HASHIDS.encode(self.id)
 				else
 					the_slug = "#{the_slug} #{SwellMedia::HASHIDS.encode(self.id)}"
 				end
