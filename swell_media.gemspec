@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
 	s.add_dependency "pg"
   s.add_dependency "pundit"
   # TODO s.add_dependency 'paper_trail', '~> 3.0.1'
-  s.add_dependency "rails", "~> 4.1.0"
+  s.add_dependency "rails", ">= 4.1.0"
   s.add_dependency 'sass-rails', '~> 4.0.0'
   s.add_dependency 'sitemap_generator'
 

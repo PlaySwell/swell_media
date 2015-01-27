@@ -55,7 +55,7 @@ module SwellMedia
 
 		private
 			def category_params
-				params.require( :category ).permit( :name, :parent_id, :description, :avatar, :status ) # todo
+				params.require( :category ).permit( :name, :display, :slug, :parent_id, :description, :avatar, :status, :type ) # todo
 			end
 
 			def get_category

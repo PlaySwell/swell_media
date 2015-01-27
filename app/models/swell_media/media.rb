@@ -42,8 +42,8 @@ module SwellMedia
 			super(FinderMethods.id_from_slug(id))
 		end
 
-		def self.published
-			where( 'publish_at <= :now', now: Time.zone.now ).active.anyone
+		def self.published( args = {} )
+			where( "#{args[:table_name] || 'media'}.publish_at <= :now", now: Time.zone.now ).active.anyone
 		end
 
 
@@ -105,7 +105,7 @@ module SwellMedia
 
 			if self.id && !self.plain_slug?
 				if the_slug.blank?
-					the_slug = SwellMedia::HASHIDS.encrypt(self.id)
+					the_slug = SwellMedia::HASHIDS.encode(self.id)
 				else
 					the_slug = "#{the_slug} #{SwellMedia::HASHIDS.encode(self.id)}"
 				end

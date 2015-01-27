@@ -44,7 +44,7 @@ module SwellMedia
 
 		def edit
 			@contact = Contact.find( params[:id] )
-			authorize( @ontact )
+			authorize( @contact )
 			render layout: 'admin'
 		end
 
