@@ -21,7 +21,7 @@ module SwellMedia
 			elsif @media.title.present?
 				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.description), twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: @media.subtitle, image: @media.avatar } )
 			else
-				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: @media.content, twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: ActionView::Base.full_sanitizer.sanitize(@media.content), image: @media.avatar } )
+				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.content), twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: ActionView::Base.full_sanitizer.sanitize(@media.content), image: @media.avatar } )
 			end
 
 			begin

@@ -41,10 +41,6 @@ module SwellMedia
 			end
 	    end
 
-	    def self.godmins
-	    	joins( :user_roles ).joins( :roles ).where( roles: { name: 'godmin' } )
-	    end
-
 
 		### Instance Methods  	--------------------------------------
 
