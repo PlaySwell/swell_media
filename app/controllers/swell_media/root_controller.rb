@@ -38,23 +38,23 @@ module SwellMedia
 		private
 
 			def get_media
-				logger.info "['apple-touch-icon-precomposed', 'apple-touch-icon'].include?( params[:id] ) #{['apple-touch-icon-precomposed', 'apple-touch-icon'].include?( params[:id] ) ? 'true' : 'false'}"
-				if params[:id].present? && !['apple-touch-icon-precomposed', 'apple-touch-icon'].include?( params[:id] )
+				if params[:id].present?
 					if params[:id].match( /sitemap/i )
 						redirect_to "https://s3-us-west-2.amazonaws.com/#{ENV['FOG_DIRECTORY']}/sitemaps/sitemap.xml.gz"
 						return false
 					else
 						begin
-
 							@media = Media.published.friendly.find( params[:id] )
-						rescue => e
+							if request.path != @media.path
+								redirect_to @media.url, status: :moved_permanently and return
+							end
+						rescue ActiveRecord::RecordNotFound
 							raise ActionController::RoutingError.new( 'Not Found' )
 						end
 					end
 				else
 					@media = Page.homepage
 				end
-
 			end
 
 	end

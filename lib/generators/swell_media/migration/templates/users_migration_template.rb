@@ -14,7 +14,7 @@ class UsersMigration < ActiveRecord::Migration
 			t.string		:refresh_token
 			t.string		:secret
 			t.datetime		:expires_at
-			t.integer		:status,		default: 0
+			t.integer		:status,		default: 1
 			t.timestamps
 		end
 		add_index :oauth_credentials, :user_id
@@ -22,25 +22,6 @@ class UsersMigration < ActiveRecord::Migration
 		add_index :oauth_credentials, :uid
 		add_index :oauth_credentials, :token
 		add_index :oauth_credentials, :secret
-
-
-		create_table :roles do	|t|
-			t.string 		:name
-			t.timestamps
-		end
-		add_index :roles, :name
-
-
-		create_table :user_roles do |t|
-			t.references 	:user
-			t.references	:granting_user
-			t.references 	:role
-			t.timestamps
-		end
-
-		add_index :user_roles, :user_id
-		add_index :user_roles, :granting_user_id
-		add_index :user_roles, :role_id
 
 
 		create_table :users do |t|
@@ -64,13 +45,9 @@ class UsersMigration < ActiveRecord::Migration
 			t.string		:state 
 			t.string		:zip 
 			t.string		:phone
-			t.integer		:status,				default: 0
-
+			t.integer		:status,				default: 1
+			t.integer		:role,					default: 1
 			t.integer		:level,					default: 1
-			t.integer		:max_investment,		default: 10
-			t.integer		:investment_cap,		default: 100
-			t.integer		:investment_used,		default: 0
-
 
 			t.string 		:website_url
 			t.text 			:bio
@@ -79,18 +56,7 @@ class UsersMigration < ActiveRecord::Migration
 			t.float			:latitude
 			t.float 		:longitude
 			t.string		:timezone, default: 'Pacific Time (US & Canada)'
-
-			t.text			:books,					array: true, default: []
-			t.text			:games,					array: true, default: []
-			t.text			:movies,				array: true, default: []
-			t.text			:music,					array: true, default: []
-			t.text			:television,			array: true, default: []
 			
-			
-			t.integer		:points_earned, 			default: 0, 	limit: 8
-			t.integer		:points_balance, 			default: 0, 	limit: 8
-			t.integer		:cached_subscribe_count, 	default: 0
-
 			## Recoverable
 			t.string		:reset_password_token
 			t.datetime		:reset_password_sent_at

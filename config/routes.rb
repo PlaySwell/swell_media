@@ -1,22 +1,22 @@
 SwellMedia::Engine.routes.draw do
 	root to: 'root#show' # set media to HP if null id
 
-	concern :admin do
-		get 	:admin, 	on: :collection
-		get		:adminit,	on: :member
-	end
-
 	resources :admin, only: :index
 
-	resources :articles, path: 'blog', concerns: :admin do
+	resources :articles, path: 'blog'
+	resources :article_admin, path: 'blog_admin' do
 		get :preview, on: :member
+		delete :empty_trash, on: :collection 
 	end
 
-	resources :categories, concerns: :admin
+	resources :categories
+	resources :category_admin
 
-	resources :contacts, concerns: :admin
+	resources :contacts
+	resources :contact_admin
 
-	resources :pages, concerns: :admin do
+	resources :pages
+	resources :page_admin do
 		get :preview, on: :member
 	end
 

@@ -23,8 +23,8 @@ class AssetMigration < ActiveRecord::Migration
 			t.integer		:width
 			t.integer		:duration
 
-			t.integer		:status, 						default: 0
-			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
+			t.integer		:status, 						default: 1
+			t.integer		:availability, 					default: 1	# anyone, logged_in, just_me
 
 			t.hstore		:properties
 			t.timestamps

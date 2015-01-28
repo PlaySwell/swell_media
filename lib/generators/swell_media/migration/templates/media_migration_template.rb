@@ -10,10 +10,9 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string 			:type
 			t.integer 			:lft
 			t.integer 			:rgt
-			t.string			:users_name,					default: :players
 			t.text				:description
 			t.integer			:status, 						default: 1
-			t.integer			:availability, 					default: 0 	# anyone, logged_in, just_me
+			t.integer			:availability, 					default: 1 	# anyone, logged_in, just_me
 			t.integer 			:seq
 			t.string 			:slug
 			t.hstore			:properties
@@ -39,6 +38,19 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.timestamps
 		end
 		add_index :contacts, :email
+
+
+		create_table :friendly_id_slugs do |t|
+			t.string   :slug, 				null: false
+			t.integer  :sluggable_id, 		null: false
+			t.string   :sluggable_type,		limit: 50
+			t.string   :scope
+		t.datetime :created_at
+		end
+		add_index :friendly_id_slugs, :sluggable_id
+		add_index :friendly_id_slugs, [:slug, :sluggable_type]
+		add_index :friendly_id_slugs, [:slug, :sluggable_type, :scope], unique: true
+		add_index :friendly_id_slugs, :sluggable_type
 
 
 		create_table :media do |t|
@@ -71,8 +83,8 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:duration
 			t.integer		:price,							default: 0
 
-			t.integer		:status, 						default: 0
-			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
+			t.integer		:status, 						default: 1
+			t.integer		:availability, 					default: 1	# anyone, logged_in, just_me
 			t.datetime		:publish_at
 			t.hstore		:properties
 
@@ -86,22 +98,6 @@ class SwellMediaMigration < ActiveRecord::Migration
 		add_index :media, :slug, unique: true
 		add_index :media, [ :slug, :type ]
 		add_index :media, [ :status, :availability ]
-
-
-
-		# to store thumbnail data....
-		create_table :media_thumbnails do |t|
-			t.references 	:media
-			t.string		:name
-			t.string		:url
-			t.integer		:height
-			t.integer		:width
-			t.string		:caption
-			t.integer		:status, 						default: 0
-			t.integer		:availability, 					default: 0 	# anyone, logged_in, just_me
-			t.timestamps
-		end
-		add_index :media_thumbnails, :media_id
 
 
 		create_table :tags do |t|

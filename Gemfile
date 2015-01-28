@@ -6,11 +6,11 @@ source "https://rubygems.org"
 gemspec
 
 # these are for rspec...
-gem "acts-as-taggable-on"
-gem "awesome_nested_set", '~> 3.0.0.rc.3'
-gem 'devise'
-gem "friendly_id", '~> 5.0.0'
-gem "medium-editor-rails"
+# gem "acts-as-taggable-on"
+# gem "awesome_nested_set", '~> 3.0.0.rc.3'
+# gem 'devise'
+# gem "friendly_id", '~> 5.0.0'
+# gem "medium-editor-rails"
 
 
 # Declare any dependencies that are still in development here instead of in

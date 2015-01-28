@@ -17,18 +17,18 @@
 							%a{ href: admin_index_path }
 								Admin
 
-						%li{ class: set_css_if( controller: :articles ) }
-							%a{ href: swell_media.admin_articles_path }
+						%li{ class: set_css_if( path: swell_media.article_admin_index_path ) }
+							%a{ href: swell_media.article_admin_index_path }
 								Blog
 
-						%li{ class: set_css_if( controller: :pages ) }
-							%a{ href: swell_media.admin_pages_path }
+						%li{ class: set_css_if( path: swell_media.page_admin_index_path ) }
+							%a{ href: swell_media.page_admin_index_path }
 								Pages
 
-						%li{ class: set_css_if( controller: :categories ) }
-							%a{ href: swell_media.admin_categories_path }
+						%li{ class: set_css_if( path: swell_media.category_admin_index_path ) }
+							%a{ href: swell_media.category_admin_index_path }
 								Categories
 
-						%li{ class: set_css_if( controller: :contacts ) }
-							%a{ href: swell_media.admin_contacts_path }
+						%li{ class: set_css_if( path: swell_media.contact_admin_index_path ) }
+							%a{ href: swell_media.contact_admin_index_path }
 								Contacts

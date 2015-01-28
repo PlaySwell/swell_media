@@ -2,7 +2,7 @@ module SwellMedia
 	class User < ActiveRecord::Base
 		self.table_name = 'users'
 
-		enum status: { 'active' => 0, 'revoked' => 1, 'archive' => 2, 'trash' => 3 }
+		enum status: { 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
@@ -21,14 +21,7 @@ module SwellMedia
 		validates_length_of			:password, within: Devise.password_length, allow_blank: true, if: :encrypted_password_changed?
 
 		### RELATIONSHIPS   	--------------------------------------
-		
-
-		### Plugins  	---------------------------------------------
-		# Include default devise modules. Others available are:
-		# :token_authenticatable, :confirmable,
-		# :lockable, :timeoutable and :omniauthable
-		devise :database_authenticatable, :registerable, :recoverable, :rememberable, :trackable, authentication_keys: [ :login ]
-
+	
 		include FriendlyId
 		friendly_id :name, use: :slugged
 
@@ -41,7 +34,7 @@ module SwellMedia
 			else
 				where( conditions ).first
 			end
-	    end
+		end
 
 
 		### Instance Methods  	--------------------------------------

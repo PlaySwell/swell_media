@@ -21,9 +21,7 @@ module SwellMedia
 			def copy_migrations
 				migration_template "users_migration_template.rb", "db/migrate/users_migration.rb"
 				migration_template "media_migration_template.rb", "db/migrate/swell_media_migration.rb"
-				migration_template "role_refactor_migration_template.rb", "db/migrate/role_refactor_migration.rb"
 				migration_template "asset_migration_template.rb", "db/migrate/asset_migration.rb"
-				migration_template "search_migration_template.rb", "db/migrate/search_migration.rb"
 			end
 
 		end

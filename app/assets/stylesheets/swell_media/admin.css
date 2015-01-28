@@ -10,7 +10,7 @@
  *
  *= require_self
  *= require_tree ./summernote
- *= require ./medium-editor-input/medium-editor-input
+ *= # require ./medium-editor-input/medium-editor-input ### TODO ### this breaks compile
  */
 
 .active.badge{ 

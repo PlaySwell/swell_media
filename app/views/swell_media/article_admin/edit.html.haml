@@ -7,17 +7,18 @@
 				%li
 					= link_to 'Admin', admin_index_path
 				%li
-					= link_to 'Blog Admin', admin_articles_path
+					= link_to 'Blog Admin', article_admin_index_path
 				%li
 					%strong
 						Edit
 						= @article.title
 		.col-xs-2
-			%a.btn.btn-primary{ href: preview_article_path( @article.id ), target: '_new' }
+			%a.btn.btn-primary{ href: preview_article_admin_path( @article.id ), target: '_new' }
 				%i.fa.fa-eye
 				Preview
 	
-	= form_for @article do |f|
+	=# form_for @article do |f|
+	= form_for @article, url: swell_media.article_admin_path( @article ) do |f|
 	
 		.row
 			.col-xs-8

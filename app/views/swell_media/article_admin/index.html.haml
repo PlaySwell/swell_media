@@ -1,5 +1,6 @@
 
 
+
 .container-fluid
 	.row
 		.col-xs-10
@@ -9,6 +10,7 @@
 				%li
 					%strong
 						Blog Admin
+
 		.col-xs-2
 			%a.btn.btn-success{ data: { toggle: :modal, target: '#new_article' } }
 				%i.fa.fa-plus-square
@@ -17,11 +19,11 @@
 		.col-xs-6
 			= raw paginate @articles
 		.col-xs-6
-			= form_tag admin_articles_path, method: :get, class: 'pull-right form-inline' do
+			= form_tag article_admin_index_path, method: :get, class: 'pull-right form-inline' do
 				= select_tag :status, options_from_collection_for_select( SwellMedia::Article.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
 				= text_field_tag :q, params[:q], class: 'form-control'
 				= submit_tag 'Search', class: 'btn btn-primary'
-				= link_to 'Clear', admin_articles_path, class: 'btn btn-default btn-xs'
+				= link_to 'Clear', article_admin_index_path, class: 'btn btn-default btn-xs'
 
 	.row
 		.col-xs-12
@@ -29,23 +31,25 @@
 				%thead
 					%th
 					%th
-						%a{ href: admin_articles_path( sort_by: 'title', sort_dir: 'asc' ) }
+						Title
+						%a{ href: article_admin_index_path( sort_by: 'title', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_articles_path( sort_by: 'title', sort_dir: 'desc' ) }
+						%a{ href: article_admin_index_path( sort_by: 'title', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th
 						Publish
-						%a{ href: admin_articles_path( sort_by: 'publish_at', sort_dir: 'asc' ) }
+						%a{ href: article_admin_index_path( sort_by: 'publish_at', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_articles_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
+						%a{ href: article_admin_index_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th
 						Words
-						%a{ href: admin_articles_path( sort_by: 'cached_word_count', sort_dir: 'asc' ) }
+						%a{ href: article_admin_index_path( sort_by: 'cached_word_count', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_articles_path( sort_by: 'cached_word_count', sort_dir: 'desc' ) }
+						%a{ href: article_admin_index_path( sort_by: 'cached_word_count', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th Status
+					%th Path
 					%th Category
 					%th Tags
 					%th
@@ -55,7 +59,7 @@
 							%td
 								= image_tag article.avatar, width: 50, class: 'img img-rounded'
 							%td
-								= link_to article.title, edit_article_path( article.id )
+								= link_to article.title, edit_article_admin_path( article.id )
 							%td
 								= article.publish_at.to_s( :slashed_time )
 							%td
@@ -63,6 +67,8 @@
 							%td
 								.badge{ class: article.status }
 									= article.status
+							%td
+								= article.path
 							%td
 								= article.category.try( :name ) || 'None'
 							%td
@@ -74,20 +80,23 @@
 										%b.caret
 									%ul.dropdown-menu
 										%li
-											%a{ href: edit_article_path( article ) }
+											%a{ href: edit_article_admin_path( article.id ) }
 												%i.fa.fa-pencil
 												Edit
 										%li
-											%a{ href: preview_article_path( article.id ) }
+											%a{ href: preview_article_admin_path( article.id ) }
 												%i.fa.fa-eye
 												Preview
 										%li.divider
 										%li
-											%a{ href: article_path( article ), data: { method: 'delete', confirm: 'Are you sure?' } }
+											%a{ href: article_admin_path( article ), data: { method: 'delete', confirm: 'Are you sure?' } }
 												%i.fa.fa-trash-o
 												Delete!
 
 
-
+.pull-right{ style: 'margin-right:2em;' }
+	%a{ href: empty_trash_article_admin_index_path, data: { method: 'delete', confirm: 'Are you sure?' } }
+		%btn.btn.btn-danger
+			empty trash
 
 = render 'new_modal'
