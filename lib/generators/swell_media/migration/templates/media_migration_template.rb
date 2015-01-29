@@ -11,6 +11,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.integer 			:lft
 			t.integer 			:rgt
 			t.text				:description
+			t.string			:avatar
 			t.integer			:status, 						default: 1
 			t.integer			:availability, 					default: 1 	# anyone, logged_in, just_me
 			t.integer 			:seq

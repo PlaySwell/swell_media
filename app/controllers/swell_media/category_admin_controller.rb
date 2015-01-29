@@ -7,13 +7,13 @@ module SwellMedia
 
 
 		def create
-			authorize( Category )
+			authorize( Category, :admin_create? )
 			@category = Category.new( category_params )
 			@category.user_id = current_user.id
 
 			if @category.save
 				set_flash 'Category Created'
-				redirect_to edit_category_path( @category.id )
+				redirect_to edit_category_admin_path( @category.id )
 			else
 				set_flash 'Category could not be created', :error, @category
 				redirect_to :back
@@ -21,7 +21,7 @@ module SwellMedia
 		end
 
 		def destroy
-			authorize( @category )
+			authorize( @category, :admin_destroy? )
 			if @category.trash?
 				@category.destroy
 			else
@@ -32,17 +32,35 @@ module SwellMedia
 		end
 
 		def edit
-			authorize( @category )
-			render layout: 'admin'
+			authorize( @category, :admin_edit? )
+		end
+
+		def index
+			authorize( Category, :admin? )
+			
+			sort_by = params[:sort_by] || 'created_at'
+			sort_dir = params[:sort_dir] || 'desc'
+
+			@categories = Category.order( "#{sort_by} #{sort_dir}" )
+
+			if params[:status].present? && params[:status] != 'all'
+				@categories = eval "@categories.#{params[:status]}"
+			end
+
+			if params[:q].present?
+				@categories = @categories.where( "array[:q] && keywords", q: params[:q].downcase )
+			end
+
+			@categories = @categories.page( params[:page] )
 		end
 
 		def update
-			authorize( @category )
+			authorize( @category, :admin_update? )
 			@category.attributes = category_params
 
 			if @category.save
 				set_flash 'Category Updated'
-				redirect_to edit_category_path( id: @category.id )
+				redirect_to edit_category_admin_path( id: @category.id )
 			else
 				set_flash 'Category could not be Updated', :error, @category
 				render :edit

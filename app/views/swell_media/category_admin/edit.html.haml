@@ -6,13 +6,13 @@
 				%li
 					= link_to 'Admin', admin_index_path
 				%li
-					= link_to 'Category Admin', admin_categories_path
+					= link_to 'Category Admin', category_admin_index_path
 				%li
 					%strong
 						Edit
 						= @category.name
 	
-	= form_for @category, as: :category, url: { controller: :categories, action: :update } do |f|
+	= form_for @category, as: :category, url: edit_category_admin_path( @category ) do |f|
 	
 		.row
 			.col-xs-8

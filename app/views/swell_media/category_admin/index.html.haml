@@ -23,7 +23,7 @@
 					- @categories.each do |category|
 						%tr
 							%td
-								= link_to category.name, edit_category_path( category.id )
+								= link_to category.name, edit_category_admin_path( category.id )
 							%td
 								= category.slug
 
@@ -37,12 +37,12 @@
 										%b.caret
 									%ul.dropdown-menu
 										%li
-											%a{ href: edit_category_path( category.id ) }
+											%a{ href: edit_category_admin_path( category.id ) }
 												%i.fa.fa-pencil
 												Edit
 										%li.divider
 										%li
-											%a{ href: category_path( category ), data: { method: 'delete', confirm: 'Are you sure?' } }
+											%a{ href: category_admin_path( category ), data: { method: 'delete', confirm: 'Are you sure?' } }
 												%i.fa.fa-trash-o
 												Delete!
 
