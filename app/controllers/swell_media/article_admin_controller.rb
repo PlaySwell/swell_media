@@ -14,12 +14,11 @@ module SwellMedia
 			@article.user = current_user
 			@article.status = 'draft'
 
-			if name = params[:article][:category_name]
-				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' ) unless name.blank?
+			if params[:article][:category_name].present?
+				@article.category = SwellMedia::Category.where( name: params[:article][:category_name] ).first_or_create( status: 'active' )
 			end
 
 			if @article.save
-				record_user_event( 'publish', user: current_user, on: @article, content: "published <a href='#{@article.url}'>#{@article.to_s}</a>" ) if defined?( SwellPlay )
 				set_flash 'Article Created'
 				redirect_to edit_article_admin_path( @article )
 			else
@@ -43,7 +42,7 @@ module SwellMedia
 
 
 		def empty_trash
-			authorize( @article, :admin_empty_trash? )
+			authorize( Article, :admin_empty_trash? )
 			@articles = Article.trash.destroy_all
 			redirect_to :back
 			set_flash "#{@articles.count} destroyed"
@@ -70,7 +69,7 @@ module SwellMedia
 
 
 		def preview
-			authorize( Article, :admin_preview? )
+			authorize( @article, :admin_preview? )
 			@media = @article
 			layout = 'swell_media/articles' #@media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 			render "swell_media/articles/show"
@@ -84,8 +83,8 @@ module SwellMedia
 
 			@article.attributes = article_params
 
-			if name = params[:article][:category_name]
-				@article.category = SwellMedia::Category.where( name: name ).first_or_create( status: 'active' ) unless name.blank?
+			if params[:article][:category_name].present?
+				@article.category = SwellMedia::Category.where( params[:article][:category_name] ).first_or_create( status: 'active' )
 			end
 
 			if @article.save

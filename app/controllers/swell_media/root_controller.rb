@@ -1,5 +1,5 @@
 module SwellMedia
-	class RootController < SwellMedia::MediaController
+	class RootController < ApplicationController
 		before_filter :get_media
 
 		def show

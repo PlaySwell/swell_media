@@ -18,10 +18,11 @@
 		.col-xs-6
 			= raw paginate @pages
 		.col-xs-6
-			= form_tag admin_pages_path, method: :get, class: 'pull-right form-inline' do
+			= form_tag page_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= select_tag :status, options_from_collection_for_select( SwellMedia::Page.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
 				= text_field_tag :q, params[:q], class: 'form-control'
 				= submit_tag 'Search', class: 'btn btn-primary'
-				= link_to 'Clear', admin_pages_path, class: 'btn btn-default btn-xs'
+				= link_to 'Clear', page_admin_index_path, class: 'btn btn-default btn-xs'
 
 	.row
 		.col-xs-12
@@ -30,15 +31,15 @@
 					%th
 					%th 
 						URL
-						%a{ href: admin_pages_path( sort_by: 'slug', sort_dir: 'asc' ) }
+						%a{ href: page_admin_index_path( sort_by: 'slug', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_pages_path( sort_by: 'slug', sort_dir: 'desc' ) }
+						%a{ href: page_admin_index_path( sort_by: 'slug', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th 
 						Publish At
-						%a{ href: admin_pages_path( sort_by: 'publish_at', sort_dir: 'asc' ) }
+						%a{ href: page_admin_index_path( sort_by: 'publish_at', sort_dir: 'asc' ) }
 							%i.fa.fa-arrow-up
-						%a{ href: admin_pages_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
+						%a{ href: page_admin_index_path( sort_by: 'publish_at', sort_dir: 'desc' ) }
 							%i.fa.fa-arrow-down
 					%th Status
 					%th
@@ -46,7 +47,7 @@
 					- @pages.each do |page|
 						%tr
 							%td
-								= link_to page.title, edit_page_path( page.id )
+								= link_to page.title, edit_page_admin_path( page.id )
 							%td
 								= page.slug
 							%td
@@ -61,20 +62,24 @@
 										%b.caret
 									%ul.dropdown-menu
 										%li
-											%a{ href: edit_page_path( page.id ) }
+											%a{ href: edit_page_admin_path( page.id ) }
 												%i.fa.fa-pencil
 												Edit
 										%li
-											%a{ href: preview_page_path( page.id ) }
+											%a{ href: preview_page_admin_path( page.id ) }
 												%i.fa.fa-eye
 												Preview
 										%li.divider
 										%li
-											%a{ href: page_path( page ), data: { method: 'delete', confirm: 'Are you sure?' } }
+											%a{ href: page_admin_path( page ), data: { method: 'delete', confirm: 'Are you sure?' } }
 												%i.fa.fa-trash-o
 												Delete!
 
 
+.pull-right{ style: 'margin-right:2em;' }
+	%a{ href: empty_trash_page_admin_index_path, data: { method: 'delete', confirm: 'Are you sure?' } }
+		%btn.btn.btn-danger
+			empty trash
 
 
 = render 'new_modal'

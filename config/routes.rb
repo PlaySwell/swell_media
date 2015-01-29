@@ -9,15 +9,14 @@ SwellMedia::Engine.routes.draw do
 		delete :empty_trash, on: :collection 
 	end
 
-	resources :categories
 	resources :category_admin
 
 	resources :contacts
 	resources :contact_admin
 
-	resources :pages
 	resources :page_admin do
 		get :preview, on: :member
+		delete :empty_trash, on: :collection 
 	end
 
 	resources :assets do

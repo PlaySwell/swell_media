@@ -6,17 +6,17 @@
 				%li
 					= link_to 'Admin', admin_index_path
 				%li
-					= link_to 'Page Admin', admin_pages_path
+					= link_to 'Page Admin', page_admin_index_path
 				%li
 					%strong
 						Edit
 						= @page.title
 		.col-xs-2
-			%a.btn.btn-primary{ href: preview_page_path( @page.id ), target: '_new' }
+			%a.btn.btn-primary{ href: preview_page_admin_path( @page.id ), target: '_new' }
 				%i.fa.fa-eye
 				Preview
 	
-	= form_for @page do |f|
+	= form_for @page, url: page_admin_path( @page ) do |f|
 	
 		.row
 			.col-xs-8

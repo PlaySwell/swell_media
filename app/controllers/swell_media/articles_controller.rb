@@ -1,5 +1,5 @@
  module SwellMedia
-	class ArticlesController < SwellMedia::MediaController
+	class ArticlesController < ApplicationController
 		
 		def index
 			@articles = Article.published.order( publish_at: :desc )
