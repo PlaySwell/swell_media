@@ -43,8 +43,8 @@ module SwellMedia
 
 		def update
 			authorize( @contact, :admin_update? )
-			
-			@contact.attributes = contact_params
+
+			@contact.update( contact_params )
 
 			if @contact.save
 				set_flash 'Contact Updated'
@@ -59,11 +59,9 @@ module SwellMedia
 		private
 
 			def contact_params
-				if params[:contact].present?
-					params.require( :contact ).permit( :email, :subject, :message, :contact_type )
-				else
-					return { email: params[:email], subject: params[:subject], message: params[:message], contact_type: params[:contact_type] }
-				end
+
+				params.require( :contact ).permit( :status )
+
 			end
 
 			def get_contact

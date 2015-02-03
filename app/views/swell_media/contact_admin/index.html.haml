@@ -33,7 +33,7 @@
 							%td
 								= contact.contact_type || 'contact'
 							%td
-								= link_to contact.email, edit_contact_path( contact )
+								= link_to contact.email, edit_contact_admin_path( contact )
 							%td
 								= contact.created_at.to_s( :long )
 							%td
@@ -43,11 +43,11 @@
 										%b.caret
 									%ul.dropdown-menu
 										%li
-											%a{ href: edit_contact_path( contact ) }
+											%a{ href: edit_contact_admin_path( contact ) }
 												%i.fa.fa-pencil
 												Edit
 										%li.divider
 										%li
-											%a{ href: contact_path( contact ), data: { method: 'delete', confirm: 'Are you sure?' } }
+											%a{ href: contact_admin_path( contact ), data: { method: 'delete', confirm: 'Are you sure?' } }
 												%i.fa.fa-trash-o
 												Delete!

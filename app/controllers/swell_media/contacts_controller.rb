@@ -4,7 +4,6 @@ module SwellMedia
 		skip_before_filter :verify_authenticity_token, :only => [ :create ]
 
 		def create
-			authorize( Contact )
 			@contact = Contact.new( contact_params )
 
 			if @contact.save

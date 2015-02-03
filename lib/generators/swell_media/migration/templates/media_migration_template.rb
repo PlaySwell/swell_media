@@ -35,7 +35,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:ip
 			t.string		:contact_type
 			t.string		:http_referrer
-			t.string		:status, 		default: :active 
+			t.integer		:status, 							default: 1
 			t.hstore		:properties
 			t.timestamps
 		end

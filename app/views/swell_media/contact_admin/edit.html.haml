@@ -14,9 +14,9 @@
 						= @contact.email
 		.col-xs-2
 			.pull-right
-				= link_to 'Delete', admin_contact_path( @contact ), method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
+				= link_to 'Delete', contact_admin_path( @contact ), method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
 				
-	= form_for @contact, url: contact_admin_path( @ccontact ) do |f|
+	= form_for @contact, url: contact_admin_path( @contact ) do |f|
 		.row
 			.col-xs-8
 				%fieldset{ disabled: true }
@@ -31,3 +31,9 @@
 					.form-group
 						= f.label :message
 						= f.text_area :message, class: 'form-control disabled', rows: 4
+			.col-xs-4
+				.form-group
+					= f.label :status
+					= f.collection_select :status, SwellMedia::Contact.statuses, :first, :first, {}, class: 'form-control'
+				.form-group
+					= f.submit 'Enter', class: 'btn btn-primary'
