@@ -9,6 +9,7 @@ gemspec
 gem "acts-as-taggable-on"
 gem "awesome_nested_set", '~> 3.0.0.rc.3'
 gem 'devise'
+gem "fastimage"
 gem "friendly_id", '~> 5.0.0'
 gem "medium-editor-rails"
 

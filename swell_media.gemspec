@@ -20,6 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency "awesome_nested_set", '~> 3.0.0.rc.3'
   s.add_dependency 'coffee-rails', '~> 4.0.0'
   s.add_dependency "devise"
+	s.add_dependency "fastimage"
   s.add_dependency "fog"
   s.add_dependency "friendly_id", '~> 5.0.0'
   s.add_dependency "haml"

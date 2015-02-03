@@ -62,7 +62,7 @@ module SwellMedia
 
 		def avatar_asset_file=( file )
 			return false unless file.present?
-			asset = Asset.new(use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset = ImageAsset.new(use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
 			asset.uploader = file
 			asset.save
 			self.avatar = asset.try(:url)
@@ -74,7 +74,7 @@ module SwellMedia
 
 		def avatar_asset_url=( url )
 			return false unless url.present?
-			asset = Asset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
+			asset = ImageAsset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active', parent_obj: self)
 			asset.save unless asset.nil?
 			puts "avatar_asset_url= asset: #{asset}"
 			self.avatar = asset.try(:url) || url
