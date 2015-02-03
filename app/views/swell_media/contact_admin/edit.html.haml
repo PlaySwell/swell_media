@@ -6,7 +6,7 @@
 				%li
 					= link_to 'Admin', admin_index_path
 				%li
-					= link_to 'Contact Admin', admin_contacts_path
+					= link_to 'Contact Admin', contact_admin_index_path
 				%li
 					%strong
 						= @contact.contact_type || 'contact'
@@ -14,9 +14,9 @@
 						= @contact.email
 		.col-xs-2
 			.pull-right
-				= link_to 'Delete', @contact, method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
+				= link_to 'Delete', admin_contact_path( @contact ), method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
 				
-	= form_for @contact do |f|
+	= form_for @contact, url: contact_admin_path( @ccontact ) do |f|
 		.row
 			.col-xs-8
 				%fieldset{ disabled: true }

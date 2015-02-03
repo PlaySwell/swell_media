@@ -4,10 +4,21 @@
 		.col-xs-10
 			%ul.breadcrumb
 				%li
-					= link_to 'Admin', admin_index_path
+					= link_to 'Admin', contact_admin_index_path
 				%li
 					%strong
 						Contact Admin
+	
+	.row
+		.col-xs-6
+			= raw paginate @contacts
+		.col-xs-6
+			= form_tag contact_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= select_tag :status, options_from_collection_for_select( SwellMedia::Contact.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
+				= text_field_tag :q, params[:q], class: 'form-control'
+				= submit_tag 'Search', class: 'btn btn-primary'
+				= link_to 'Clear', page_admin_index_path, class: 'btn btn-default btn-xs'
+
 	.row
 		.col-xs-12
 			%table.table

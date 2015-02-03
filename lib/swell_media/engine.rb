@@ -6,7 +6,6 @@ require 'haml'
 require 'jquery-rails'
 require 'jquery-ui-rails'
 require 'kaminari'
-require 'medium-editor-rails'
 require 'pundit'
 require 'swell_media/controllers/application_controller_extensions'
 

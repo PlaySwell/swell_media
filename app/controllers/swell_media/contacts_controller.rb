@@ -3,16 +3,6 @@ module SwellMedia
 		
 		skip_before_filter :verify_authenticity_token, :only => [ :create ]
 
-		before_filter :authenticate_user!, only: [ :admin, :edit, :update, :destroy ]
-
-		def admin
-			authorize( Contact )
-			@contacts = Contact.order( 'created_at desc' )
-
-			render layout: 'admin'
-		end
-
-
 		def create
 			authorize( Contact )
 			@contact = Contact.new( contact_params )
@@ -34,20 +24,6 @@ module SwellMedia
 			end
 		end
 
-		def destroy
-			@contact = Contact.find( params[:id] )
-			authorize( @contact )
-			@contact.destroy
-			set_flash "#{@contact.contact_type || 'contact'} from #{@contact.email} Deleted"
-			redirect_to admin_contacts_path
-		end
-
-		def edit
-			@contact = Contact.find( params[:id] )
-			authorize( @contact )
-			render layout: 'admin'
-		end
-
 
 		def new
 			@contact = Contact.new	
@@ -56,7 +32,6 @@ module SwellMedia
 
 
 		private
-
 			def contact_params
 				if params[:contact].present?
 					params.require( :contact ).permit( :email, :subject, :message, :contact_type )
@@ -64,5 +39,6 @@ module SwellMedia
 					return { email: params[:email], subject: params[:subject], message: params[:message], contact_type: params[:contact_type] }
 				end
 			end
+
 	end
 end

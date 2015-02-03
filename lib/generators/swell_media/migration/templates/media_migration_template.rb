@@ -29,6 +29,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 
 		create_table :contacts do |t|
 			t.string		:email
+			t.string		:name
 			t.string		:subject
 			t.text			:message
 			t.string		:ip
