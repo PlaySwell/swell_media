@@ -18,6 +18,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "acts-as-taggable-on"
   s.add_dependency "awesome_nested_set", '~> 3.0.2'
+  s.add_dependency "browser"
   s.add_dependency 'coffee-rails', '~> 4.1.0'
   s.add_dependency "devise"
   s.add_dependency "fog"
