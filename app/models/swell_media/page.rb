@@ -6,13 +6,12 @@ module SwellMedia
 			self.find_by_slug( 'homepage' )
 		end
 
-		def plain_slug?
-			true
+
+
+		def page_meta
+			super.merge( fb_type: 'article' )
 		end
 
-		def static_slug?
-			true
-		end
 		
 	end
 

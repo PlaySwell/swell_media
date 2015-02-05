@@ -26,7 +26,7 @@ module SwellMedia
 		def record_user_event( event='visit', args={} )
 			# this method can be called by any controller to log a specific event
 			# such as a purchase, comment, newsletter signup, etc.
-
+			return false unless SwellMedia.log_events
 			args[:request] ||= request
 			
 			args[:user] ||= current_user
@@ -92,16 +92,16 @@ module SwellMedia
 			args[:twitter] ||= {}
 			@page_meta = args
 			
-			@page_meta[:title] ||= ENV['APP_NAME']
-			@page_meta[:description] ||= ENV['APP_DESCRIPTION']
+			@page_meta[:title] ||= SwellMedia.app_name
+			@page_meta[:description] ||= SwellMedia.app_description
+			@page_meta[:image] ||= SwellMedia.app_logo
 
-			@page_meta[:og][:site_name] ||= ENV['APP_NAME']
-			@page_meta[:og][:title] ||= @page_meta[:title]
-			@page_meta[:og][:type] ||= 'article' # blog, website
-			@page_meta[:og][:url] ||= request.url
+			@page_meta[:site_name] ||= SwellMedia.app_name
+			@page_meta[:fb_type] ||= 'article' # blog, website
+			@page_meta[:url] ||= request.url
 
-			@page_meta[:twitter][:card] ||= 'summary'
-			@page_meta[:twitter][:site] ||= ENV['TWITTER_SITE']
+			@page_meta[:twitter_format] ||= 'summary'
+			@page_meta[:twitter_site] ||= SwellMedia.twitter_handle
 
 		end
 

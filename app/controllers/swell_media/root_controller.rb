@@ -12,20 +12,11 @@ module SwellMedia
 				@media_comments = @media_comments.tagged_with(params[:comment_tag]) if params[:comment_tag]
 			end
 
-			record_user_event( 'impression', user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
+			record_user_event( 'impression', guest_session: @guest_ession, user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
-			twitter_card = 'summary'
-			twitter_card = ENV['TWITTER_WITH_AVATAR_CARD'] || 'summary_large_image' unless @media.try(:avatar).blank?
-
-			if @media.slug == 'homepage'
-				set_page_meta( title: "#{ENV['APP_NAME']}", twitter: { site: ENV['TWITTER_SITE'], card: twitter_card, description: ENV['TWITTER_HOMEPAGE_DESCRIPTION'] }, og: { type: 'website', image: @media.avatar, description: ENV['TWITTER_HOMEPAGE_DESCRIPTION'] } )
-			elsif @media.title.present?
-				set_page_meta( title: "#{@media.title} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.description), twitter: { site: ENV['TWITTER_SITE'], card: twitter_card }, og: { description: @media.subtitle, image: @media.avatar } )
-			else
-				set_page_meta( title: "#{@media.sanitized_content[0..128]} | #{ENV['APP_NAME']}", description: ActionView::Base.full_sanitizer.sanitize(@media.content), twitter: { site: ENV['TWITTER_SITE'], card: 'summary' }, og: { description: ActionView::Base.full_sanitizer.sanitize(@media.content), image: @media.avatar } )
-			end
+			set_page_meta( @media.page_meta )
 
 			begin
 				render "#{@media.class.name.underscore.pluralize}/show", layout: layout

@@ -9,6 +9,11 @@ module SwellMedia
 			self.category = SwellMedia::Category.where( name: name ).first_or_create
 		end
 
+		def page_meta
+			super.merge( fb_type: 'blog' )
+		end
+		
+
 		def reading_time( args={} )
 			wpm = args[:wpm] || 225
 

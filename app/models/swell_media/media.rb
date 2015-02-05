@@ -8,7 +8,7 @@ module SwellMedia
 
 		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
 
-		validates		:title, presence: true, unless: :allow_blank_title
+		validates		:title, presence: true, unless: :allow_blank_title?
 
 		attr_accessor	:slug_pref
 
@@ -69,6 +69,23 @@ module SwellMedia
 			self.sanitized_content.size
 		end
 
+		def page_meta
+			if self.title.present?
+				title = "#{self.title} | #{SwellMedia.app_name}"
+			else
+				title = SwellMedia.app_name
+			end
+
+			return {
+				title: title,
+				description: self.sanitized_description,
+				image: self.avatar,
+				url: self.url,
+				twitter_format: 'summary_large_image',
+				fb_type: 'article'
+			}
+		end
+
 		def path( args={} )
 			path = "/#{self.slug}"
 
@@ -83,6 +100,9 @@ module SwellMedia
 			ActionView::Base.full_sanitizer.sanitize( self.content )
 		end
 
+		def sanitized_description
+			ActionView::Base.full_sanitizer.sanitize( self.description )
+		end
 
 		def should_generate_new_friendly_id?
 			self.slug.nil? || self.slug_pref.present?
@@ -148,8 +168,8 @@ module SwellMedia
 
 			end
 
-			def allow_blank_title
-				false
+			def allow_blank_title?
+				self.slug_pref.present?
 			end
 				
 
