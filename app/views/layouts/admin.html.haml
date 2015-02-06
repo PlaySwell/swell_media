@@ -6,13 +6,7 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
-		= stylesheet_link_tag "swell_media/base", media: "all", "data-turbolinks-track" => true
 		= stylesheet_link_tag "swell_media/admin", media: "all", "data-turbolinks-track" => true
-		= stylesheet_link_tag 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/themes/smoothness/jquery-ui.css'
-
-
-		= javascript_include_tag "swell_media/admin"
-		= javascript_include_tag '//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'
 
 	
 	%body
@@ -32,3 +26,5 @@
 
 			%footer
 				= render 'application/footer'
+
+		= javascript_include_tag "swell_media/admin"
