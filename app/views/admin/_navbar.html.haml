@@ -32,3 +32,7 @@
 						%li{ class: set_css_if( path: swell_media.contact_admin_index_path ) }
 							%a{ href: swell_media.contact_admin_index_path }
 								Contacts
+						- if SwellMedia.log_events
+							%li{ class: set_css_if( path: swell_media.user_event_admin_index_path ) }
+								%a{ href: swell_media.user_event_admin_index_path }
+									Data Log

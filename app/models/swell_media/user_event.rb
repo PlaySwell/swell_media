@@ -57,6 +57,8 @@ module SwellMedia
 
 			parent_obj = args[:on] || args[:obj]
 
+			event.http_referrer = args[:guest_session].last_http_referrer
+
 			event.category_id = parent_obj.try( :category_id )
 
 			event.rec_user_id = args[:rec_user].try( :id )

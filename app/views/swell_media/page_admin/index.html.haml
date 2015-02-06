@@ -47,7 +47,7 @@
 					- @pages.each do |page|
 						%tr
 							%td
-								= link_to page.title, edit_page_admin_path( page.id )
+								= link_to page.to_s, edit_page_admin_path( page.id )
 							%td
 								= page.slug
 							%td

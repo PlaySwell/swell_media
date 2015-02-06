@@ -1,0 +1,78 @@
+
+
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					%strong
+						User Events
+		.col-xs-2
+	
+	.row
+		.col-xs-6
+			= raw paginate @events
+			%b= pluralize @count, 'event'
+		.col-xs-6
+			= form_tag user_event_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= select_tag :event_name, options_for_select( SwellMedia::UserEvent.uniq.pluck( :name ), params[:event_name] ), { prompt: "-- All --", class: 'form-control' }
+				= text_field_tag :q, params[:q], class: 'form-control'
+				= submit_tag 'Search', class: 'btn btn-primary'
+				= link_to 'Clear', user_event_admin_index_path, class: 'btn btn-default btn-xs'
+
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th User
+					%th Name
+					%th Browser
+					%th Content
+					%th last Ref
+					%th Ref User
+					%th Value
+					%th Created At
+					%th
+				%tbody
+					- @events.each do |event|
+						%tr
+							
+							%td
+								- if event.user
+									= event.user 
+								- elsif event.guest_session.user
+									= "[#{event.guest_session.user}]"
+								- else
+									Guest
+							%td
+								= link_to event.name, edit_user_event_admin_path( event.id )
+							%td
+								= event.guest_session
+							%td
+								= raw event.content
+							%td
+								= event.http_referrer
+							%td
+								= event.ref_user
+							%td
+								= event.value
+							%td
+								= event.created_at
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_user_event_admin_path( event ) }
+												%i.fa.fa-pencil
+												Edit
+										%li.divider
+										%li
+											%a{ href: user_event_admin_path( event ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!

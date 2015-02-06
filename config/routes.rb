@@ -9,6 +9,11 @@ SwellMedia::Engine.routes.draw do
 		delete :empty_trash, on: :collection 
 	end
 
+	resources :assets do
+		post :callback_create, on: :collection
+		get :callback_create, on: :collection
+	end
+
 	resources :category_admin
 
 	resources :contacts
@@ -19,10 +24,9 @@ SwellMedia::Engine.routes.draw do
 		delete :empty_trash, on: :collection 
 	end
 
-	resources :assets do
-		post :callback_create, on: :collection
-		get :callback_create, on: :collection
-	end
+
+	resources :user_event_admin
+	
 
 	resources :imports
 	resources :exports

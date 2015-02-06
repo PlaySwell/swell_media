@@ -118,7 +118,7 @@ module SwellMedia
 		end
 
 		def to_s
-			self.title
+			self.title.present? ? self.title : self.slug
 		end
 
 		def url( args={} )
