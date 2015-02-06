@@ -1,0 +1,28 @@
+.aside-inner
+	.sidebar
+		.nav
+			%li{ class: set_css_if( controller: 'admin' ) }
+				%a{ href: swell_media.admin_index_path }
+					%em.icon-speedometer
+					Dashboard
+			%li{ class: set_css_if( controller: 'article_admin' ) }
+				%a{ href: swell_media.article_admin_index_path }
+					%em.icon-notebook
+					Blog
+			%li{ class: set_css_if( controller: 'page_admin' ) }
+				%a{ href: swell_media.page_admin_index_path }
+					%em.fa.fa-file-o
+					Pages
+			%li{ class: set_css_if( controller: 'category_admin' ) }
+				%a{ href: swell_media.category_admin_index_path }
+					%em.fa.fa-sitemap
+					Categories
+			%li{ class: set_css_if( controller: 'contact_admin' ) }
+				%a{ href: swell_media.contact_admin_index_path }
+					%em.fa.fa-group
+					Contacts
+			- if SwellMedia.log_events
+				%li{ class: set_css_if( controller: 'user_event_admin' ) }
+					%a{ href: swell_media.user_event_admin_index_path }
+						%em.fa.fa-bar-chart
+						Data Log
