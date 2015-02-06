@@ -6,8 +6,7 @@
 %html{ lang: :en }
 	%head
 		= render 'application/html_head', args: {}
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+		= stylesheet_link_tag "swell_media/base", media: "all", "data-turbolinks-track" => true
 		= stylesheet_link_tag "swell_media/admin", media: "all", "data-turbolinks-track" => true
 		= stylesheet_link_tag 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/themes/smoothness/jquery-ui.css'
 
@@ -17,15 +16,19 @@
 
 	
 	%body
-	
-		%header#header
-			= render 'admin/navbar'
+		.wrapper
+			%header.topnavbar-wrapper
+				= render 'admin/navbar'
 
-		%section#main{ style: 'margin-top:4em;' }
-			= render 'application/flash'
-			= yield
-		%br
-		%br
+			%aside.aside
+				= render 'admin/sidebar'
 
-		%footer#footer
-			= render 'application/footer'
+			%section
+				.content-wrapper
+					= render 'application/flash'
+					= yield
+			%br
+			%br
+
+			%footer
+				= render 'application/footer'
