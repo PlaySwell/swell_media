@@ -32,8 +32,8 @@
 					%th Browser
 					%th Content
 					%th last Ref
-					%th Ref User
-					%th Value
+					%th IP
+					%th Human?
 					%th Created At
 					%th
 				%tbody
@@ -56,9 +56,9 @@
 							%td
 								= event.http_referrer
 							%td
-								= event.ref_user
+								= event.guest_session.try( :ip )
 							%td
-								= event.value
+								= event.guest_session.try( :human )
 							%td
 								= event.created_at
 							%td
