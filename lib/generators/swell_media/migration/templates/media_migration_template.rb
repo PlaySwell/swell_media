@@ -32,14 +32,15 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:name
 			t.string		:subject
 			t.text			:message
+			t.string		:type
 			t.string		:ip
-			t.string		:contact_type
+			t.string		:sub_type
 			t.string		:http_referrer
 			t.integer		:status, 							default: 1
 			t.hstore		:properties
 			t.timestamps
 		end
-		add_index :contacts, :email
+		add_index :contacts, [ :email, :type ]
 
 
 		create_table :friendly_id_slugs do |t|
