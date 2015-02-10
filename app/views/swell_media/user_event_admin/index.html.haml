@@ -43,7 +43,7 @@
 							%td
 								- if event.user
 									= event.user 
-								- elsif event.guest_session.user
+								- elsif event.guest_session.try( :user )
 									= "[#{event.guest_session.user}]"
 								- else
 									Guest
