@@ -31,17 +31,17 @@ module SwellMedia
 		end
 
 		def self.generate_daily_series( event='visit', start_date=1.month.ago, end_date=Time.zone.now )
-			start_date = start_date.beginning_of_day
-			end_date = end_date.end_of_day
+			start_date = start_date.to_date.beginning_of_day
+			end_date = end_date.to_date.end_of_day
 
 			query = <<-END 
 				SELECT
-					date,
+					date( date ),
 					coalesce( count, 0 ) AS count
 				FROM
 					generate_series(
-						'#{start_date}'::timestamp,
-						'#{end_date}'::timestamp,
+						'#{start_date}'::date,
+						'#{end_date}'::date,
 						'1 day') AS date
 				LEFT OUTER JOIN
 					(SELECT
@@ -62,7 +62,7 @@ module SwellMedia
 		def self.dated_between( start_date=1.month.ago, end_date=1.month.from_now )
 			start_date = start_date.beginning_of_day
 			end_date = end_date.end_of_day
-			
+
 			where( "created_at between ? and ?", start_date, end_date )
 		end
 

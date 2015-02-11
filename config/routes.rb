@@ -24,7 +24,7 @@ SwellMedia::Engine.routes.draw do
 		delete :empty_trash, on: :collection 
 	end
 
-
+	resources :stats_admin
 	resources :user_event_admin
 	
 
