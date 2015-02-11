@@ -42,10 +42,11 @@
 
 
     var $stats_chart = $('#stats_chart');
-    var $chart_data = $.parseJSON( $('#chart_data').text() );
+    var $chart_data = $('#chart_data');
 
-    if( $stats_chart.length ){
-    	$.plot( $stats_chart, $chart_data, options );
+    if( $stats_chart.length && $chart_data.length ){
+    	var data = $.parseJSON( $chart_data.text() ); 
+    	$.plot( $stats_chart, data, options );
     }
 
   });
