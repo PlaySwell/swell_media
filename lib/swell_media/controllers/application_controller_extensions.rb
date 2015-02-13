@@ -33,8 +33,6 @@ module SwellMedia
 
 			args[:guest_session] ||= @guest_session
 
-			args[:ref_user] ||= @ref_user
-
 			if user_event = UserEvent.record( event, args )
 				# this is here in the controller so we can access request obj, cookies, etc. if it results in another UserEvent
 				# should move into a cron....
@@ -80,7 +78,7 @@ module SwellMedia
 				session.update( last_http_referrer: request.referrer )
 				return session
 			else
-				session = GuestSession.create_from_request( request, params: params )
+				session = GuestSession.create_from_request( request, params: params, user: current_user )
 				cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
 				return session
 			end
@@ -106,21 +104,21 @@ module SwellMedia
 		end
 
 
-		def set_ref_user
-			# if the ref is present and (if logged in the ref is not that of the current user) then
-			# cookie the user with that ref.
-			ref_user = nil
-			if params[:ref].present? && ( params[:ref] != current_user.try(:slug) && params[:ref] != current_user.try(:id) )
-				ref_user = User.where( slug: params[:ref] ).first || User.where( id: params[:ref] ).first
-	      		# referrer cookie is always user.id
-				cookies.signed[:ref] = { value: ref_user.id, expires: 30.days.from_now } if ref_user.present?
-				cookies.signed[:rec] = { value: ref_user.id, expires: 30.days.from_now, path: request.path } if ref_user.present?
-			else
-				ref_user = User.where( id: cookies.signed[:ref] ).first if cookies.signed[:ref].present?
-			end
+		# def set_ref_user
+		# 	# if the ref is present and (if logged in the ref is not that of the current user) then
+		# 	# cookie the user with that ref.
+		# 	ref_user = nil
+		# 	if params[:ref].present? && ( params[:ref] != current_user.try(:slug) && params[:ref] != current_user.try(:id) )
+		# 		ref_user = User.where( slug: params[:ref] ).first || User.where( id: params[:ref] ).first
+	 #      		# referrer cookie is always user.id
+		# 		cookies.signed[:ref] = { value: ref_user.id, expires: 30.days.from_now } if ref_user.present?
+		# 		cookies.signed[:rec] = { value: ref_user.id, expires: 30.days.from_now, path: request.path } if ref_user.present?
+		# 	else
+		# 		ref_user = User.where( id: cookies.signed[:ref] ).first if cookies.signed[:ref].present?
+		# 	end
 
-			return ref_user == current_user ? nil : ref_user
-		end
+		# 	return ref_user == current_user ? nil : ref_user
+		# end
 
 
 

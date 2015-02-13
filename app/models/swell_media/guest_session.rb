@@ -12,7 +12,8 @@ module SwellMedia
 
 		def self.create_from_request( request, args={} )
 			# todo -- more
-			session = self.new( ip: request.ip, 
+			session = self.new( user: args[:user],
+								ip: request.ip, 
 								user_agent: request.user_agent, 
 								original_http_referrer: request.referrer,
 								last_http_referrer: request.referrer,
@@ -20,6 +21,7 @@ module SwellMedia
 								params: {}, properties: {} )
 			
 			if args[:params].present?
+				session.src = args[:params][:src]
 				args[:params].each do |k, v|
 					session.params[k] = v
 				end

@@ -78,10 +78,6 @@ module SwellMedia
 			order( 'created_at desc' ).limit( num )
 		end
 
-		def self.recommendations
-			where( "ref_user_id is not null" ).where( name: 'impression' )
-		end
-
 		
 		def self.record( name, args={} )
 			return false unless name.present?
@@ -90,15 +86,15 @@ module SwellMedia
 			event = self.new( name: name.to_s, guest_session_id: args[:guest_session].id )
 			
 			event.user_id = args[:user].try( :id )
-			event.ref_user_id = args[:ref_user].try( :id )
 
 			parent_obj = args[:on] || args[:obj]
+			
+			event.src = args[:guest_session].src
 
 			event.http_referrer = args[:guest_session].last_http_referrer
 
 			event.category_id = parent_obj.try( :category_id )
 
-			event.rec_user_id = args[:rec_user].try( :id )
 			event.content = args[:content]
 
 			rate = args[:rate] || 5.minutes

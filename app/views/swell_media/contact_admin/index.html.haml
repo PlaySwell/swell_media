@@ -31,7 +31,7 @@
 					- @contacts.each do |contact|
 						%tr
 							%td
-								= contact.contact_type || 'contact'
+								= contact.type || 'contact'
 							%td
 								= link_to contact.email, edit_contact_admin_path( contact )
 							%td
