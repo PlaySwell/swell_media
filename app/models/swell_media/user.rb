@@ -6,6 +6,7 @@ module SwellMedia
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
+		has_many	:oauth_credentials, dependent: :destroy
 
 		attr_accessor	:login
 
