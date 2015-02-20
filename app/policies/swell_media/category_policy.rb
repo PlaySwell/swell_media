@@ -1,6 +1,10 @@
 module SwellMedia
 	class CategoryPolicy < ApplicationPolicy
-		
+
+		def index?
+			user.admin?
+		end
+
 		def admin?
 			user.admin?
 		end
