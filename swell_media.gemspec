@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency "browser"
   s.add_dependency 'coffee-rails', '~> 4.1.0'
   s.add_dependency "devise"
+	s.add_dependency "fastimage"
   s.add_dependency "fog"
   s.add_dependency "friendly_id", '~> 5.1.0'
   s.add_dependency "haml"
