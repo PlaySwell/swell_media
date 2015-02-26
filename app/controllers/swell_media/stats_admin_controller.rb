@@ -5,6 +5,8 @@ module SwellMedia
 
 
 		def index
+			authorize( UserEvent, :admin? )
+			
 			@stat = params[:stat] || 'visit'
 			@start_date = params[:start_date] || 30.days.ago
 			@end_date = params[:end_date] || Time.zone.now
