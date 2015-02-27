@@ -17,7 +17,7 @@
 				= select_tag :status, options_from_collection_for_select( SwellMedia::Contact.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
 				= text_field_tag :q, params[:q], class: 'form-control'
 				= submit_tag 'Search', class: 'btn btn-primary'
-				= link_to 'Clear', page_admin_index_path, class: 'btn btn-default btn-xs'
+				= link_to 'Clear', contact_admin_index_path, class: 'btn btn-default btn-xs'
 
 	.row
 		.col-xs-12

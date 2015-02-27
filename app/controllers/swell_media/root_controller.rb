@@ -8,8 +8,7 @@ module SwellMedia
 
 			if defined?( SwellSocial )
 				@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name )
-
-				@media_comments = @media_comments.tagged_with(params[:comment_tag]) if params[:comment_tag]
+				@media_comments = @media_comments.tagged_with( params[:comment_tag] ) if params[:comment_tag].present?
 			end
 
 			record_user_event( 'impression', guest_session: @guest_ession, user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )

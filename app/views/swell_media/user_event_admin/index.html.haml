@@ -28,12 +28,10 @@
 			%table.table
 				%thead
 					%th User
+					%th Content
 					%th Name
 					%th Browser
-					%th Content
-					%th last Ref
 					%th IP
-					%th Human?
 					%th Created At
 					%th
 				%tbody
@@ -48,19 +46,20 @@
 								- else
 									Guest
 							%td
+								= raw event.content
+							%td
 								= link_to event.name, edit_user_event_admin_path( event.id )
 							%td
 								= event.guest_session
 							%td
-								= raw event.content
-							%td
-								= event.http_referrer
-							%td
 								= event.guest_session.try( :ip )
 							%td
-								= event.guest_session.try( :human )
-							%td
-								= event.created_at
+								.small{ style: 'font-size: 85%;' }
+									%i.fa.fa-clock
+									= time_ago_in_words( event.created_at )
+									ago
+									%br
+									= event.created_at.to_s( :slashed_time )
 							%td
 								.btn-group
 									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }

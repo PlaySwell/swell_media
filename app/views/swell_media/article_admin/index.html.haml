@@ -93,10 +93,10 @@
 												%i.fa.fa-trash-o
 												Delete!
 
-
-.pull-right{ style: 'margin-right:2em;' }
-	%a{ href: empty_trash_article_admin_index_path, data: { method: 'delete', confirm: 'Are you sure?' } }
-		%btn.btn.btn-danger
-			empty trash
+- if SwellMedia::Article.trash.present?
+	.pull-right{ style: 'margin-right:2em;' }
+		%a{ href: empty_trash_article_admin_index_path, data: { method: 'delete', confirm: 'Are you sure?' } }
+			%btn.btn.btn-danger
+				empty trash
 
 = render 'new_modal'
