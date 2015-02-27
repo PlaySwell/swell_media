@@ -33,6 +33,8 @@ module SwellMedia
 
 			args[:guest_session] ||= @guest_session
 
+			args[:req_path] ||= request.fullpath
+
 			if user_event = UserEvent.record( event, args )
 				# this is here in the controller so we can access request obj, cookies, etc. if it results in another UserEvent
 				# should move into a cron....

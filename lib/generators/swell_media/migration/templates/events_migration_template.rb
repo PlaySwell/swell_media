@@ -37,6 +37,7 @@ class EventsMigration < ActiveRecord::Migration
 			t.integer			:value
 			t.string			:http_referrer
 			t.string			:req_path
+			t.string			:req_full_path
 			t.integer			:status, 						default: 1
 			t.integer			:availability, 					default: 1 	# anyone, logged_in, just_me
 			t.datetime			:publish_at

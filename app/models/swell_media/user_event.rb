@@ -91,6 +91,9 @@ module SwellMedia
 			
 			event.src = args[:guest_session].src
 
+			event.req_path = event.req_full_path = args[:req_path]
+			event.req_path = event.req_full_path.split('?')[0] unless event.req_full_path.blank? || not( event.req_full_path.include?('?') ) #rescue true
+
 			event.http_referrer = args[:guest_session].last_http_referrer
 
 			event.category_id = parent_obj.try( :category_id )
