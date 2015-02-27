@@ -18,12 +18,14 @@ module SwellMedia
 		mattr_accessor :app_description
 		mattr_accessor :app_logo
 		mattr_accessor :twitter_handle
+		mattr_accessor :max_session_inactivity
 
         self.log_events = true
         self.app_name = 'SwellApp'
         self.app_description = 'A Very Swell App indeed'
         self.app_logo = 'https://media.licdn.com/media/p/1/000/27f/2a3/36f3707.jpg'
         self.twitter_handle = '@gkparishphilp'
+				self.max_session_inactivity = 30.minutes
 
 	end
 

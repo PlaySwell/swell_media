@@ -91,6 +91,10 @@ module SwellMedia
 			
 			event.src = args[:guest_session].src
 
+
+			event.session_cluster_created_at = Time.at( args.delete(:session_cluster_created_at) ) if args[:session_cluster_created_at].is_a? Integer
+			event.session_cluster_created_at ||= args[:session_cluster_created_at]
+
 			event.req_path = event.req_full_path = args[:req_path]
 			event.req_path = event.req_full_path.split('?')[0] unless event.req_full_path.blank? || not( event.req_full_path.include?('?') ) #rescue true
 
