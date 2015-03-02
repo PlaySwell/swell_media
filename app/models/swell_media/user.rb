@@ -64,6 +64,7 @@ module SwellMedia
 
 			puts "new_from_response (d) - user fields"
 			user.attributes = response.user_fields
+			user.status = SwellMedia.default_user_status if SwellMedia.default_user_status.present?
 
 			puts "new_from_response (e) - oauth creds"
 			user.oauth_credentials.build( response.credential_fields )

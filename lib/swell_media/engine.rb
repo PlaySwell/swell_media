@@ -22,6 +22,7 @@ module SwellMedia
 		mattr_accessor :encryption_secret
 		mattr_accessor :registered_user_class
 		mattr_accessor :auth_method
+		mattr_accessor :default_user_status
 
         self.log_events = true
         self.app_name = 'SwellApp'
@@ -32,6 +33,7 @@ module SwellMedia
 				self.encryption_secret = 'boo!'
 				self.registered_user_class = nil
 				self.auth_method = false
+				self.default_user_status = :pending
 
 	end
 
