@@ -4,10 +4,10 @@ module SwellMedia
 		include Pundit
 	
 		def after_sign_in_path_for( resource )
-	 		if resource.admin? || resource.contributor?
+	 		if resource.admin?
 	 			return admin_index_path
 	 		elsif session[:dest].present?
-	 			return session[:dest].to_s
+	 			return session.delete(:dest).to_s
 	 		else
 	 			return '/'
 	 		end

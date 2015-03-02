@@ -26,7 +26,8 @@ SwellMedia::Engine.routes.draw do
 
 	resources :stats_admin
 	resources :user_event_admin
-	
+
+	resources :oauth_registration, only: :create
 
 	resources :imports
 	resources :exports

@@ -1,53 +1,54 @@
 module SwellMedia
-	class FacebookParser
+	class EncryptedOauthParser
 
 		# maps a twitter @auth response to our user fields
 
 		def initialize( auth )
-			@auth = auth
 
-			@og_user = FbGraph::User.me( oauth_token ).fetch
+			crypt = ActiveSupport::MessageEncryptor.new(SwellMedia.encryption_secret)
+
+			@auth = JSON.parse crypt.decrypt_and_verify(auth)
 
 		end
 
 		def first_name
-			@auth['info']['first_name']
+			@auth['user_fields']['first_name']
 		end
 
 		def last_name
-			@auth['info']['last_name']
+			@auth['user_fields']['last_name']
 		end
 
 		def location
-			@auth['info']['location']
+			@auth['user_fields']['location']
 		end
 
 		def email
-			@auth['extra']['raw_info'].email
+			@auth['user_fields']['email']
 		end
 
 		def name
-			@auth['extra']['raw_info'].username || @auth['info']['first_name'].gsub( /[-\.]/, '_' ) + '_' + @auth['info']['last_name'].gsub( /[-\.]/, '_' )
+			@auth['user_fields']['name']
 		end
 
 		def avatar
-			"http://graph.facebook.com/#{@auth['uid']}/picture?type=large"
+			@auth['user_fields']['avatar']
 		end
 
 		def uid
-			@auth['uid']
+			@auth['credential_fields']['uid']
 		end
 
 		def oauth_token
-			@auth['credentials'].token
+			@auth['credential_fields']['oauth_token']
 		end
 
 		def oauth_secret
-			@auth['credentials'].secret
+			@auth['credential_fields']['oauth_secret']
 		end
 
 		def provider
-			@auth['provider']
+			@auth['credential_fields']['provider']
 		end
 
 		def credential_fields
@@ -63,23 +64,23 @@ module SwellMedia
 		end
 
 		def books
-			@og_user.books.collect{ |i| i.name }
+			@auth['interest_fields']['books']
 		end
 
 		def games
-			@og_user.games.collect{ |i| i.name }
+			@auth['interest_fields']['games']
 		end
 
 		def movies
-			@og_user.movies.collect{ |i| i.name }
+			@auth['interest_fields']['movies']
 		end
 
 		def music
-			@og_user.music.collect{ |i| i.name }
+			@auth['interest_fields']['music']
 		end
 
 		def television
-			@og_user.television.collect{ |i| i.name }
+			@auth['interest_fields']['television']
 		end
 
 		def interest_fields
@@ -97,7 +98,4 @@ module SwellMedia
 		end
 
 	end
-
 end
-
-

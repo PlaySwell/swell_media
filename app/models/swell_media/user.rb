@@ -6,7 +6,7 @@ module SwellMedia
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
-		has_many	:oauth_credentials, dependent: :destroy
+		has_many	:oauth_credentials, dependent: :destroy, class_name: SwellMedia::OauthCredential.name
 
 		attr_accessor	:login
 
@@ -35,6 +35,48 @@ module SwellMedia
 			else
 				where( conditions ).first
 			end
+		end
+
+
+
+		def self.new_from_response( response, args = {} )
+
+			puts "new_from_response (a) - #{response.email}"
+
+			user = User.find_by( email: response.email ) if response.email
+			user ||= OauthCredential.where( provider: response.provider, uid: response.uid ).first.try(:user)
+
+			puts "new_from_response (b) - #{user.try(:id)}, #{user.try(:full_name)}"
+
+			if user.present?
+
+				user.update( response.user_fields )
+
+				credential = user.oauth_credentials.where( provider: response.provider, uid: response.uid ).first_or_initialize
+				credential.update( response.credential_fields )
+
+				return user
+
+			end
+
+			puts "new_from_response (c) - new user"
+			user = (SwellMedia.registered_user_class || SwellMedia::User).new #( type: ( args[:type] || SwellMedia.registered_user_class ) )
+
+			puts "new_from_response (d) - user fields"
+			user.attributes = response.user_fields
+
+			puts "new_from_response (e) - oauth creds"
+			user.oauth_credentials.build( response.credential_fields )
+
+			puts "new_from_response (f) - bits"
+
+			user.books = response.books
+			user.games = response.games
+			user.movies = response.movies
+			user.music = response.music
+			user.television = response.television
+
+			return user
 		end
 
 
@@ -117,6 +159,26 @@ module SwellMedia
 			else
 	    		self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
 	    	end
+		end
+
+		def registered_this_session?
+			@registered_this_session
+		end
+
+		def on_registration
+			@registered_this_session = true
+			logger.info 'registered user'
+			#begin
+			#	RegistrationMailer.welcome( user ).deliver
+			#rescue => e
+			#	logger.error e.message
+			#	logger.error e.backtrace.join("\n")
+			#end
+		end
+
+		def on_login
+			logger.info 'login user'
+
 		end
 
 		

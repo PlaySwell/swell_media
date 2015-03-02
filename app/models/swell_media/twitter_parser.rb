@@ -79,6 +79,20 @@ module SwellMedia
 			[]
 		end
 
+		def interest_fields
+			{
+					books: books, games: games, movies: movies, music: music, television: television
+			}
+		end
+
+		def encrypt
+
+			crypt = ActiveSupport::MessageEncryptor.new(SwellMedia.encryption_secret)
+
+			crypt.encrypt_and_sign({ credential_fields: credential_fields, user_fields: user_fields, interest_fields: interest_fields }.to_json)
+
+		end
+
 
 		private
 			def split_name
