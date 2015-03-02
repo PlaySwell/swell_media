@@ -41,12 +41,8 @@ module SwellMedia
 
 		def self.new_from_response( response, args = {} )
 
-			puts "new_from_response (a) - #{response.email}"
-
 			user = User.find_by( email: response.email ) if response.email
 			user ||= OauthCredential.where( provider: response.provider, uid: response.uid ).first.try(:user)
-
-			puts "new_from_response (b) - #{user.try(:id)}, #{user.try(:full_name)}"
 
 			if user.present?
 
@@ -59,17 +55,12 @@ module SwellMedia
 
 			end
 
-			puts "new_from_response (c) - new user"
 			user = (SwellMedia.registered_user_class || SwellMedia::User).new #( type: ( args[:type] || SwellMedia.registered_user_class ) )
 
-			puts "new_from_response (d) - user fields"
 			user.attributes = response.user_fields
 			user.status = SwellMedia.default_user_status if SwellMedia.default_user_status.present?
 
-			puts "new_from_response (e) - oauth creds"
 			user.oauth_credentials.build( response.credential_fields )
-
-			puts "new_from_response (f) - bits"
 
 			user.books = response.books
 			user.games = response.games

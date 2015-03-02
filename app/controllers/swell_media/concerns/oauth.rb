@@ -13,12 +13,10 @@ module SwellMedia
 			protected
 			def response_auth( response )
 
-				puts "response_auth (a)"
 				credential = SwellMedia::OauthCredential.where( provider: response.provider, uid: response.uid ).first
 
 				if current_user.nil? && credential.present?
 
-					puts "response_auth (b) - existing user"
 					# login, with existing user's credential
 
 					set_flash "#{credential.user} signed in"
@@ -33,8 +31,6 @@ module SwellMedia
 
 				elsif current_user.present? && credential.present?
 
-					puts "response_auth (b) - append to existing user"
-
 					# login, new credential on existing user.
 
 					credential = current_user.oauth_credentials.create!( response.credential_fields )
@@ -45,18 +41,13 @@ module SwellMedia
 
 				else
 
-					puts "response_auth (b) - new registration"
-
 					# new registration
 
 					user = User.new_from_response( response )
 
-					puts "response_auth (b.1) - after new_from_response"
-
 					user.email = params[:email] if params[:email].present?
 
 					if user.email.blank?
-						puts "response_auth (c) - getting email"
 
 						@no_fb_closer = true
 						@user = user
@@ -64,7 +55,6 @@ module SwellMedia
 						render 'swell_media/oauth/create', layout: 'swell_media/registration'
 
 					elsif user.save
-						puts "response_auth (c) - registration"
 
 						@new_registration = user
 						registration_success user
@@ -79,7 +69,6 @@ module SwellMedia
 						login_redirect user
 
 					else
-						puts "response_auth (c) - error"
 
 						set_flash 'Something went wrong', :error, user
 
