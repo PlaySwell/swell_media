@@ -32,6 +32,15 @@ SwellMedia::Engine.routes.draw do
 	resources :imports
 	resources :exports
 
+
+	devise_scope :user do
+		get '/login' => 'sessions#new', as: 'login'
+		get '/logout' => 'sessions#destroy', as: 'logout'
+	end
+	devise_for :users, :controllers => { :omniauth_callbacks => 'oauth', :registrations => 'registrations', :sessions => 'sessions' }
+
+
+
 	# quick catch-all route for static pages
 	# set root route to field any media
 	get '/:id', to: 'root#show', as: 'root_show'
