@@ -2,17 +2,6 @@
 module SwellMedia
 	module ApplicationControllerExtensions
 		include Pundit
-	
-		def after_sign_in_path_for( resource )
-	 		if resource.admin?
-	 			return admin_index_path
-	 		elsif session[:dest].present?
-	 			return session.delete(:dest).to_s
-	 		else
-	 			return '/'
-	 		end
-		end
-
 
 		def assign_anonymous_events( user=current_user )
 			# fired when a user logs in or registers...

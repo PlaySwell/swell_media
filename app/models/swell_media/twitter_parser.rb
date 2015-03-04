@@ -15,6 +15,10 @@ module SwellMedia
 			split_name.last
 		end
 
+		def full_name
+			"#{first_name} #{last_name}"
+		end
+
 		def location
 			@auth.info.location
 		end

@@ -54,19 +54,18 @@ module SwellMedia
 				return user
 
 			end
-
-			user = (SwellMedia.registered_user_class || SwellMedia::User).new #( type: ( args[:type] || SwellMedia.registered_user_class ) )
+			user = (SwellMedia.registered_user_class.constantize || SwellMedia::User).new #( type: ( args[:type] || SwellMedia.registered_user_class ) )
 
 			user.attributes = response.user_fields
 			user.status = SwellMedia.default_user_status if SwellMedia.default_user_status.present?
 
 			user.oauth_credentials.build( response.credential_fields )
 
-			user.books = response.books
-			user.games = response.games
-			user.movies = response.movies
-			user.music = response.music
-			user.television = response.television
+			# user.books = response.books
+			# user.games = response.games
+			# user.movies = response.movies
+			# user.music = response.music
+			# user.television = response.television
 
 			return user
 		end

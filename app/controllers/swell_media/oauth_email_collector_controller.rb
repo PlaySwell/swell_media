@@ -1,6 +1,6 @@
 
 module SwellMedia
-	class OauthRegistrationController < ApplicationController
+	class OauthEmailCollectorController < ApplicationController
 
 		include SwellMedia::Concerns::Oauth
 

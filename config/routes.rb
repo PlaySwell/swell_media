@@ -27,7 +27,7 @@ SwellMedia::Engine.routes.draw do
 	resources :stats_admin
 	resources :user_event_admin
 
-	resources :oauth_registration, only: :create
+	resources :oauth_email_collector, only: :create
 
 	resources :imports
 	resources :exports
@@ -37,7 +37,7 @@ SwellMedia::Engine.routes.draw do
 		get '/login' => 'sessions#new', as: 'login'
 		get '/logout' => 'sessions#destroy', as: 'logout'
 	end
-	devise_for :users, :controllers => { :omniauth_callbacks => 'oauth', :registrations => 'registrations', :sessions => 'sessions' }
+	devise_for :users, :controllers => { :omniauth_callbacks => 'swell_media/oauth', :registrations => 'swell_media/registrations', :sessions => 'swell_media/sessions' }
 
 
 

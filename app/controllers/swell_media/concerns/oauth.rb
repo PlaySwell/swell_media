@@ -55,7 +55,7 @@ module SwellMedia
 						@no_fb_closer = true
 						@user = user
 
-						render 'swell_media/oauth/create', layout: 'swell_media/registration'
+						render 'swell_media/oauth/create', layout: 'sessions'
 
 					elsif user.save
 

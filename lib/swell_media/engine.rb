@@ -21,7 +21,6 @@ module SwellMedia
 		mattr_accessor :max_session_inactivity
 		mattr_accessor :encryption_secret
 		mattr_accessor :registered_user_class
-		mattr_accessor :auth_method
 		mattr_accessor :default_user_status
 
         self.log_events = true
@@ -30,9 +29,8 @@ module SwellMedia
         self.app_logo = 'https://media.licdn.com/media/p/1/000/27f/2a3/36f3707.jpg'
         self.twitter_handle = '@gkparishphilp'
 				self.max_session_inactivity = 30.minutes
-				self.encryption_secret = 'boo!'
-				self.registered_user_class = nil
-				self.auth_method = false
+				self.encryption_secret = 'fdty45u654jtyredhgr4u654etrhdht54eu6e5hdrt5'
+				self.registered_user_class = 'User'
 				self.default_user_status = :pending
 
 	end

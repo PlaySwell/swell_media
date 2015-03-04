@@ -21,7 +21,6 @@ module SwellMedia
 
 		end
 
-
 	end
 
 end
