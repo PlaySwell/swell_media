@@ -19,15 +19,18 @@ SwellMedia::Engine.routes.draw do
 	resources :contacts
 	resources :contact_admin
 
+	resources :oauth_email_collector, only: :create
+
 	resources :page_admin do
 		get :preview, on: :member
 		delete :empty_trash, on: :collection 
 	end
 
 	resources :stats_admin
+
 	resources :user_event_admin
 
-	resources :oauth_email_collector, only: :create
+	resources :user_admin
 
 	resources :imports
 	resources :exports
