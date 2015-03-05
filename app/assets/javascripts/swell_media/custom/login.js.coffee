@@ -67,8 +67,8 @@ $(document).ready ->
 
 	$('body').on(
 		'click',
-		'a.popup',
+		'a.auth-popup',
 	(e) ->
-		popupCenter($(this).attr("href"), $(this).attr("data-width"), $(this).attr("data-height"), "authPopup");
+		popupCenter($(this).attr("href"), $(this).attr("data-width") || 600, $(this).attr("data-height") || 400, "authPopup");
 		e.stopPropagation(); return false;
 	);
