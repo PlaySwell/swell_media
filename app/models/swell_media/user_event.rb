@@ -6,7 +6,7 @@ module SwellMedia
 		enum status: { 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 1, 'logged_in_users' => 2, 'just_me' => 3 }
 
-		belongs_to 		:user
+		belongs_to 		:user, class_name: SwellMedia.registered_user_class
 		belongs_to 		:ref_user, class_name: 'User', foreign_key: :ref_user_id
 		belongs_to		:rec_user, class_name: 'User', foreign_key: :rec_user_id
 		belongs_to		:guest_session
