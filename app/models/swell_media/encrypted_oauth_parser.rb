@@ -19,6 +19,10 @@ module SwellMedia
 			@auth['user_fields']['last_name']
 		end
 
+		def full_name
+			"#{first_name} #{last_name}"
+		end
+
 		def location
 			@auth['user_fields']['location']
 		end
