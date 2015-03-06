@@ -35,9 +35,6 @@ module SwellMedia
 		self.encryption_secret = 'fdty45u654jtyredhgr4u654etrhdht54eu6e5hdrt5'
 		self.registered_user_class = '::User'
 		self.default_user_status = :pending
-		self.login_modal_message = nil
-		self.login_modal_facebook = true
-		self.login_modal_twitter = true
 
 	end
 

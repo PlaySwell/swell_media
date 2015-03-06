@@ -6,32 +6,28 @@
 				%button.close{ type: :button, 'data-dismiss' => 'modal', 'aria-hidden' => 'true' }
 					&times;
 				%h1.text-center{ style: 'margin: 0;' }
-					= render 'application/app_name'
+					#{SwellMedia.app_name}
 				%h2.text-center{ style: 'font-size: 2em; margin: 0.1em 0 0 0;' }
 					Sign in or Sign up
 
 
 				%p{ style: 'margin: 1em auto;' }
 					.text-center
-						- if SwellMedia.login_modal_facebook
-							%div{ style: 'margin: 1em auto;' }
-								%a.auth-pop{ href: swell_media.user_omniauth_authorize_path( :facebook, ga_client_id: ':ga_client_id' ) }
-									%span.fa-stack.fa-lg
-										%i.fa.fa-circle.fa-stack-2x
-										%i.fa.fa-facebook.fa-stack-1x.fa-inverse
-									%span{ style: 'font-size:150%;' }
-										Sign in with Facebook
+						%div{ style: 'margin: 1em auto;' }
+							%a.auth-pop{ href: swell_media.user_omniauth_authorize_path( :facebook, ga_client_id: ':ga_client_id' ) }
+								%span.fa-stack.fa-lg
+									%i.fa.fa-circle.fa-stack-2x
+									%i.fa.fa-facebook.fa-stack-1x.fa-inverse
+								%span{ style: 'font-size:150%;' }
+									Sign in with Facebook
 
-						- if SwellMedia.login_modal_twitter
-							%div{ style: 'margin: 1em auto;' }
-								%a.auth-pop{ href: swell_media.user_omniauth_authorize_path( :twitter, ga_client_id: ':ga_client_id' ) }
-									%span.fa-stack.fa-lg
-										%i.fa.fa-circle.fa-stack-2x
-										%i.fa.fa-twitter.fa-stack-1x.fa-inverse
-									%span{ style: 'font-size:150%' }
-										Sign in with Twitter
+						%div{ style: 'margin: 1em auto;' }
+							%a.auth-pop{ href: swell_media.user_omniauth_authorize_path( :twitter, ga_client_id: ':ga_client_id' ) }
+								%span.fa-stack.fa-lg
+									%i.fa.fa-circle.fa-stack-2x
+									%i.fa.fa-twitter.fa-stack-1x.fa-inverse
+								%span{ style: 'font-size:150%' }
+									Sign in with Twitter
 
-				%p{ style: 'color: #999;'}
-					- if SwellMedia.login_modal_message
-						#{SwellMedia.login_modal_message}
+				%p.text-center{ style: 'color: #999;'}
 					%a{ href: '/privacy-policy' } Privacy Policy.
