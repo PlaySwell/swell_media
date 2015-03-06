@@ -13,7 +13,7 @@ $(document).ready ->
 			e.stopPropagation();
 			e.stopImmediatePropagation()
 
-			$('#login_modal').modal('show')
+			$('.modal.swell_media_login_modal').modal('show')
 
 			$a = $(this)
 
@@ -31,7 +31,7 @@ $(document).ready ->
 					)
 				else if ( $a.parents('.voter').length > 0 ) || passthru == 'click'
 					$a.click()
-					$('#login_modal').modal('hide')
+					$('.swell_media_login_modal').modal('hide')
 				else
 					window.location = $a.attr('href')
 
@@ -53,11 +53,11 @@ $(document).ready ->
 			$form = $(this)
 
 			window.load_location = (url)->
-				$('#login_modal').modal('hide')
+				$('.swell_media_login_modal').modal('hide')
 				$form.attr('data-passthru', 'false').data('passthru', 'false')
 				$form.submit()
 
-			$('#login_modal').modal('show')
+			$('.swell_media_login_modal').modal('show')
 	)
 
 	popupCenter = (url, width, height, name) ->
