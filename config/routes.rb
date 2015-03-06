@@ -1,6 +1,8 @@
 SwellMedia::Engine.routes.draw do
 	root to: 'root#show' # set media to HP if null id
 
+	get 'out/:type(/:id)' => 'outbound#show', as: :outbound
+
 	resources :admin, only: :index
 
 	resources :articles, path: 'blog'
@@ -28,6 +30,7 @@ SwellMedia::Engine.routes.draw do
 
 	resources :stats_admin
 
+	resources :user_events, only: :create
 	resources :user_event_admin
 
 	resources :user_admin
@@ -35,6 +38,7 @@ SwellMedia::Engine.routes.draw do
 	resources :imports
 	resources :exports
 
+	resources :sessions
 
 	devise_scope :user do
 		get '/login' => 'sessions#new', as: 'login'

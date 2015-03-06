@@ -54,7 +54,7 @@ module SwellMedia
 				return user
 
 			end
-			user = (SwellMedia.registered_user_class.constantize || SwellMedia::User).new #( type: ( args[:type] || SwellMedia.registered_user_class ) )
+			user = SwellMedia.registered_user_class.constantize.new
 
 			user.attributes = response.user_fields
 			user.status = SwellMedia.default_user_status if SwellMedia.default_user_status.present?

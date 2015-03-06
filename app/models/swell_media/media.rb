@@ -12,7 +12,7 @@ module SwellMedia
 
 		attr_accessor	:slug_pref
 
-		belongs_to	:user
+		belongs_to	:user, class_name: SwellMedia.registered_user_class
 		belongs_to 	:managed_by, class_name: 'User'
 		belongs_to 	:category
 

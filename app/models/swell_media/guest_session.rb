@@ -6,7 +6,7 @@ module SwellMedia
 
 		before_save 	:parse_agent
 
-		belongs_to	:user
+		belongs_to	:user, class_name: SwellMedia.registered_user_class
 		
 		has_many 	:user_events
 

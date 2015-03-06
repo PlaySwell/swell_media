@@ -24,11 +24,11 @@ module SwellMedia
 
 					set_flash "#{credential.user} signed in"
 
-					current_user.on_login
+					credential.user.on_login
 
 					credential.update( token: response.oauth_token )
 
-					record_user_event( 'login', guest_session: @guest_ession, user: current_user, on: current_user, content: 'Login' )
+					record_user_event( 'login', guest_session: @guest_ession, user: credential.user, on: credential.user, content: 'Login' )
 
 					login_redirect( credential.user )
 

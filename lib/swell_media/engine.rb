@@ -30,7 +30,7 @@ module SwellMedia
         self.twitter_handle = '@gkparishphilp'
 				self.max_session_inactivity = 30.minutes
 				self.encryption_secret = 'fdty45u654jtyredhgr4u654etrhdht54eu6e5hdrt5'
-				self.registered_user_class = 'User'
+				self.registered_user_class = '::User'
 				self.default_user_status = :pending
 
 	end
