@@ -1,7 +1,7 @@
 SwellMedia::Engine.routes.draw do
 	root to: 'root#show' # set media to HP if null id
 
-	get 'out/:type(/:id)' => 'outbound#show', as: :outbound
+	get 'out/(:type(/:id))' => 'outbound#show', as: :outbound
 
 	resources :admin, only: :index
 

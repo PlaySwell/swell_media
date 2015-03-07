@@ -7,6 +7,7 @@ class EventsMigration < ActiveRecord::Migration
 		create_table :guest_sessions do |t|
 			t.references		:user
 			t.string			:src  					# src param used to track campaigns
+			t.string			:ui_variant				# var param used to record ui or design variant. e.g. to test colors, layouts, etc.
 			t.string			:ip
 			t.string			:user_agent
 			t.string			:platform
@@ -32,6 +33,7 @@ class EventsMigration < ActiveRecord::Migration
 			t.references 		:parent_obj, 			polymorphic: true
 			t.datetime			:session_cluster_created_at
 			t.string			:src  					# src param used to track campaigns -- cached here for ease of query
+			t.string			:ui_variant				# var param used to record ui or design variant. e.g. to test colors, layouts, etc. gets this from browser session
 			t.references		:category
 			t.string			:name
 			t.text				:content

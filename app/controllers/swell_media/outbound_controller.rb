@@ -4,16 +4,15 @@ module SwellMedia
 
 		def show
 
-			if ( @obj = params[:type].constantize.find_by( id: params[:id] ) ).present?
+			if @obj = params[:type].constantize.find_by( id: params[:id] )
 
-				record_user_event( 'outbound', guest_session: @guest_ession, user: current_user, on: @obj, content: "checked out #{@obj.to_s}." )
+				url = @obj.try( :origin_url ) || @obj.try( :url )
 
-				redirect_to ( params[:url] || @obj.try(:url) )
+				record_user_event( 'outbound', on: @obj, content: "checked out #{@obj.to_s}." )
 
+				redirect_to( params[:url] || url )
 			else
-
 				raise ActionController::RoutingError.new( 'Not Found' )
-
 			end
 
 		end
