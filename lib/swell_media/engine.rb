@@ -22,9 +22,7 @@ module SwellMedia
 		mattr_accessor :encryption_secret
 		mattr_accessor :registered_user_class
 		mattr_accessor :default_user_status
-		mattr_accessor :login_modal_message
-		mattr_accessor :login_modal_facebook
-		mattr_accessor :login_modal_twitter
+		mattr_accessor :google_analytics_code
 
 		self.log_events = true
 		self.app_name = 'SwellApp'
@@ -35,6 +33,7 @@ module SwellMedia
 		self.encryption_secret = 'fdty45u654jtyredhgr4u654etrhdht54eu6e5hdrt5'
 		self.registered_user_class = '::User'
 		self.default_user_status = :pending
+		self.google_analytics_code = nil
 
 	end
 
