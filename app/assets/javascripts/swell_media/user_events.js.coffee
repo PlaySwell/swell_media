@@ -1,3 +1,29 @@
+
+$.fn.user_event = ( event, data = {} )->
+
+	url = $('meta[property="user_events"]').attr('content')
+
+	data.ga_client_id = data.ga_client_id || $('meta[property="ga:client_id"]').attr('content')
+	data.event = event
+
+	if url
+		$.post( url, data )
+		if window.console
+			console.log 'user_event', event, data
+	else if window.console
+		console.error 'Unable to post user event... there is no url'
+
+	if window['ga']
+		ga(
+			'send'
+			'event'
+			data.group || data.parent_obj_type || 'Site Event' 	#category
+			event,        												#action
+			data.content, 												#label
+			data.value   	 												#value
+		)
+
+
 $(document).ready ->
 	if window['ga']
 		ga((tracker) ->
@@ -12,9 +38,15 @@ $(document).ready ->
 			meta_user_events = $('meta[property="user_events"]')
 
 			if meta_ga.length == 1 && !meta_ga.attr('content') && meta_user_events.attr('content')
+			  $.user_event( 'ga_init', { ga_client_id: clientId } )
 
-				$.post( meta_user_events.attr('content'), { ga_client_id: clientId, event: 'ga_init' } )
-
-				meta_ga.attr( 'content', clientId )
+			meta_ga.attr( 'content', clientId )
 
 		);
+
+	$('body').on(
+		'click'
+		'a[data-user-event]',
+		(event) ->
+			$.user_event( $(this).data('user-event'), $(this).data('user-event-data') )
+	)

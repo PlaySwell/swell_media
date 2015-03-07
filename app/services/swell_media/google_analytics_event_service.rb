@@ -26,7 +26,7 @@ module SwellMedia
 						open_timeout: 4,
 						user_agent: args[:user_agent] || user_event.guest_session.try(:user_agent) || USER_AGENT )
 
-				#puts "Google Analytics: response.code => #{response.code}"
+				puts "Google Analytics: response.code => #{response.code}"
 
 				return response.code == 200
 			rescue  RestClient::Exception => rex

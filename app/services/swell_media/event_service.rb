@@ -50,7 +50,7 @@ module SwellMedia
 			end
 
 
-			GoogleAnalyticsEventService.log( event, args[:ga] || {} ) if SwellMedia.google_analytics_code
+			GoogleAnalyticsEventService.log( event, args[:ga] || {} ) unless SwellMedia.google_analytics_code.nil? || args[:opt_out_google_analytics]
 
 
 			return event
