@@ -1,5 +1,5 @@
 
-$.fn.user_event = ( event, data = {} )->
+$.user_event = ( event, data = {} )->
 
 	url = $('meta[property="user_events"]').attr('content')
 
