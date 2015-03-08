@@ -153,6 +153,17 @@ module SwellMedia
 		def user_display
 			self.user || 'Guest'
 		end
+
+		def propogate_event
+
+			if SwellMedia.google_analytics_code
+
+
+
+			end
+
+		end
+
 	end
 	
 end

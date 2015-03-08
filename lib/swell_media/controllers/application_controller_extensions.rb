@@ -20,12 +20,13 @@ module SwellMedia
 			
 			args[:user] ||= current_user
 
+			args[:ga_client_id] ||= session[:ga_client_id]
 			args[:guest_session] ||= @guest_session
 			args[:session_cluster_created_at] ||= @session_cluster_created_at
 
 			args[:req_path] ||= request.fullpath
 
-			if user_event = UserEvent.record( event, args )
+			if user_event = EventService.log( event, args )
 				# this is here in the controller so we can access request obj, cookies, etc. if it results in another UserEvent
 				# should move into a cron....
 				return user_event
@@ -48,6 +49,11 @@ module SwellMedia
 						!request.xhr? ) # don't store ajax calls
 				session[:dest] = request.fullpath
 			end
+		end
+
+
+		def set_ga_client_id
+			session[:ga_client_id] = params[:ga_client_id] if params[:ga_client_id].present?
 		end
 
 

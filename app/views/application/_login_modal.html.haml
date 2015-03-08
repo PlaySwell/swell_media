@@ -2,15 +2,12 @@
 #login_modal.modal.fade.swell_media_login_modal
 	.modal-dialog
 		.modal-content
-			.modal-body
-				%button.close{ type: :button, 'data-dismiss' => 'modal', 'aria-hidden' => 'true' }
+			.modal-header
+				.close{ type: :button, 'data-dismiss' => 'modal', 'aria-hidden' => 'true' }
 					&times;
-				%h1.text-center{ style: 'margin: 0;' }
-					#{SwellMedia.app_name}
-				%h2.text-center{ style: 'font-size: 2em; margin: 0.1em 0 0 0;' }
+				%h4.modal-title
 					Sign in or Sign up
-
-
+			.modal-body
 				%p{ style: 'margin: 1em auto;' }
 					.text-center
 						%div{ style: 'margin: 1em auto;' }

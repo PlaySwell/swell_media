@@ -1,4 +1,4 @@
-#= require ./../plugins/jquery.bind-first-0.2.3
+#= require ./plugins/jquery.bind-first-0.2.3
 
 $(document).ready ->
 
