@@ -34,6 +34,7 @@ class EventsMigration < ActiveRecord::Migration
 			t.datetime			:session_cluster_created_at
 			t.string			:src  					# src param used to track campaigns -- cached here for ease of query
 			t.string			:ui_variant				# var param used to record ui or design variant. e.g. to test colors, layouts, etc. gets this from browser session
+			t.string			:ui 					# just in case we want to track specific links, buttons, etc. e.g. outbound clicks from 'buy_btn' vs 'info_btn'
 			t.references		:category
 			t.string			:name
 			t.text				:content

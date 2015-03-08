@@ -91,6 +91,7 @@ module SwellMedia
 			
 			event.src = args[:guest_session].src
 			event.ui_variant = args[:guest_session].ui_variant
+			event.ui = args[:ui] if event.respond_to? ( :ui )
 
 			event.session_cluster_created_at = Time.at( args.delete(:session_cluster_created_at) ) if args[:session_cluster_created_at].is_a? Integer
 			event.session_cluster_created_at ||= args[:session_cluster_created_at]

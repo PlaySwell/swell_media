@@ -57,7 +57,7 @@ module SwellMedia
 			user = SwellMedia.registered_user_class.constantize.new
 
 			user.attributes = response.user_fields
-			user.status = SwellMedia.default_user_status if SwellMedia.default_user_status.present?
+			user.status = SwellMedia.default_user_status if ( user.email.blank? && SwellMedia.default_user_status.present? )
 
 			user.oauth_credentials.build( response.credential_fields )
 

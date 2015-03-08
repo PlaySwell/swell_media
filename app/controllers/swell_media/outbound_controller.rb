@@ -8,7 +8,7 @@ module SwellMedia
 
 				url = @obj.try( :origin_url ) || @obj.try( :url )
 
-				record_user_event( 'outbound', on: @obj, content: "checked out #{@obj.to_s}." )
+				record_user_event( 'outbound', on: @obj, ui: params[:ui], content: "checked out #{@obj.to_s}." )
 
 				redirect_to( params[:url] || url )
 			else
