@@ -16,11 +16,11 @@
 %meta{ property: 'og:description', content: @page_meta[:description] }
 %meta{ property: 'og:image', content: @page_meta[:image] }
 
-- if @page_meta[:video].try(:embed_url)
-	%meta{ property: 'og:video', content: @page_meta[:video].try(:embed_url) }
-	%meta{ property: 'og:video:height', content: 385 }
-	%meta{ property: 'og:video:width', content: 640 }
-	%meta{ property: 'og:video:type', content: 'application/x-shockwave-flash' }
+- if @page_meta[:video]
+	%meta{ property: 'og:video', content: @page_meta[:video] }
+	%meta{ property: 'og:video:height', content: (@page_meta[:video_height] || 385) }
+	%meta{ property: 'og:video:width', content: (@page_meta[:video_width] || 640) }
+	%meta{ property: 'og:video:type', content: (@page_meta[:video_mime_type] || 'application/x-shockwave-flash') }
 
 
 %meta{ property: 'twitter:title', content: @page_meta[:title] }
