@@ -16,6 +16,12 @@
 %meta{ property: 'og:description', content: @page_meta[:description] }
 %meta{ property: 'og:image', content: @page_meta[:image] }
 
+- if @page_meta[:video].try(:embed_url)
+	%meta{ property: 'og:video', content: @page_meta[:video].try(:embed_url) }
+	%meta{ property: 'og:video:height', content: 385 }
+	%meta{ property: 'og:video:width', content: 640 }
+	%meta{ property: 'og:video:type', content: 'application/x-shockwave-flash' }
+
 
 %meta{ property: 'twitter:title', content: @page_meta[:title] }
 %meta{ property: 'twitter:card', content: @page_meta[:twitter_format] }
@@ -24,7 +30,7 @@
 %meta{ property: 'twitter:description', content: @page_meta[:description] }
 %meta{ property: 'twitter:image', content: @page_meta[:image] }
 %meta{ property: 'twitter:image:src', content: @page_meta[:image] }
-%meta{ property: 'user_events', content: swell_media.user_events_path() }
+%meta{ property: 'user_events', content: swell_media.user_events_path(authenticity_token: form_authenticity_token) }
 
 - if SwellMedia.google_analytics_code
 	%meta{ property: 'ga:client_id', content: session[:ga_client_id] || '' }
