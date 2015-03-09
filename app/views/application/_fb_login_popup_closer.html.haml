@@ -7,9 +7,7 @@
 	}
 	try {
 		if(window.opener) {
-
-			var input = window.opener && window.opener.document && window.opener.document.getElementById('swell-body');
-			if ( input.innerHTML )
+			if ( window.opener['load_location'] )
 			{
 				var url = ""+window.location
 				window.opener.load_location(url.replace('no-flash-messages=1',''));
