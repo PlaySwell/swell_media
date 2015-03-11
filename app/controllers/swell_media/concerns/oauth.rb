@@ -48,14 +48,14 @@ module SwellMedia
 
 					user = User.new_from_response( response )
 
-					user.email = params[:email] if params[:email].present?
+					user.email = params[:email] if params[:email].present? && user.email.blank?
 
 					if user.email.blank?
 
 						@no_fb_closer = true
 						@user = user
 
-						render 'swell_media/oauth/create', layout: 'sessions'
+						redirect_to new_oauth_email_collector_path( response: response.encrypt )
 
 					elsif user.save
 

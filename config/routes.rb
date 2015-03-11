@@ -21,7 +21,7 @@ SwellMedia::Engine.routes.draw do
 	resources :contacts
 	resources :contact_admin
 
-	resources :oauth_email_collector, only: :create
+	resources :oauth_email_collector, only: [:create, :new]
 
 	resources :page_admin do
 		get :preview, on: :member
