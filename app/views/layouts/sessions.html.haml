@@ -1,3 +1,4 @@
+
 !!!strict
 /[if lt IE 7] <html class="no-js lt-ie9 lt-ie8 lt-ie7">
 /[if IE 7] <html class="no-js lt-ie9 lt-ie8">
@@ -5,22 +6,11 @@
 //[if gt IE 8] <html class="no-js">
 %html{ lang: :en }
 	%head
-		= render 'application/fb_login_popup_closer'
 		= render 'application/html_head', args: {}
-		= render 'application/header_styles'
 
-		= render 'application/header_scripts'
 	%body
-		%header#header{ style: 'height: 6em;' }
-			= render 'application/navbar'
 
 		%section#main{ style: 'margin-top:4em;'}
 			= render 'application/flash'
 
 			= yield
-		%br
-		%br
-		%br
-
-		= render 'application/footer'
-

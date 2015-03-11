@@ -13,5 +13,14 @@ module SwellMedia
 
 		end
 
+		def new
+
+			@response = EncryptedOauthParser.new( params[:response] )
+
+
+			render layout: 'sessions'
+
+		end
+
 	end
 end
