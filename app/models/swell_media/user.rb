@@ -24,7 +24,7 @@ module SwellMedia
 		### RELATIONSHIPS   	--------------------------------------
 	
 		include FriendlyId
-		friendly_id :name, use: :slugged
+		friendly_id :slugger, use: :slugged
 
 		### Class Methods   	--------------------------------------
 		# over-riding Deivse method to allow login via name or email
@@ -170,6 +170,11 @@ module SwellMedia
 		def on_login
 			logger.info 'login user'
 
+		end
+
+
+		def slugger
+			self.name.present? ? self.name : self.full_name
 		end
 
 		

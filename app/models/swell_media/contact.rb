@@ -8,7 +8,7 @@ module SwellMedia
 		validates_format_of	:email, with: Devise.email_regexp, if: :email_changed?
 
 		def to_s
-			"#{self.contact_type || 'contact'} from #{self.email}"
+			"#{self.type || 'contact'} from #{self.email}"
 		end
 		
 	end

@@ -11,7 +11,7 @@ module SwellMedia
 				@media_comments = @media_comments.tagged_with( params[:comment_tag] ) if params[:comment_tag].present?
 			end
 
-			record_user_event( 'impression', guest_session: @guest_ession, user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
+			record_user_event( 'impression', on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
