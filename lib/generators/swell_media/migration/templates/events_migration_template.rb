@@ -11,8 +11,7 @@ class EventsMigration < ActiveRecord::Migration
 			t.string			:ip
 			t.string			:user_agent
 			t.string			:platform
-			t.boolean			:mobile
-			t.boolean			:tablet
+			t.integer			:device_format,		default: 0 # 0: desktop, 1: tablet, 2: mobile
 			t.boolean			:human
 			t.string			:browser_name
 			t.string			:browser_version

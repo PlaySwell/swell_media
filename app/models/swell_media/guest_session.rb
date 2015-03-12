@@ -4,6 +4,8 @@ module SwellMedia
 	class GuestSession < ActiveRecord::Base
 		self.table_name = 'guest_sessions'
 
+		enum device_format: { 'desktop' => 0, 'tablet' => 1, 'phone' => 2 }
+
 		before_save 	:parse_agent
 
 		belongs_to	:user, class_name: SwellMedia.registered_user_class
@@ -45,8 +47,8 @@ module SwellMedia
 				self.browser_name = browser.name
 				self.browser_version = browser.version
 				self.platform = browser.platform
-				self.mobile = browser.mobile?
-				self.tablet = browser.tablet?
+				self.device_format = 'tablet' if browser.tablet?
+				self.device_format = 'phone' if browser.mobile?
 				self.human = not( browser.bot? )
 			end
 

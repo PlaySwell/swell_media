@@ -18,7 +18,11 @@ module SwellMedia
 			set_page_meta( @media.page_meta )
 
 			begin
-				render "#{@media.class.name.underscore.pluralize}/show", layout: layout
+				begin
+					render "#{@media.class.name.underscore.pluralize}/show+#{@guest_session.device_format}", layout: layout
+				rescue ActionView::MissingTemplate
+					render "#{@media.class.name.underscore.pluralize}/show", layout: layout
+				end
 			rescue ActionView::MissingTemplate
 				render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
 			end
