@@ -32,7 +32,7 @@ module SwellMedia
 
 					login_redirect( credential.user )
 
-				elsif current_user.present? && credential.present?
+				elsif current_user.present? && credential.nil?
 
 					# login, new credential on existing user.
 
