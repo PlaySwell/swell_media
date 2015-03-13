@@ -2,6 +2,9 @@ module SwellMedia
 	class User < ActiveRecord::Base
 		self.table_name = 'users'
 
+		#devise :registerable, :database_authenticatable, :recoverable, :validatable
+		devise :recoverable
+
 		enum status: { 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
