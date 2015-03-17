@@ -1,4 +1,4 @@
-class UsersMigration < ActiveRecord::Migration
+class SwellUsersMigration < ActiveRecord::Migration
 	def change
 
 		enable_extension 'uuid-ossp'

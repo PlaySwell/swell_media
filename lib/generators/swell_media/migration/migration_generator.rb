@@ -19,10 +19,10 @@ module SwellMedia
 			end
 
 			def copy_migrations
-				migration_template "users_migration_template.rb", "db/migrate/users_migration.rb"
-				migration_template "media_migration_template.rb", "db/migrate/swell_media_migration.rb"
-				migration_template "asset_migration_template.rb", "db/migrate/asset_migration.rb"
-				migration_template "events_migration_template.rb", "db/migrate/events_migration.rb"
+				migration_template "swell_users_migration_template.rb", "db/migrate/swell_users_migration.rb"
+				migration_template "swell_media_migration_template.rb", "db/migrate/swell_media_migration.rb"
+				migration_template "swell_assets_migration_template.rb", "db/migrate/swell_assets_migration.rb"
+				migration_template "swell_events_migration_template.rb", "db/migrate/swell_events_migration.rb"
 			end
 
 		end

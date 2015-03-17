@@ -1,4 +1,4 @@
-class AssetMigration < ActiveRecord::Migration
+class SwellAssetsMigration < ActiveRecord::Migration
 	def change
 
 		create_table :assets do |t|

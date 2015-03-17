@@ -1,4 +1,4 @@
-class EventsMigration < ActiveRecord::Migration 
+class SwellEventsMigration < ActiveRecord::Migration 
 
 	def change
 
