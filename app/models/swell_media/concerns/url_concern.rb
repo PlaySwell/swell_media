@@ -1,0 +1,60 @@
+module SwellMedia
+	module Concerns
+
+		module URLConcern
+			extend ActiveSupport::Concern
+
+			included do
+				scope :disabled, -> { where(disabled: true) }
+			end
+
+
+			####################################################
+			# Class Methods
+
+			module ClassMethods
+
+				def mounted_at( mounted_at )
+					@@mounted_at = mounted_at
+				end
+
+				def config_mounted_at
+					@@mounted_at
+				end
+
+				#def mounted_at
+				#	return @@mounted_at
+				#end
+
+			end
+
+			def path( args={} )
+				mounted_at = args[:mounted_at] || self.class.config_mounted_at
+
+				if mounted_at.nil? || mounted_at == '/'
+					path = "/#{self.slug}"
+				else
+					path = "#{mounted_at}/#{self.slug}"
+				end
+
+				if args.present? && args.delete_if{ |k, v| k.blank? || v.blank? }
+					path += '?' unless args.empty?
+					path += args.map{ |k,v| "#{k}=#{v}"}.join( '&' )
+				end
+				return path
+			end
+
+			def url( args={} )
+				domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN'] || 'localhost:3000'
+				protocol = ( args.present? && args.delete( :protocol ) ) || 'http'
+				path = self.path( args )
+				url = "#{protocol}://#{domain}#{self.path( args )}"
+
+				return url
+
+			end
+
+		end
+
+	end
+end

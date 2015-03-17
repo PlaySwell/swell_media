@@ -3,6 +3,9 @@ module SwellMedia
 	class Media < ActiveRecord::Base
 		self.table_name = 'media'
 
+		include SwellMedia::Concerns::URLConcern
+		mounted_at '/'
+
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 1, 'logged_in_users' => 2, 'just_me' => 3 }
 
@@ -126,16 +129,6 @@ module SwellMedia
 
 		def to_s
 			self.title.present? ? self.title : self.slug
-		end
-
-		def url( args={} )
-			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN'] || 'localhost:3000'
-			protocol = ( args.present? && args.delete( :protocol ) ) || 'http'
-			path = self.path( args )
-			url = "#{protocol}://#{domain}#{self.path( args )}"
-
-			return url
-
 		end
 
 		def word_count
