@@ -33,9 +33,7 @@ module SwellMedia
 
 			def get_media
 
-				if request.format.present? && request.format.to_s.include?('image')
-					raise ActionController::RoutingError.new( 'Not Found' )
-				elsif params[:id].present?
+				if params[:id].present?
 					if params[:id].match( /sitemap/i )
 						redirect_to "https://s3-us-west-2.amazonaws.com/#{ENV['FOG_DIRECTORY']}/sitemaps/sitemap.xml.gz"
 						return false
