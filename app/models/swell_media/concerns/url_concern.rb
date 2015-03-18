@@ -5,7 +5,6 @@ module SwellMedia
 			extend ActiveSupport::Concern
 
 			included do
-				scope :disabled, -> { where(disabled: true) }
 			end
 
 
@@ -15,11 +14,11 @@ module SwellMedia
 			module ClassMethods
 
 				def mounted_at( mounted_at )
-					@@mounted_at = mounted_at
+					@mounted_at = mounted_at
 				end
 
 				def config_mounted_at
-					@@mounted_at
+					@mounted_at
 				end
 
 				#def mounted_at
