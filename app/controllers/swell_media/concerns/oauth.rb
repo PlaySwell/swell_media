@@ -65,8 +65,7 @@ module SwellMedia
 						set_flash "Registration successful"
 
 						record_user_event( 'registration', guest_session: @guest_ession, user: user, on: user, content: 'Registration successful' )
-						record_user_event( 'login', guest_session: @guest_ession, user: user, on: user, content: 'Login' )
-
+						
 						user.on_registration
 
 						login_redirect user
