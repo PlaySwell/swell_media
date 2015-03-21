@@ -36,6 +36,7 @@ class SwellUsersMigration < ActiveRecord::Migration
 			t.string 		:first_name
 			t.string 		:last_name
 			t.string 		:avatar
+			t.string		:cover_path
 			t.datetime 		:dob
 			t.string		:gender
 			t.string		:location
@@ -51,6 +52,7 @@ class SwellUsersMigration < ActiveRecord::Migration
 
 			t.string 		:website_url
 			t.text 			:bio
+			t.string		:short_bio
 			t.text 			:sig
 			t.string		:ip
 			t.float			:latitude
