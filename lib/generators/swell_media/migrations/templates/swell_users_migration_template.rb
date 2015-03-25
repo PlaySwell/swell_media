@@ -36,7 +36,7 @@ class SwellUsersMigration < ActiveRecord::Migration
 			t.string 		:first_name
 			t.string 		:last_name
 			t.string 		:avatar
-			t.string		:cover_path
+			t.string		:cover_image
 			t.datetime 		:dob
 			t.string		:gender
 			t.string		:location

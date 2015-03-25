@@ -2,9 +2,6 @@ module SwellMedia
 	class User < ActiveRecord::Base
 		self.table_name = 'users'
 
-		#devise :registerable, :database_authenticatable, :recoverable, :validatable
-		devise :recoverable
-
 		enum status: { 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
 		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
 
@@ -181,11 +178,17 @@ module SwellMedia
 		end
 
 		
-		def to_s
-			str = self.name || "#{self.first_name} #{self.last_name}"
-
-			str = 'Guest' if str.blank?
-			return str
+		def to_s( args={} ) 
+			if args[:username]
+				str = self.name
+				str = 'Guest' if str.blank?
+				return str
+			else
+				str = "#{self.first_name} #{self.last_name}"
+				str = self.name if str.blank?
+				str = 'Guest' if str.blank?
+				return str
+			end
 		end
 
 	end

@@ -4,7 +4,7 @@ require 'rails/generators/migration'
 module SwellMedia
 	module Generators
 
-		class MigrationGenerator < ::Rails::Generators::Base
+		class MigrationsGenerator < ::Rails::Generators::Base
 			include Rails::Generators::Migration
 			source_root File.expand_path( '../templates', __FILE__ )
 			desc "add the migrations"
