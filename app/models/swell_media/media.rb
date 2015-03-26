@@ -96,16 +96,6 @@ module SwellMedia
 			}
 		end
 
-		def path( args={} )
-			path = "/#{self.slug}"
-
-			if args.present? && args.delete_if{ |k, v| k.blank? || v.blank? }
-				path += '?' unless args.empty?
-				path += args.map{ |k,v| "#{k}=#{v}"}.join( '&' )
-			end
-			return path
-		end
-
 		def sanitized_content
 			ActionView::Base.full_sanitizer.sanitize( self.content )
 		end

@@ -31,7 +31,11 @@ module SwellMedia
 				mounted_at = args[:mounted_at] || self.class.config_mounted_at
 
 				if mounted_at.nil? || mounted_at == '/'
-					path = "/#{self.slug}"
+					if self.slug == 'homepage'
+						path = "/"
+					else
+						path = "/#{self.slug}"
+					end
 				else
 					path = "#{mounted_at}/#{self.slug}"
 				end
