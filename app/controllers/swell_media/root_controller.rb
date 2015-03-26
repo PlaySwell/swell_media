@@ -15,6 +15,8 @@ module SwellMedia
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 
+			layout = @media.layout if @media.layout.present?
+
 			set_page_meta( @media.page_meta )
 
 			begin
