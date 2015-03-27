@@ -27,6 +27,7 @@
 		.col-xs-12
 			%table.table
 				%thead
+					%th Src
 					%th User
 					%th Content
 					%th Name
@@ -37,7 +38,8 @@
 				%tbody
 					- @events.each do |event|
 						%tr
-							
+							%td
+								= event.src
 							%td
 								- if event.user
 									= event.user 
