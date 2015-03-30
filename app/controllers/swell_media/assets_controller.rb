@@ -26,11 +26,15 @@ module SwellMedia
 
 			elsif request.env['HTTP_REFERER']
 
-				uri =  URI.parse(request.env['HTTP_REFERER'])
-				new_query_ar = URI.decode_www_form(uri.query || '') << ["asset_url", @asset.url]
-				uri.query = URI.encode_www_form(new_query_ar)
+				begin
+					uri =  URI.parse(request.env['HTTP_REFERER'])
+					new_query_ar = URI.decode_www_form(uri.query || '') << ["asset_url", @asset.url]
+					uri.query = URI.encode_www_form(new_query_ar)
 
-				redirect_to uri.to_s
+					redirect_to uri.to_s
+				rescue
+					redirect_to :back
+				end
 
 			else
 
