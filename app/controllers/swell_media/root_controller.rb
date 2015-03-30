@@ -15,6 +15,7 @@ module SwellMedia
 			record_user_event( 'impression', user: current_user, on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" ) if defined?( SwellPlay )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
+			layout = @media.try(:layout) if @media.try(:layout).present?
 
 			twitter_card = 'summary'
 			twitter_card = ENV['TWITTER_WITH_AVATAR_CARD'] || 'summary_large_image' unless @media.try(:avatar).blank?
