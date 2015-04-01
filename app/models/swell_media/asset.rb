@@ -17,6 +17,15 @@ module SwellMedia
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
 
+		def self.order_by_calculated_weight( args={} )
+			dir = args[:dir] || 'DESC'
+			threshold = args[:threshold] || 0
+
+			res = self.where( "( weight + cached_upvote_count - cached_downvote_count ) > #{threshold}" )
+
+			res.order( "( weight + cached_upvote_count - cached_downvote_count ) #{dir}" )
+		end
+
 		def url
 			try(:uploader).try(:url) || origin_url
 		end

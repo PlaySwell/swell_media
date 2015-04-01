@@ -18,9 +18,13 @@ module SwellMedia
 			end
 
 			@asset.user = current_user
-			@asset.save
 
-			if params[:response] == 'url'
+			if !@asset.save
+
+				set_flash 'Unable to Save', :error
+				redirect_to :back
+
+			elsif params[:response] == 'url'
 
 				render text: @asset.url, layout: nil
 
@@ -43,6 +47,15 @@ module SwellMedia
 			end
 
 
+		end
+
+		def destroy
+			@asset = Asset.find(params[:id])
+			authorize( @asset )
+
+			@asset.update( status: 'trash' )
+
+			redirect_to :back
 		end
 
 		def callback_create
