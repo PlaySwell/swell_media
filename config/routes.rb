@@ -38,7 +38,7 @@ SwellMedia::Engine.routes.draw do
 	resources :imports
 	resources :exports
 
-	resources :sessions
+	#resources :sessions
 
 	devise_scope :user do
 		get '/login' => 'sessions#new', as: 'login'
