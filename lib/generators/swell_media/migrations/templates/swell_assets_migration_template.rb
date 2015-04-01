@@ -1,4 +1,6 @@
 class SwellAssetsMigration < ActiveRecord::Migration
+	# V2.0
+	
 	def change
 
 		create_table :assets do |t|

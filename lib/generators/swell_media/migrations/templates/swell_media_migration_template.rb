@@ -1,4 +1,6 @@
 class SwellMediaMigration < ActiveRecord::Migration
+	# V2.0
+	
 	def change
 
 		enable_extension 'hstore'
