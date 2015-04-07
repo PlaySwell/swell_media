@@ -19,7 +19,10 @@ SwellMedia::Engine.routes.draw do
 	resources :category_admin
 
 	resources :contacts
-	resources :contact_admin
+	resources :contact_admin do
+		post :import, on: :collection
+		get :export, on: :collection
+	end 
 
 	resources :oauth_email_collector, only: [:create, :new]
 

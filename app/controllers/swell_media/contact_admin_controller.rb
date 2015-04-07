@@ -1,7 +1,7 @@
 module SwellMedia
 	class ContactAdminController < ApplicationController
 		before_filter :authenticate_user!
-		before_filter :get_contact, except: [ :create, :empty_trash, :index ]
+		before_filter :get_contact, except: [ :create, :empty_trash, :export, :import, :index ]
 		layout 'admin'
 
 		def destroy
@@ -14,6 +14,28 @@ module SwellMedia
 
 		def edit
 			authorize( @contact, :admin_edit? )
+		end
+
+		def export
+			authorize( Contact, :admin? )
+
+			@contacts = Contact.all
+
+			if params[:status].present? && params[:status] != 'all'
+				@contacts = eval "@contacts.#{params[:status]}"
+			end
+
+			if params[:contact_type].present? && params[:contact_type] != 'all'
+				@contacts = @contacts.where( contact_type: params[:contact_type] )
+			end
+
+			if params[:q].present?
+				@contacts = @contacts.where( "email like :q", q: "'%#{params[:q].downcase}'%" )
+			end
+
+			respond_to do |format|
+				format.csv { render text: @contacts.to_csv }
+			end
 		end
 
 
@@ -36,6 +58,8 @@ module SwellMedia
 			if params[:q].present?
 				@contacts = @contacts.where( "email like :q", q: "'%#{params[:q].downcase}'%" )
 			end
+
+			@contact_count = @contacts.size
 
 			@contacts = @contacts.page( params[:page] )
 		end

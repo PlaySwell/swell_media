@@ -128,7 +128,6 @@ module SwellMedia
 
 		def full_name=( name )
 			name_array = name.split( / / )
-			self.name = name
 			self.first_name = name_array.shift
 			self.last_name = name_array.join( ' ' )
 		end

@@ -1,13 +1,21 @@
 
 .container-fluid
 	.row
-		.col-xs-10
+		.col-xs-8
 			%ul.breadcrumb
 				%li
 					= link_to 'Admin', contact_admin_index_path
 				%li
 					%strong
 						Contact Admin
+						= pluralize @contact_count, 'Contact'
+		.col-xs-4
+			%a.btn.btn-success{ data: { toggle: :modal, target: '#import_contacts' } }
+				%i.fa.fa-plus-square
+				Import
+			%a.btn.btn-success{ href: swell_media.export_contact_admin_index_path( :csv ) }
+				%i.fa.fa-download
+				Download CSV
 	
 	.row
 		.col-xs-6
@@ -51,3 +59,4 @@
 											%a{ href: contact_admin_path( contact ), data: { method: 'delete', confirm: 'Are you sure?' } }
 												%i.fa.fa-trash-o
 												Delete!
+= render 'import_modal.html.haml'
