@@ -9,9 +9,8 @@
 					= link_to 'Contact Admin', contact_admin_index_path
 				%li
 					%strong
-						= @contact.contact_type || 'contact'
-						From
-						= @contact.email
+						= @contact.to_s
+
 		.col-xs-2
 			.pull-right
 				= link_to 'Delete', contact_admin_path( @contact ), method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'

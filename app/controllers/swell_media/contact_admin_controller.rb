@@ -5,15 +5,15 @@ module SwellMedia
 		layout 'admin'
 
 		def destroy
-			authorize( @contact, :admin_destroy? )
+			authorize( Contact, :admin_destroy? )
 			@contact.destroy
-			set_flash "#{@contact.contact_type || 'contact'} from #{@contact.email} Deleted"
-			redirect_to admin_contact_index_path
+			set_flash "#{@contact.to_s} from #{@contact.email} Deleted"
+			redirect_to contact_admin_index_path
 		end
 
 
 		def edit
-			authorize( @contact, :admin_edit? )
+			authorize( Contact, :admin_edit? )
 		end
 
 		def export
@@ -35,6 +35,17 @@ module SwellMedia
 
 			respond_to do |format|
 				format.csv { render text: @contacts.to_csv }
+			end
+		end
+
+
+		def import
+			if count = Contact.import_from_csv( params[:file] )
+				set_flash "#{count} contacts imported"
+				redirect_to contact_admin_index_path
+			else
+				set_flash 'Could Not Import.', :error
+				redirect_to :back
 			end
 		end
 
@@ -66,7 +77,7 @@ module SwellMedia
 
 
 		def update
-			authorize( @contact, :admin_update? )
+			authorize( Contact, :admin_update? )
 
 			@contact.update( contact_params )
 

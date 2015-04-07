@@ -11,17 +11,18 @@ module SwellMedia
 
 
 		def self.import_from_csv( file )
-			begin
+			#begin
 				count = 0
 				CSV.foreach( file.path, headers: true ) do |row|
 					contact = row['type'].constantize.new
-					contact.attributes = row.to_hash.except( 'id' )
+					contact.attributes = row.to_hash.except( 'id', 'status' )
+					contact.status = Contact.statuses.invert[ row['status'].to_i ]
 					count = count + 1 if contact.save
 				end
 				return count
-			rescue
-				return false
-			end
+			#rescue
+				#next
+			#end
 		end
 
 
