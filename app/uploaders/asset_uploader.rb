@@ -3,7 +3,7 @@
 if defined?(CarrierWave)
 
 	class AssetUploader < CarrierWave::Uploader::Base
-		include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
+		#include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
 
 		storage :fog
 

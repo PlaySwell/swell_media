@@ -64,6 +64,7 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.references	:managed_by 			# User acct that has origin acct (e.g. youtube) rights
 			t.string		:public_id				# public id to spoof sequential id grepping
 			t.references 	:category
+			t.references 	:avatar_asset
 
 			t.references	:parent 				# for nested_set (podcasts + episodes, conversations, etc.)
 			t.integer		:lft

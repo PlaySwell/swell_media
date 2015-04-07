@@ -17,15 +17,6 @@ module SwellMedia
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
 
-		def self.order_by_calculated_weight( args={} )
-			dir = args[:dir] || 'DESC'
-			threshold = args[:threshold] || 0
-
-			res = self.where( "( weight + cached_upvote_count - cached_downvote_count ) > #{threshold}" )
-
-			res.order( "( weight + cached_upvote_count - cached_downvote_count ) #{dir}" )
-		end
-
 		def url
 			try(:uploader).try(:url) || origin_url
 		end
@@ -44,6 +35,30 @@ module SwellMedia
 				super(key)
 			end
 		end
+
+
+
+		def self.avatar
+			where(use: 'avatar').order(id: :desc).first
+		end
+
+		def self.order_by_avatar_assets( args={} )
+			dir = args[:dir] || 'DESC'
+			media = args[:media]
+
+			order("(id = #{media.avatar_asset_id}) #{dir}, (asset_type = 'image') #{dir}")
+
+		end
+
+		def self.order_by_calculated_weight( args={} )
+			dir = args[:dir] || 'DESC'
+			threshold = args[:threshold] || 0
+
+			res = self.where( "( weight + cached_upvote_count - cached_downvote_count ) > #{threshold}" )
+
+			res.order( "( weight + cached_upvote_count - cached_downvote_count ) #{dir}" )
+		end
+
 
 		def self.initialize_from_url( url, args = {} )
 			asset = Asset.where( "? LIKE ('%' || upload)", url ).first

@@ -4,6 +4,8 @@ module SwellMedia
 		self.table_name = 'media'
 
 		include SwellMedia::Concerns::URLConcern
+		include SwellMedia::Concerns::AvatarAsset
+
 		mounted_at '/'
 
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
@@ -20,6 +22,8 @@ module SwellMedia
 		belongs_to 	:category
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
+
+		belongs_to 	:avatar_asset, class_name: Asset.name
 
 		include FriendlyId
 		friendly_id :slugger, use: [ :slugged, :history ]
@@ -45,33 +49,6 @@ module SwellMedia
 			else
 				return ''
 			end
-		end
-
-		def avatar_asset_file=( file )
-			return false unless file.present?
-			asset = ImageAsset.new(use: 'avatar', asset_type: 'image', status: 'active')
-			asset.uploader = file
-			asset.save
-			asset.parent_obj = self
-			assets << asset
-			self.avatar = asset.try(:url)
-		end
-
-		def avatar_asset_url
-			nil
-		end
-
-		def avatar_asset_url=( url )
-			return false unless url.present?
-			asset = ImageAsset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active')
-			unless asset.nil?
-				asset.save
-
-				asset.parent_obj = self
-				assets << asset
-			end
-			puts "avatar_asset_url= asset: #{asset}"
-			self.avatar = asset.try(:url) || url
 		end
 
 		def char_count
