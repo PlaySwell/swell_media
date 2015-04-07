@@ -21,6 +21,10 @@ module SwellMedia
 				@events = @events.where( name: params[:event_name] )
 			end
 
+			if params[:event_src].present? && params[:event_src] != 'all'
+				@events = @events.where( src: params[:event_src] )
+			end
+
 			if params[:q].present?
 				@events = @events.where( "array[:q] && keywords", q: params[:q].downcase )
 			end
