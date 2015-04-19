@@ -24,6 +24,7 @@ module SwellMedia
 		mattr_accessor :default_user_status
 		mattr_accessor :google_analytics_code
 		mattr_accessor :google_analytics_site
+		mattr_accessor :google_analytics_event_logging
 
 		self.log_events = true
 		self.app_name = 'SwellApp'
@@ -36,6 +37,7 @@ module SwellMedia
 		self.default_user_status = :pending
 		self.google_analytics_code = nil
 		self.google_analytics_site = 'localhost'
+		self.google_analytics_event_logging = false
 
 	end
 
