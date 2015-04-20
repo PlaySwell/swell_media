@@ -4,14 +4,30 @@ module SwellMedia
 		layout 'sessions'
 
 		def create
-			self.resource = warden.authenticate!( auth_options )
+			self.resource = warden.authenticate( auth_options )
 
-			sign_in( resource_name, resource )
+			if self.resource
 
-			record_user_event( 'login', user: resource, guest_session: @guest_session, content: 'logged in.' ) 
-			assign_anonymous_events( resource )
+				if sign_in( resource_name, resource )
 
-			sign_in_and_redirect( resource )
+					record_user_event( 'login', user: resource, guest_session: @guest_session, content: 'logged in.' )
+					assign_anonymous_events( resource )
+
+					sign_in_and_redirect( resource )
+
+				else
+
+					set_flash 'login failed'
+
+					redirect_to :back
+
+				end
+
+			else
+
+				redirect_to self.try(:after_sign_in_failure_path) || '/login'
+
+			end
 		end
 
 		def new
