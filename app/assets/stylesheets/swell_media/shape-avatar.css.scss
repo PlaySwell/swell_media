@@ -20,6 +20,7 @@
   position:relative;
   display:inline-block;
 }
+
 .rectangle-avatar:after
 {
   padding-top: 70%;
@@ -30,7 +31,16 @@
   border: 1px solid #111;
 }
 
-.rectangle-avatar iframe, .square-avatar iframe {
+.widescreen-avatar:after
+{
+  padding-top: 55%;
+}
+.widescreen-avatar.with-border
+{
+  border: 1px solid #111;
+}
+
+.rectangle-avatar iframe, .square-avatar iframe, .widescreen-avatar iframe {
   position: absolute;
   top: 0;
   left: 0;
