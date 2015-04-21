@@ -1,0 +1,81 @@
+/*
+*= require ./owl-carousel/owl.carousel
+*= require ./owl-carousel/owl.theme
+*= require ./owl-carousel/owl.transitions
+*/
+
+.owl-carousel.owl-swell
+{
+  margin-bottom: 2em !important;
+  border: 6px solid #ccc;
+  border-top-width: 0;
+  border-bottom-width: 0;
+}
+
+.owl-carousel.owl-swell>.owl-controls
+{
+  margin: 0 !important;
+}
+
+.owl-carousel.owl-swell .owl-prev, .owl-carousel.owl-swell .owl-next
+{
+  margin: 0 !important;
+  position: absolute;
+  top: 10%;
+  height: 80%;
+  background: rgba(255,255,255,0.8) !important;
+  color: transparent !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(200,200,200,0.8);
+}
+.owl-carousel.owl-swell .owl-prev:after, .owl-carousel.owl-swell .owl-next:after
+{
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 25px;
+  margin-top: -1em;
+  line-height: 2em;
+  font-weight: bold;
+  color: rgba(100,100,100,0.8);
+}
+.owl-carousel.owl-swell .owl-prev
+{
+  left: 0;
+  border-left: none;
+}
+.owl-carousel.owl-swell .owl-next
+{
+  right: 0;
+  border-right: none;
+}
+.owl-carousel.owl-swell .owl-prev:after
+{
+  content: '<'
+}
+.owl-carousel.owl-swell .owl-next:after
+{
+  content: '>'
+}
+
+.owl-carousel.owl-swell .owl-pagination
+{
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  padding: 0.2em 0 0 0;
+}
+
+.owl-swell.owl-carousel .item
+{
+  padding: 0 2px;
+}
+
+.owl-carousel.owl-swell.owl-swell-lite .owl-prev, .owl-carousel.owl-swell.owl-swell-lite .owl-next
+{
+	padding: 0 0.1em !important;
+}
