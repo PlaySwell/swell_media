@@ -1,6 +1,6 @@
 
 
-.square-avatar, .rectangle-avatar
+.square-avatar, .rectangle-avatar, .widescreen-avatar
 {
   background: #fff no-repeat center;
   background-size:cover;
@@ -8,11 +8,11 @@
   position:relative;
   width: 100%;
 }
-.square-avatar.contain-image, .rectangle-avatar.contain-image
+.square-avatar.contain-image, .rectangle-avatar.contain-image, .widescreen-avatar.contain-image
 {
   background-size:contain;
 }
-.square-avatar:after, .rectangle-avatar:after
+.square-avatar:after, .rectangle-avatar:after, .widescreen-avatar:after
 {
   content: '';
   font-size: 0.1px;
