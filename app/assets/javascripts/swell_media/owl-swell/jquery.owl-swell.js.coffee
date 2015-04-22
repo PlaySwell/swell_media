@@ -9,7 +9,7 @@ syncPosition = ($that, currentItem) ->
 	return
 
 apply_center = ( owl ) ->
-	return if owl == undefined
+	return if owl == undefined || owl.visibleItems == undefined
 	#console.log('centering...', owl)
 	#console.log(owl.visibleItems)
 	if owl.visibleItems.length > 0
