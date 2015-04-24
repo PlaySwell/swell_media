@@ -2,6 +2,16 @@ module SwellMedia
 	class RegistrationsController < Devise::RegistrationsController
 		
 		layout 'sessions'
+
+		
+		def check_name
+			if User.find_by( name: params[:name] )
+				render text: "#{params[:name]} has been taken"
+			else
+				render text: "ok"
+			end
+		end
+
 		
 		def create
 			email = params[:user][:email]
