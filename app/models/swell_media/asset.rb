@@ -54,7 +54,7 @@ module SwellMedia
 			dir = args[:dir] || 'DESC'
 			threshold = args[:threshold] || 0
 
-			res = self.where( "( weight + cached_upvote_count - cached_downvote_count ) > #{threshold}" )
+			res = self.where( "( weight + ((cached_upvote_count - cached_downvote_count) / 2) ) > #{threshold}" )
 
 			res.order( "( weight + cached_upvote_count - cached_downvote_count ) #{dir}" )
 		end
