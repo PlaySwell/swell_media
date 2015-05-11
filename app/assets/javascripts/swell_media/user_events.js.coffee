@@ -8,8 +8,8 @@ $.user_event = ( event, data = {} )->
 
 	if url
 		$.post( url, data )
-		if window.console
-			console.log 'user_event', event, data
+		#if window.console
+		#	console.log 'user_event', event, data
 	else if window.console
 		console.error 'Unable to post user event... there is no url'
 

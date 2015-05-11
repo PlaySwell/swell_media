@@ -38,6 +38,8 @@ module SwellMedia
 
 					credential = current_user.oauth_credentials.create!( response.credential_fields )
 
+					current_user.update( avatar: response.avatar ) if current_user.avatar.blank?
+
 					set_flash "#{credential.provider} account added."
 
 					login_redirect( current_user )
