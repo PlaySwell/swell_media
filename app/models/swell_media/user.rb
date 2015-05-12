@@ -145,7 +145,7 @@ module SwellMedia
 
 		def possessive( field=nil )
 			if field.try( :to_s ) == 'first_name'
-				self.first_name + ( 's' == self.first_name[-1,1] ? "'" : "'s" )
+				self.first_name.try(:strip) + ( 's' == self.first_name[-1,1].try(:strip) ? "'" : "'s" )
 			else
 	    		self.to_s + ( 's' == self.to_s[-1,1] ? "'" : "'s" )
 	    	end
@@ -179,12 +179,12 @@ module SwellMedia
 		
 		def to_s( args={} ) 
 			if args[:username]
-				str = self.name
+				str = self.name.try(:strip)
 				str = 'Guest' if str.blank?
 				return str
 			else
-				str = "#{self.first_name} #{self.last_name}"
-				str = self.name if str.blank?
+				str = "#{self.first_name} #{self.last_name}".strip
+				str = self.name.try(:strip) if str.blank?
 				str = 'Guest' if str.blank?
 				return str
 			end
