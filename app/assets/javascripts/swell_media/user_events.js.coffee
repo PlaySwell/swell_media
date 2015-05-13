@@ -13,14 +13,31 @@ $.user_event = ( event, data = {} )->
 	else if window.console
 		console.error 'Unable to post user event... there is no url'
 
-	if window['ga']
+	ga_category	= (data.group || data.parent_obj_type || 'Site Event')
+	ga_action 	= event
+	ga_label 		= data.content
+	ga_value 		= data.value
+
+	if window['dataLayer']
+		dataLayer.push({
+			event: ga_category,
+			category: ga_category,
+			action: ga_action,
+			label: ga_label,
+			value: ga_value,
+			eventCategory: ga_category,
+			eventAction: ga_action,
+			eventLabel: ga_label,
+			eventValue: ga_value
+		});
+	else if window['ga']
 		ga(
 			'send'
 			'event'
-			data.group || data.parent_obj_type || 'Site Event' 	#category
-			event,        												#action
-			data.content, 												#label
-			data.value   	 												#value
+			ga_category
+			ga_action,
+			ga_label,
+			ga_value
 		)
 
 
