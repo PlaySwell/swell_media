@@ -46,7 +46,12 @@ module SwellMedia
 			dir = args[:dir] || 'DESC'
 			media = args[:media]
 
-			order("(id = #{media.avatar_asset_id}) #{dir}, (asset_type = 'image') #{dir}")
+			if media.try(:avatar_asset_id)
+				order("(id = #{media.avatar_asset_id}) #{dir}, (asset_type = 'image') #{dir}")
+			else
+				order("(asset_type = 'image') #{dir}")
+			end
+
 
 		end
 
