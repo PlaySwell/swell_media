@@ -6,7 +6,9 @@
 %body
 	%p
 		You have a new
-		= @contact.contact_type || 'contact'
+		= @contact.type || 'contact'
+		- unless @contact.sub_type.nil?
+			(#{@contact.sub_type})
 		!
 	%p
 		%b From:

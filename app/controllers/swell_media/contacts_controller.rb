@@ -10,7 +10,7 @@ module SwellMedia
 				
 				SwellMedia::ContactMailer.new_contact( @contact ).deliver
 
-				if ENV['MAILCHIMP_DEFAULT_LIST_ID'].present? && ( params[:optin].present? || @contact.contact_type == 'optin' )
+				if ENV['MAILCHIMP_DEFAULT_LIST_ID'].present? && ( params[:optin].present? || @contact.type == 'Optin' )
 					mail_api = Gibbon::API.new
 					mail_api.lists.subscribe( { id: ENV['MAILCHIMP_DEFAULT_LIST_ID'], email: { email: email }, double_optin: true } )
 				end
@@ -33,9 +33,9 @@ module SwellMedia
 		private
 			def contact_params
 				if params[:contact].present?
-					params.require( :contact ).permit( :email, :subject, :message, :contact_type )
+					params.require( :contact ).permit( :email, :subject, :message, :type )
 				else
-					return { email: params[:email], subject: params[:subject], message: params[:message], contact_type: params[:contact_type] }
+					return { email: params[:email], subject: params[:subject], message: params[:message], type: params[:type] }
 				end
 			end
 

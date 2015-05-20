@@ -25,8 +25,8 @@ module SwellMedia
 				@contacts = eval "@contacts.#{params[:status]}"
 			end
 
-			if params[:contact_type].present? && params[:contact_type] != 'all'
-				@contacts = @contacts.where( contact_type: params[:contact_type] )
+			if params[:type].present? && params[:type] != 'all'
+				@contacts = @contacts.where( type: params[:type] )
 			end
 
 			if params[:q].present?
@@ -62,8 +62,8 @@ module SwellMedia
 				@contacts = eval "@contacts.#{params[:status]}"
 			end
 
-			if params[:contact_type].present? && params[:contact_type] != 'all'
-				@contacts = @contacts.where( contact_type: params[:contact_type] )
+			if params[:type].present? && params[:type] != 'all'
+				@contacts = @contacts.where( type: params[:type] )
 			end
 
 			if params[:q].present?
