@@ -127,9 +127,11 @@ module SwellMedia
 		end
 
 		def full_name=( name )
-			name_array = name.split( / / )
-			self.first_name = name_array.shift
-			self.last_name = name_array.join( ' ' )
+			unless name.nil?
+				name_array = name.split( / / )
+				self.first_name = name_array.shift
+				self.last_name = name_array.join( ' ' )
+			end
 		end
 
 
