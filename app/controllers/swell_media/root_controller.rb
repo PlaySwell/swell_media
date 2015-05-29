@@ -37,7 +37,7 @@ module SwellMedia
 
 				if params[:id].present?
 					if params[:id].match( /sitemap/i )
-						redirect_to "https://s3-us-west-2.amazonaws.com/#{ENV['FOG_DIRECTORY']}/sitemaps/sitemap.xml.gz"
+						redirect_to "https://s3.amazonaws.com/#{ENV['FOG_DIRECTORY']}/sitemaps/sitemap.xml.gz"
 						return false
 					else
 						begin
