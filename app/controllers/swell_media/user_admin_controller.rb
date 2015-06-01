@@ -4,6 +4,11 @@ module SwellMedia
 		before_filter :authenticate_user!
 		layout 'admin'
 
+		def edit
+			@user = User.friendly.find( params[:id] )			
+		end
+
+
 		def index
 			authorize( User, :admin? )
 
@@ -19,6 +24,23 @@ module SwellMedia
 			@users = @users.page( params[:page] )
 
 		end
+
+		def update
+			@user = User.friendly.find( params[:id] )
+			@user.attributes = user_params
+
+			if @user.save
+				set_flash "#{@user} updated"
+			else
+				set_flash "Could not save", :danger, @user
+			end
+			redirect_to :back
+		end
+
+		private
+			def user_params
+				params.require( :user ).permit( :name, :first_name, :last_name, :email, :short_bio, :bio, :shipping_name, :address1, :address2, :city, :state, :zip, :phone, :role, :status )
+			end
 
 	end
 

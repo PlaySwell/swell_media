@@ -1,0 +1,69 @@
+
+
+.row
+	.col-xs-12
+		%h1
+			Edit
+			= @user
+
+= form_for @user, url: user_admin_path( @user ), method: :put do |f|
+	.row
+		.col-xs-8
+			.row
+				.col-xs-6
+					= f.label :first_name
+					= f.text_field :first_name, class: 'form-control'
+				.col-xs-6
+					= f.label :last_name
+					= f.text_field :last_name, class: 'form-control'
+
+			.row
+				.col-xs-6
+					= f.label :email
+					= f.text_field :email, class: 'form-control'
+				.col-xs-6
+					= f.label :name, 'User Name'
+					= f.text_field :name, class: 'form-control'
+			.row
+				.col-xs-12
+					= f.label :short_bio
+					= f.text_field :short_bio, class: 'form-control'
+
+					= f.label :bio
+					= f.text_area :bio, class: 'form-control'
+			.row
+				.col-xs-12
+					= f.label :shipping_name
+					= f.text_field :shipping_name, class: 'form-control'
+
+					= f.label :address1
+					= f.text_field :address1, class: 'form-control'
+
+					= f.label :address2
+					= f.text_field :address2, class: 'form-control'
+			.row
+				.col-xs-6
+					= f.label :city
+					= f.text_field :city, class: 'form-control'
+				.col-xs-3
+					= f.label :state
+					= f.text_field :state, class: 'form-control'
+				.col-xs-3
+					= f.label :zip
+					= f.text_field :zip, class: 'form-control'
+		
+		.col-xs-4
+			= f.label :created_at, 'Joined'
+			%div
+				= @user.created_at
+
+			= f.label :status
+			= f.collection_select :status, User.statuses, :first, :first, {}, class: 'form-control'
+
+			= f.label :role
+			= f.collection_select :role, User.roles, :first, :first, {}, class: 'form-control'
+
+			.input-group
+				= f.submit 'Update', class: 'btn btn-primary'
+	
+

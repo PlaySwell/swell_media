@@ -3,7 +3,7 @@ module SwellMedia
 		self.table_name = 'users'
 
 		enum status: { 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
-		enum role: { 'member' => 1, 'contributor' => 2, 'admin' => 3 }
+		enum role: { 'member' => 1, 'ambassador' => 2, 'admin' => 3 }
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
 		has_many	:oauth_credentials, dependent: :destroy, class_name: SwellMedia::OauthCredential.name
