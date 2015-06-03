@@ -4,6 +4,7 @@
 	.col-xs-12
 		%h1
 			Edit
+			= @user.avatar_tag width: 48, class: 'img img-rounded'
 			= @user
 
 = form_for @user, url: user_admin_path( @user ), method: :put do |f|
@@ -24,6 +25,14 @@
 				.col-xs-6
 					= f.label :name, 'User Name'
 					= f.text_field :name, class: 'form-control'
+			
+			.row{ style: 'margin: 1em auto;' }
+				.col-xs-2
+					= @user.avatar_tag class: 'img img-responsive img-rounded'
+				.col-xs-8
+					= f.label :avatar
+					= f.text_field :avatar, class: 'form-control'
+					
 			.row
 				.col-xs-12
 					= f.label :short_bio

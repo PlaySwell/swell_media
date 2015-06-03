@@ -51,7 +51,7 @@
 					- @users.each do |user|
 						%tr
 							%td
-								= image_tag user.avatar, width: 50, class: 'img img-rounded'
+								= user.avatar_tag width: 50, class: 'img img-rounded'
 							%td
 								= link_to user.to_s, edit_user_admin_path( user.id )
 							%td
