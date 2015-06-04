@@ -1,0 +1,131 @@
+.fileupload-progress._0-per:before{ width: 1% }
+.fileupload-progress._5-per:before{ width: 5% }
+.fileupload-progress._10-per:before{ width: 10% }
+.fileupload-progress._15-per:before{ width: 15% }
+.fileupload-progress._20-per:before{ width: 20% }
+.fileupload-progress._25-per:before{ width: 25% }
+.fileupload-progress._30-per:before{ width: 30% }
+.fileupload-progress._35-per:before{ width: 35% }
+.fileupload-progress._40-per:before{ width: 40% }
+.fileupload-progress._45-per:before{ width: 45% }
+.fileupload-progress._50-per:before{ width: 50% }
+.fileupload-progress._55-per:before{ width: 55% }
+.fileupload-progress._60-per:before{ width: 60% }
+.fileupload-progress._65-per:before{ width: 65% }
+.fileupload-progress._70-per:before{ width: 70% }
+.fileupload-progress._75-per:before{ width: 75% }
+.fileupload-progress._80-per:before{ width: 80% }
+.fileupload-progress._85-per:before{ width: 85% }
+.fileupload-progress._90-per:before{ width: 90% }
+.fileupload-progress._95-per:before{ width: 95% }
+.fileupload-progress._100-per:before{ width: 97% }
+.fileupload-progress._complete:before{ width: 100% }
+
+.fileupload-progress.show-percent._0-per:after{ content: '0%' }
+.fileupload-progress.show-percent._5-per:after{ content: '5%' }
+.fileupload-progress.show-percent._10-per:after{ content: '10%' }
+.fileupload-progress.show-percent._15-per:after{ content: '15%' }
+.fileupload-progress.show-percent._20-per:after{ content: '20%' }
+.fileupload-progress.show-percent._25-per:after{ content: '25%' }
+.fileupload-progress.show-percent._30-per:after{ content: '30%' }
+.fileupload-progress.show-percent._35-per:after{ content: '35%' }
+.fileupload-progress.show-percent._40-per:after{ content: '40%' }
+.fileupload-progress.show-percent._45-per:after{ content: '45%' }
+.fileupload-progress.show-percent._50-per:after{ content: '50%' }
+.fileupload-progress.show-percent._55-per:after{ content: '55%' }
+.fileupload-progress.show-percent._60-per:after{ content: '60%' }
+.fileupload-progress.show-percent._65-per:after{ content: '65%' }
+.fileupload-progress.show-percent._70-per:after{ content: '70%' }
+.fileupload-progress.show-percent._75-per:after{ content: '75%' }
+.fileupload-progress.show-percent._80-per:after{ content: '80%' }
+.fileupload-progress.show-percent._85-per:after{ content: '85%' }
+.fileupload-progress.show-percent._90-per:after{ content: '90%' }
+.fileupload-progress.show-percent._95-per:after{ content: '95%' }
+.fileupload-progress.show-percent._100-per:after{ content: '97%' }
+.fileupload-progress.show-percent._complete:after{ content: '100%' }
+
+.fileupload-progress.initially-hidden
+{
+  opacity: 0;
+}
+.fileupload-progress._0-per,
+.fileupload-progress._5-per,
+.fileupload-progress._10-per,
+.fileupload-progress._15-per,
+.fileupload-progress._20-per,
+.fileupload-progress._25-per,
+.fileupload-progress._30-per,
+.fileupload-progress._35-per,
+.fileupload-progress._40-per,
+.fileupload-progress._45-per,
+.fileupload-progress._50-per,
+.fileupload-progress._55-per,
+.fileupload-progress._60-per,
+.fileupload-progress._65-per,
+.fileupload-progress._70-per,
+.fileupload-progress._75-per,
+.fileupload-progress._80-per,
+.fileupload-progress._85-per,
+.fileupload-progress._90-per,
+.fileupload-progress._95-per,
+.fileupload-progress._100-per,
+.fileupload-progress._complete
+{
+  opacity: 1;
+}
+
+.fileupload-progress._complete.hide-on-complete
+{
+  opacity: 0;
+}
+
+.fileupload-progress.show-percent:after{
+  width: 100%; height: 100%;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  text-align: center;
+  font-size: 0.8em;
+  line-height: 1.375em;
+  color: #fff;
+  font-weight: bold;
+}
+
+.fileupload-progress
+{
+  width: 100%;
+  height: 5px;
+  overflow:hidden;
+  background: #eee;
+  border: 1px solid #ccc;
+  position: relative;
+
+  -webkit-transition: all 0.3s ease;
+  -moz-transition: all 0.3s ease;
+  -o-transition: all 0.3s ease;
+  -ms-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+}
+.fileupload-progress.show-percent
+{
+  height: 1.1em;
+  line-height: 1.1em;
+}
+
+.fileupload-progress:before
+{
+  background: #0088CC;
+  position: absolute;
+  display: block;
+  content: ' ';
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  width: 0%;
+  overflow: hidden;
+
+  -webkit-transition: all 1s ease;
+  -moz-transition: all 1s ease;
+  -o-transition: all 1s ease;
+  -ms-transition: all 1s ease;
+  transition: all 1s ease;
+}

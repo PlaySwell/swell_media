@@ -1,4 +1,7 @@
-= form_for @asset, :html => {:multipart => true} do |f|
-	= f.file_field :uploader
-	= f.hidden_field :uploader_cache
-	= f.submit 'Upload'
+= direct_upload_form_for @asset.non_ajax_uploader do |f|
+	%label
+		%div{ style: 'display:none' }
+			= f.file_field :file
+		Upload!
+	%div{ style: 'display:none' }
+		= f.submit

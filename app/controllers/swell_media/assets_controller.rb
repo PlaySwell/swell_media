@@ -6,6 +6,32 @@ module SwellMedia
 		def new
 			@asset = Asset.new
 
+			respond_to do |format|
+				format.json {
+
+					@uploader = @asset.ajax_uploader
+
+					render :json => {
+						request: {
+							:utf8 => '',
+							:key => @uploader.key,
+							'AwsAccessKeyId' => @uploader.aws_access_key_id,
+							:acl => @uploader.acl,
+							:success_action_status => @uploader.success_action_status,
+							:policy => @uploader.policy,
+							:signature => @uploader.signature
+						},
+						action: @uploader.direct_fog_url,
+						callback: {
+								url: swell_media.callback_create_assets_path( format: :json ),
+								data: params[:asset] || {}
+						}
+					}
+				}
+				format.html {
+					render layout: 'swell_media/assets'
+				}
+			end
 		end
 
 		def create
@@ -60,9 +86,12 @@ module SwellMedia
 
 		def callback_create
 
-			@asset = Asset.create( params.require( :asset ).permit( :parent_obj_id, :parent_obj_type, :use, :asset_type, :title, :description, :type, :sub_type, :status ).merge({key: params[:key]}) )
+			@asset = Asset.create( params.permit( :parent_obj_id, :parent_obj_type, :use, :asset_type, :title, :description, :type, :sub_type, :status ) )
 			@asset.user = current_user
 			@asset.save
+
+			Asset.where( id: @asset.id, upload: nil ).update_all( upload: (params[:key] || '').gsub(/assets\/+/, '') )
+			@asset.reload
 
 			if params[:async]
 

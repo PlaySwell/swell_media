@@ -3,18 +3,18 @@
 if defined?(CarrierWave)
 
 	class AssetUploader < CarrierWave::Uploader::Base
-		#include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
+		include CarrierWaveDirect::Uploader if defined?(CarrierWaveDirect)
 
 		storage :fog
 
 		def asset_host
-			ENV['ASSET_HOST'] || super
+			SwellMedia.asset_host || super
 		end
 
 		# Override the directory where uploaded files will be stored.
 		# This is a sensible default for uploaders that are meant to be mounted:
 		def store_dir
-			'assets/'
+			'assets'
 		end
 
 		# Override the filename of the uploaded files:

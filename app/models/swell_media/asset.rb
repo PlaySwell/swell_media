@@ -17,6 +17,22 @@ module SwellMedia
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
 
+		def non_ajax_uploader( args = {} )
+
+			url = args[:success_action_redirect]
+			url ||= SwellMedia::Engine.routes.url_helpers.callback_create_assets_url( { host: SwellMedia.app_host }.merge(args) )
+
+			uploader.success_action_redirect = url
+			uploader
+		end
+
+		def ajax_uploader( args = {} )
+
+			uploader.success_action_status = '201'
+			uploader.use_action_status = true
+			uploader
+		end
+
 		def url
 			try(:uploader).try(:url) || origin_url
 		end

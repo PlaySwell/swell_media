@@ -32,7 +32,7 @@
 					.input-group
 						= f.label :slug_pref, 'URL for this article:'
 						%span.input-group-addon
-							= ENV['APP_DOMAIN']
+							= SwellMedia.app_host
 						= f.text_field :slug_pref, class: 'form-control', placeholder: @article.slug
 
 				.form-group

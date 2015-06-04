@@ -15,6 +15,8 @@ module SwellMedia
 	class << self
 		mattr_accessor :log_events
 		mattr_accessor :app_name
+		mattr_accessor :app_host
+		mattr_accessor :asset_host
 		mattr_accessor :app_description
 		mattr_accessor :app_logo
 		mattr_accessor :twitter_handle
@@ -28,6 +30,8 @@ module SwellMedia
 
 		self.log_events = true
 		self.app_name = 'SwellApp'
+		self.app_host = ENV['APP_DOMAIN'] || 'localhost:3000'
+		self.asset_host = ENV['ASSET_HOST']
 		self.app_description = 'A Very Swell App indeed'
 		self.app_logo = 'https://media.licdn.com/media/p/1/000/27f/2a3/36f3707.jpg'
 		self.twitter_handle = '@gkparishphilp'
