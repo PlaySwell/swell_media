@@ -27,6 +27,7 @@ module SwellMedia
 		mattr_accessor :google_analytics_code
 		mattr_accessor :google_analytics_site
 		mattr_accessor :google_analytics_event_logging
+		mattr_accessor :default_protocol
 
 		self.log_events = true
 		self.app_name = 'SwellApp'
@@ -42,6 +43,7 @@ module SwellMedia
 		self.google_analytics_code = nil
 		self.google_analytics_site = 'localhost'
 		self.google_analytics_event_logging = false
+		self.default_protocol = 'http'
 
 	end
 

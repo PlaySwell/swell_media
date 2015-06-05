@@ -49,7 +49,7 @@ module SwellMedia
 
 			def url( args={} )
 				domain = ( args.present? && args.delete( :domain ) ) || SwellMedia.app_host
-				protocol = ( args.present? && args.delete( :protocol ) ) || 'http'
+				protocol = ( args.present? && args.delete( :protocol ) ) || SwellMedia.default_protocol
 				path = self.path( args )
 				url = "#{protocol}://#{domain}#{self.path( args )}"
 
