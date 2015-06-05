@@ -114,7 +114,7 @@ module SwellMedia
 			if opts[:use_gravatar] || self.avatar.blank?
 				return "#{protocol}://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{opts[:default]}"
 			else
-				return self.avatar
+				return self.avatar.gsub(/^(https|http)\:/, "#{protocol}:")
 			end
 		end
 
