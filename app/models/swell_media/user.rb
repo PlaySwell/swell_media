@@ -109,9 +109,10 @@ module SwellMedia
 			# abstracts avatar path (uses gravatar if no avatar)
 			# call as avatar_url( use_gravatar: true ) to over-ride avatar and force gravatar
 			opts[:default] ||= 'identicon'
+			protocol = ( opts.present? && opts.delete( :protocol ) ) || SwellMedia.default_protocol
 
 			if opts[:use_gravatar] || self.avatar.blank?
-				return "http://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{opts[:default]}"
+				return "#{protocol}://gravatar.com/avatar/" + Digest::MD5.hexdigest( self.email ) + "?d=#{opts[:default]}"
 			else
 				return self.avatar
 			end
