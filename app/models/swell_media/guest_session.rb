@@ -23,7 +23,7 @@ module SwellMedia
 								params: {}, properties: {} )
 			
 			if args[:params].present?
-				session.src = args[:params][:src]
+				session.src = args[:params][:src] || args[:params][:utm_source]
 				session.ui_variant = args[:params][:var]
 				args[:params].each do |k, v|
 					session.params[k] = v
