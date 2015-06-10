@@ -14,6 +14,7 @@ module SwellMedia
 
 				redirect_to after_sending_reset_password_instructions_path_for(resource_name)
 			else
+				set_flash( resource.errors.full_messages.first, :error )
 				redirect_to :back
 			end
 		end
