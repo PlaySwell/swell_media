@@ -9,9 +9,12 @@ module SwellMedia
 
 			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session].id )
 
+
 			event.user_id = args[:user].try( :id )
 
 			parent_obj = args[:on] || args[:obj]
+
+			parent_event = UserEvent.where( name: event.name, parent_obj_type: parent_obj.class.name, parent_obj_id: parent_obj.id, parent_id: nil ).where('created_at > ?', 1.day.ago)
 
 			event.src = args[:guest_session].src
 			event.ui_variant = args[:guest_session].ui_variant
