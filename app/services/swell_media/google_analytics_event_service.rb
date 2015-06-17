@@ -30,8 +30,9 @@ module SwellMedia
 
 				return response.code == 200
 			rescue  RestClient::Exception => rex
-				logger.error rex.message
-				logger.error rex.backtrace.join("\n")
+				#@todo log some errors
+				#logger.error rex.message
+				#logger.error rex.backtrace.join("\n")
 				return false
 			end
 
