@@ -50,7 +50,8 @@ module SwellMedia
 						end
 					end
 				else
-					@media = Page.homepage
+					redirect_to root_path
+					return false
 				end
 			end
 

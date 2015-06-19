@@ -1,5 +1,5 @@
 class SwellEventsMigration < ActiveRecord::Migration 
-	# V2.0
+	# V3.0
 	
 	def change
 
@@ -7,8 +7,12 @@ class SwellEventsMigration < ActiveRecord::Migration
 
 		create_table :guest_sessions do |t|
 			t.references		:user
-			t.string			:src  					# src param used to track campaigns
-			t.string			:ui_variant				# var param used to record ui or design variant. e.g. to test colors, layouts, etc.
+			t.references		:traffic_src_user  				# user attribution for traffic
+			t.references		:content_src_user				# user attribution for content
+			t.string			:traffic_source  				# ga/utm param used to track campaigns
+			t.string			:traffic_campaign  				# ga/utm param used to track campaigns
+			t.string			:traffic_medium  				# ga/utm param used to track campaigns
+			t.string			:ui_variant						# var param used to record ui or design variant. e.g. to test colors, layouts, etc.
 			t.string			:ip
 			t.string			:user_agent
 			t.string			:platform
@@ -24,15 +28,22 @@ class SwellEventsMigration < ActiveRecord::Migration
 			t.timestamps
 		end
 		add_index :guest_sessions, :user_id
-		add_index :guest_sessions, :src
+		add_index :guest_sessions, :traffic_src_user_id
+		add_index :guest_sessions, :content_src_user_id
 
 
 		create_table :user_events do |t|
 			t.references		:user
 			t.references		:guest_session
 			t.references 		:parent_obj, 			polymorphic: true
+			t.references		:traffic_src_user  				# user attribution for traffic
+			t.references		:content_src_user				# user attribution for content
+			t.string			:parent_controller
+			t.string			:parent_action
+			t.string			:traffic_source  				# ga/utm param used to track campaigns
+			t.string			:traffic_campaign  				# ga/utm param used to track campaigns
+			t.string			:traffic_medium  				# ga/utm param used to track campaigns
 			t.datetime			:session_cluster_created_at
-			t.string			:src  					# src param used to track campaigns -- cached here for ease of query
 			t.string			:ui_variant				# var param used to record ui or design variant. e.g. to test colors, layouts, etc. gets this from browser session
 			t.string			:ui 					# just in case we want to track specific links, buttons, etc. e.g. outbound clicks from 'buy_btn' vs 'info_btn'
 			t.references		:category
@@ -65,8 +76,8 @@ class SwellEventsMigration < ActiveRecord::Migration
 		add_index :user_events, [ :name, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_timestamped'
 		add_index :user_events, [ :name, :user_id, :session_cluster_created_at ], name: 'index_user_events_on_name_and_user_id'
 		add_index :user_events, [ :name, :user_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_user_id_timestamped'
-		add_index :user_events, [ :name, :src, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src'
-		add_index :user_events, [ :name, :src, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src_timestamped'
+		add_index :user_events, [ :name, :traffic_src_user_id, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src'
+		add_index :user_events, [ :name, :traffic_src_user_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src_timestamped'
 				
 	end
 
