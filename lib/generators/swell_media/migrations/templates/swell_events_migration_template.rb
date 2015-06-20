@@ -7,8 +7,8 @@ class SwellEventsMigration < ActiveRecord::Migration
 
 		create_table :guest_sessions do |t|
 			t.references		:user
-			t.references		:traffic_src_user  				# user attribution for traffic
-			t.references		:content_src_user				# user attribution for content
+			t.string			:traffic_src_user  				# user attribution for traffic
+			t.string			:content_src_user				# user attribution for content
 			t.string			:traffic_source  				# ga/utm param used to track campaigns
 			t.string			:traffic_campaign  				# ga/utm param used to track campaigns
 			t.string			:traffic_medium  				# ga/utm param used to track campaigns
@@ -28,16 +28,16 @@ class SwellEventsMigration < ActiveRecord::Migration
 			t.timestamps
 		end
 		add_index :guest_sessions, :user_id
-		add_index :guest_sessions, :traffic_src_user_id
-		add_index :guest_sessions, :content_src_user_id
+		add_index :guest_sessions, :traffic_src_user
+		add_index :guest_sessions, :content_src_user
 
 
 		create_table :user_events do |t|
 			t.references		:user
 			t.references		:guest_session
 			t.references 		:parent_obj, 			polymorphic: true
-			t.references		:traffic_src_user  				# user attribution for traffic
-			t.references		:content_src_user				# user attribution for content
+			t.string			:traffic_src_user  				# user attribution for traffic
+			t.string			:content_src_user				# user attribution for content
 			t.string			:parent_controller
 			t.string			:parent_action
 			t.string			:traffic_source  				# ga/utm param used to track campaigns
@@ -76,8 +76,9 @@ class SwellEventsMigration < ActiveRecord::Migration
 		add_index :user_events, [ :name, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_timestamped'
 		add_index :user_events, [ :name, :user_id, :session_cluster_created_at ], name: 'index_user_events_on_name_and_user_id'
 		add_index :user_events, [ :name, :user_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_user_id_timestamped'
-		add_index :user_events, [ :name, :traffic_src_user_id, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src'
-		add_index :user_events, [ :name, :traffic_src_user_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src_timestamped'
+		add_index :user_events, [ :name, :traffic_src_user, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src'
+		add_index :user_events, [ :name, :traffic_src_user, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_name_and_src_timestamped'
+		add_index :user_events, [ :name, :content_src_user, :created_at, :session_cluster_created_at ], name: 'idx_user_events_on_name_and_con_src_timestamped'
 				
 	end
 

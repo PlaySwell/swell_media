@@ -11,8 +11,8 @@ module SwellMedia
 				@media_comments = @media_comments.tagged_with( params[:comment_tag] ) if params[:comment_tag].present?
 			end
 
-			if @media.user_id.present?
-				@guest_session.update( content_src_user_id: @media.user_id )
+			if @media.user.present?
+				@guest_session.update( content_src_user: @media.user.try( :slug ) )
 			end
 
 			record_user_event( 'impression', on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )

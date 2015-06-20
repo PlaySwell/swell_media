@@ -20,8 +20,8 @@ module SwellMedia
 			event.traffic_campaign = args[:guest_session].traffic_campaign
 			event.traffic_medium = args[:guest_session].traffic_medium
 
-			event.traffic_src_user_id = args[:guest_session].traffic_src_user_id
-			event.content_src_user_id = args[:guest_session].content_src_user_id
+			event.traffic_src_user = args[:guest_session].traffic_src_user
+			event.content_src_user = args[:guest_session].content_src_user
 
 			event.ui_variant = args[:params][:ui_variant] || args[:guest_session].ui_variant
 			event.ui = args[:params][:ui]

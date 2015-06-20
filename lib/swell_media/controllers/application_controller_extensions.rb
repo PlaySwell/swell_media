@@ -92,7 +92,7 @@ module SwellMedia
 			session.traffic_campaign = params[:utm_campaign] || session.traffic_campaign
 
 			if params[:src].present?
-				session.traffic_src_user_id = User.find_by( slug: params[:src] ).try( :id )
+				session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
 			end
 
 			session.last_http_referrer = request.referrer
