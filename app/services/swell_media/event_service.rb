@@ -13,9 +13,18 @@ module SwellMedia
 
 			parent_obj = args[:on] || args[:obj]
 
-			event.src = args[:guest_session].src
-			event.ui_variant = args[:guest_session].ui_variant
-			event.ui = args[:ui] if event.respond_to? ( :ui )
+			event.parent_controller = args[:parent_controller]
+			event.parent_action = args[:parent_action]
+
+			event.traffic_source = args[:guest_session].traffic_source
+			event.traffic_campaign = args[:guest_session].traffic_campaign
+			event.traffic_medium = args[:guest_session].traffic_medium
+
+			event.traffic_src_user_id = args[:guest_session].traffic_src_user_id
+			event.content_src_user_id = args[:guest_session].content_src_user_id
+
+			event.ui_variant = args[:params][:ui_variant] || args[:guest_session].ui_variant
+			event.ui = args[:params][:ui]
 
 			event.session_cluster_created_at = Time.at( args.delete(:session_cluster_created_at) ) if args[:session_cluster_created_at].is_a? Integer
 			event.session_cluster_created_at ||= args[:session_cluster_created_at]
@@ -38,7 +47,11 @@ module SwellMedia
 			event.parent_obj_id = parent_obj.try( :id )
 
 			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate )
-			dup_events = dup_events.by_object( parent_obj ) if dup_events.present? && parent_obj.present?
+			if parent_obj.present?
+				dup_events = dup_events.by_object( parent_obj )
+			else
+				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
+			end
 			# DO NOT record if existing events within rate
 			return false if dup_events.count > 0
 

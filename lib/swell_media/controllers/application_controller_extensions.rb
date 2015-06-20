@@ -16,13 +16,18 @@ module SwellMedia
 			# this method can be called by any controller to log a specific event
 			# such as a purchase, comment, newsletter signup, etc.
 			return false unless SwellMedia.log_events
-			args[:request] ||= request
 			
+			args[:request] ||= request
+			args[:params] ||= params
+
 			args[:user] ||= current_user
 
 			args[:ga_client_id] ||= session[:ga_client_id]
 			args[:guest_session] ||= @guest_session
 			args[:session_cluster_created_at] ||= @session_cluster_created_at
+
+			args[:parent_controller] ||= controller_name
+			args[:parent_action] ||= action_name
 
 			args[:req_path] ||= request.fullpath
 
@@ -75,17 +80,28 @@ module SwellMedia
 
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.
-			@session_cluster_created_at = Time.at(cookies.signed[:session_cluster] || Time.zone.now.to_i)
+			@session_cluster_created_at = Time.at( cookies.signed[:session_cluster] || Time.zone.now.to_i )
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
-			if session = GuestSession.where( id: cookies.signed[:guest] ).first
-				session.update( last_http_referrer: request.referrer )
-				return session
-			else
-				session = GuestSession.create_from_request( request, params: params, user: current_user )
-				cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
-				return session
+			session = GuestSession.where( id: cookies.signed[:guest] ).first
+
+			session ||= GuestSession.create_from_request( request, params: params, user: current_user )
+
+			session.traffic_source = params[:utm_source] || session.traffic_source
+			session.traffic_medium = params[:utm_medium] || session.traffic_medium
+			session.traffic_campaign = params[:utm_campaign] || session.traffic_campaign
+
+			if params[:src].present?
+				session.traffic_src_user_id = User.find_by( slug: params[:src] ).try( :id )
 			end
+
+			session.last_http_referrer = request.referrer
+			
+			session.save
+			cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
+
+			return session
+
 		end
 
 
@@ -106,24 +122,6 @@ module SwellMedia
 			@page_meta[:twitter_site] ||= SwellMedia.twitter_handle
 
 		end
-
-
-		# def set_ref_user
-		# 	# if the ref is present and (if logged in the ref is not that of the current user) then
-		# 	# cookie the user with that ref.
-		# 	ref_user = nil
-		# 	if params[:ref].present? && ( params[:ref] != current_user.try(:slug) && params[:ref] != current_user.try(:id) )
-		# 		ref_user = User.where( slug: params[:ref] ).first || User.where( id: params[:ref] ).first
-	 #      		# referrer cookie is always user.id
-		# 		cookies.signed[:ref] = { value: ref_user.id, expires: 30.days.from_now } if ref_user.present?
-		# 		cookies.signed[:rec] = { value: ref_user.id, expires: 30.days.from_now, path: request.path } if ref_user.present?
-		# 	else
-		# 		ref_user = User.where( id: cookies.signed[:ref] ).first if cookies.signed[:ref].present?
-		# 	end
-
-		# 	return ref_user == current_user ? nil : ref_user
-		# end
-
 
 
 	end
