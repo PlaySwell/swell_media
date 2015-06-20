@@ -49,7 +49,7 @@ module SwellMedia
 			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate )
 			if parent_obj.present?
 				dup_events = dup_events.by_object( parent_obj )
-			else
+			elsif event.name == 'impression'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
 			# DO NOT record if existing events within rate
