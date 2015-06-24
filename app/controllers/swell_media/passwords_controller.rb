@@ -2,7 +2,7 @@
 module SwellMedia
 	class PasswordsController < Devise::PasswordsController
 
-		#layout false
+		layout 'sessions'
 
 		# POST /resource/password
 		def create

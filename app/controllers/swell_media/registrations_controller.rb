@@ -34,19 +34,35 @@ module SwellMedia
 			user.password_confirmation = params[:user][:password_confirmation]
 
 			if user.save
-				record_user_event( :registration, user: resource, content: 'registered.' )
-				set_flash "Thanks for signing up!"
-				sign_up( :user, user )
+				record_user_event( :registration, user: user, content: 'registered.' )
 
-				path = after_sign_up_path_for( user )
+				if user.active_for_authentication?
 
-				redirect_to path
+					set_flash "Thanks for signing up!"
+					sign_up( :user, user )
+
+					path = after_sign_up_path_for( user )
+
+					redirect_to path
+
+				else
+
+					set_flash "A message with a confirmation link has been sent to your email address. Please follow the link to activate your account." if user.inactive_message == :unconfirmed
+					expire_data_after_sign_in!
+					redirect_to after_inactive_sign_up_path_for(user)
+
+				end
 			else
 				set_flash "Could not register user.", :error, user
 				render :new
 				return false
 			end
 
+		end
+
+		protected
+		def after_inactive_sign_up_path_for(resource)
+			'/'
 		end
 
 	end
