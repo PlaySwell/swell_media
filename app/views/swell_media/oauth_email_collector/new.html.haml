@@ -4,6 +4,7 @@
 			= form_tag swell_media.oauth_email_collector_index_path, method: :post do |f|
 				= hidden_field_tag 'ga_client_id', '', :class => 'ga-client-id'
 				= hidden_field_tag :response, @response.encrypt
+				= hidden_field_tag :email_collected, 1
 
 				%h1.text-center.swell-heading>
 					= SwellMedia.app_name

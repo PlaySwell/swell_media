@@ -52,7 +52,7 @@ module SwellMedia
 
 					user.email = params[:email] if params[:email].present? && user.email.blank?
 
-					if user.email.blank? || SwellMedia.require_email_collector
+					if user.email.blank? || (SwellMedia.require_email_collector && params[:email_collected].nil?)
 
 						@no_fb_closer = true
 						@user = user
