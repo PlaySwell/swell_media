@@ -13,7 +13,11 @@ module SwellMedia
 
 		# The path used after confirmation.
 		def after_confirmation_path_for(resource_name, resource)
-			'/'
+			if sign_in( resource_name, resource )
+				'/home'
+			else
+				'/'
+			end
 		end
 
 	end
