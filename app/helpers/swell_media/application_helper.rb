@@ -10,6 +10,8 @@ module SwellMedia
 				return class_name if current_url == ( args[:url].to_s )
 			elsif  args[:controller].present?
 				return class_name if controller_name == args[:controller].to_s
+			else
+				return args[:else_class]
 			end
 		end
 
