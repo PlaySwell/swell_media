@@ -1,7 +1,9 @@
 module SwellMedia
 	module ApplicationHelper
 	  	
-	  	def set_css_if( args={} )
+		def set_css_if( args={} )
+			puts "SwellMedia::ApplicationHelper.set_css_if"
+
 			class_name = args[:class] || 'active'
 
 			if args[:path].present?
@@ -10,9 +12,10 @@ module SwellMedia
 				return class_name if current_url == ( args[:url].to_s )
 			elsif  args[:controller].present?
 				return class_name if controller_name == args[:controller].to_s
-			else
-				return args[:else_class]
 			end
+
+			return args[:else_class]
+
 		end
 
 	end
