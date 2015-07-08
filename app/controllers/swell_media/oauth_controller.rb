@@ -21,6 +21,11 @@ module SwellMedia
 
 		end
 
+		protected
+		def after_omniauth_failure_path_for( resource )
+			SwellMedia::Engine.routes.url_helpers.new_user_session_path
+		end
+
 	end
 
 end
