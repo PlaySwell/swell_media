@@ -48,7 +48,7 @@ module SwellMedia
 
 					# new registration
 
-					user = User.new_from_response( response )
+					user = SwellMedia.registered_user_class.constantize.new_from_response( response )
 
 					user.email = params[:email] if params[:email].present? && user.email.blank?
 
