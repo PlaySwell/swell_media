@@ -44,6 +44,21 @@ module SwellMedia
 
 					login_redirect( current_user )
 
+				elsif current_user.present? && credential.present?
+
+					if credential.user.present? && credential.user == current_user
+
+						credential.update( response.credential_fields )
+
+						login_redirect( current_user )
+
+					else
+
+						set_flash "#{credential.provider} account already exists."
+						redirect_to '/'
+
+					end
+
 				else
 
 					# new registration
