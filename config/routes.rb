@@ -11,7 +11,7 @@ SwellMedia::Engine.routes.draw do
 		delete :empty_trash, on: :collection 
 	end
 
-	resources :assets do
+	resources :assets, only: [ :new, :create, :destroy ] do
 		post :callback_create, on: :collection
 		get :callback_create, on: :collection
 	end
