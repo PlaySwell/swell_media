@@ -38,7 +38,7 @@ module SwellMedia
 
 			event.content = args[:content]
 
-			rate = args[:rate] || 5.minutes
+			rate = args[:rate] || 1.second
 
 			event.publish_at = parent_obj.try( :publish_at ) || args[:publish_at] || Time.zone.now unless args[:unpublished]
 
