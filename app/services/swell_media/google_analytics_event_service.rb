@@ -25,9 +25,9 @@ module SwellMedia
 				endpoint = 'https://www.google-analytics.com/collect'
 				endpoint = 'https://www.google-analytics.com/debug/collect' if SwellMedia.google_analytics_debug
 
-				response = RestClient.get(
-						'https://www.google-analytics.com/debug/collect',
-						params: params,
+				response = RestClient.post(
+						endpoint,
+						params,
 						timeout: 4,
 						open_timeout: 4,
 						user_agent: user_agent )
