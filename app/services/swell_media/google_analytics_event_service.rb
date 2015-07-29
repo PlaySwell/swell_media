@@ -6,6 +6,7 @@ module SwellMedia
 		#"SwellMedia 1.0 Agent"
 
 		def self.log( user_event, args = {} )
+			puts "GoogleAnalyticsEventService.log"
 
 			params = {
 					v: 1,
@@ -18,21 +19,24 @@ module SwellMedia
 					ev: args[:value] || user_event.value || 0
 			}
 
+			user_agent = args[:user_agent] || user_event.guest_session.try(:user_agent) || USER_AGENT
+
 			begin
-				response = RestClient.post(
+				response = RestClient.get(
 						'http://www.google-analytics.com/collect',
-						params,
+						params: params,
 						timeout: 4,
 						open_timeout: 4,
-						user_agent: args[:user_agent] || user_event.guest_session.try(:user_agent) || USER_AGENT )
+						user_agent: user_agent )
 
-				puts "Google Analytics: response.code => #{response.code}"
+				puts "Google Analytics: response.code => #{response.code}, params: #{params}, user_agent: #{user_agent}"
 
 				return response.code == 200
 			rescue  RestClient::Exception => rex
+				puts "Google Analytics: EXCEPTION, params: #{params}, user_agent: #{user_agent}"
 				#@todo log some errors
-				#logger.error rex.message
-				#logger.error rex.backtrace.join("\n")
+				logger.error rex.message
+				logger.error rex.backtrace.join("\n")
 				return false
 			end
 
