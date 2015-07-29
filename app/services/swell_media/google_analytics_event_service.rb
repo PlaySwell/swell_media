@@ -8,10 +8,11 @@ module SwellMedia
 		def self.log( user_event, args = {} )
 			puts "GoogleAnalyticsEventService.log" if SwellMedia.google_analytics_debug
 
+
 			params = {
 					v: 1,
 					tid: SwellMedia.google_analytics_code,
-					cid: (args[:client_id] || '555'),
+					cid: (args[:client_id] || SecureRandom.uuid),
 					t: 'event',
 					ec: args[:category] || ( user_event.parent_obj.nil? ? 'Site Event' : user_event.parent_obj.class.name ),
 					ea: args[:action] || user_event.name,
@@ -22,31 +23,12 @@ module SwellMedia
 			user_agent = args[:user_agent] || user_event.guest_session.try(:user_agent) || USER_AGENT
 
 			begin
-				endpoint = 'https://www.google-analytics.com/collect'
-				endpoint = 'https://www.google-analytics.com/debug/collect' if SwellMedia.google_analytics_debug
 
-				response = RestClient.post(
-						endpoint,
-						params,
-						timeout: 4,
-						open_timeout: 4,
-						user_agent: user_agent )
+				tracker = Staccato.tracker(SwellMedia.google_analytics_code, params[:cid])
 
-				if SwellMedia.google_analytics_debug
-					puts "Google Analytics: response.code => #{response.code}, params: #{params}, user_agent: #{user_agent}\n#{response.body }"
+				tracker.event(category: params[:ec], action: params[:ea], label: params[:el], value: params[:ev])
 
-					response_data = JSON.parse response.body
-
-					if not( response_data['hitParsingResult'].is_a?( Array ) ) || response_data['hitParsingResult'].count == 0 || !response_data['hitParsingResult'].first['valid']
-						logger.error "Google Analytics INVALID #{response_data['hitParsingResult'].first}"
-
-						NewRelic::Agent.notice_error( Exception.new( "Google Analytics INVALID #{response_data['hitParsingResult'].first}" ) ) if defined?( NewRelic )
-					end
-
-
-				end
-
-				return response.code == 200
+				return true
 			rescue  Exception => ex
 				puts "Google Analytics: EXCEPTION, params: #{params}, user_agent: #{user_agent}" if SwellMedia.google_analytics_debug
 
