@@ -6,7 +6,7 @@ module SwellMedia
 		#"SwellMedia 1.0 Agent"
 
 		def self.log( user_event, args = {} )
-			puts "GoogleAnalyticsEventService.log"
+			puts "GoogleAnalyticsEventService.log" if SwellMedia.google_analytics_debug
 
 			params = {
 					v: 1,
@@ -22,21 +22,38 @@ module SwellMedia
 			user_agent = args[:user_agent] || user_event.guest_session.try(:user_agent) || USER_AGENT
 
 			begin
+				endpoint = 'https://www.google-analytics.com/collect'
+				endpoint = 'https://www.google-analytics.com/debug/collect' if SwellMedia.google_analytics_debug
+
 				response = RestClient.get(
-						'http://www.google-analytics.com/collect',
+						'https://www.google-analytics.com/debug/collect',
 						params: params,
 						timeout: 4,
 						open_timeout: 4,
 						user_agent: user_agent )
 
-				puts "Google Analytics: response.code => #{response.code}, params: #{params}, user_agent: #{user_agent}"
+				if SwellMedia.google_analytics_debug
+					puts "Google Analytics: response.code => #{response.code}, params: #{params}, user_agent: #{user_agent}\n#{response.body }"
+
+					response_data = JSON.parse response.body
+
+					if not( response_data['hitParsingResult'].is_a?( Array ) ) || response_data['hitParsingResult'].count == 0 || !response_data['hitParsingResult'].first['valid']
+						logger.error "Google Analytics INVALID #{response_data['hitParsingResult'].first}"
+
+						NewRelic::Agent.notice_error( Exception.new( "Google Analytics INVALID #{response_data['hitParsingResult'].first}" ) ) if defined?( NewRelic )
+					end
+
+
+				end
 
 				return response.code == 200
-			rescue  RestClient::Exception => rex
-				puts "Google Analytics: EXCEPTION, params: #{params}, user_agent: #{user_agent}"
-				#@todo log some errors
-				logger.error rex.message
-				logger.error rex.backtrace.join("\n")
+			rescue  Exception => ex
+				puts "Google Analytics: EXCEPTION, params: #{params}, user_agent: #{user_agent}" if SwellMedia.google_analytics_debug
+
+				logger.error ex.message
+				logger.error ex.backtrace.join("\n")
+
+				NewRelic::Agent.notice_error(ex) if defined?( NewRelic )
 				return false
 			end
 
