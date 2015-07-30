@@ -52,6 +52,7 @@ module SwellMedia
 			elsif event.name == 'impression'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
+			
 			# DO NOT record if existing events within rate
 			return false if dup_events.count > 0
 
