@@ -73,16 +73,31 @@ $(document).ready ->
 		e.stopPropagation(); return false;
 	);
 
-	if window.ga
-		try
-			client_id = ga.getAll()[0].get('clientId');
-			if client_id
-				$('meta[property="ga:client_id"]').attr('content', client_id)
+	set_ga_client_id = null
+	set_ga_client_id = (interval)->
+		if window.ga
+			try
+				client_id = ga.getAll()[0].get('clientId');
 
-				exp_date = new Date()
-				exp_date.setTime(exp_date.getTime() + 2592000000) # now + 30 days
+				if client_id
+					$('meta[property="ga:client_id"]').attr('content', client_id)
 
-				document.cookie = 'ga_client_id='+client_id+'; expires='+exp_date.toGMTString()+'; path=/'
-				console.log 'client_id', client_id if window.console
-		catch error
-			console.log error if window.console
+					exp_date = new Date()
+					exp_date.setTime(exp_date.getTime() + 2592000000) # now + 30 days
+
+					document.cookie = 'ga_client_id='+client_id+'; expires='+exp_date.toGMTString()+'; path=/'
+					console.log 'client_id', client_id if window.console
+					return true
+			catch error
+				console.log error if window.console
+
+		# try 10 times before giving up
+		if interval < 10
+			setTimeout(
+				()->
+					set_ga_client_id(interval+1)
+			, 1000
+			)
+
+	set_ga_client_id(1)
+
