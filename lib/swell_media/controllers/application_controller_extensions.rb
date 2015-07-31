@@ -22,7 +22,10 @@ module SwellMedia
 
 			args[:user] ||= current_user
 
+			args[:ga_client_id] ||= params[:ga_client_id]
 			args[:ga_client_id] ||= session[:ga_client_id]
+			args[:ga_client_id] ||= cookies[:ga_client_id]
+
 			args[:guest_session] ||= @guest_session
 			args[:session_cluster_created_at] ||= @session_cluster_created_at
 
