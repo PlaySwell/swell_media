@@ -193,5 +193,9 @@ module SwellMedia
 			end
 		end
 
+		def devise_scope
+			SwellMedia.registered_user_class.constantize
+		end
+
 	end
 end

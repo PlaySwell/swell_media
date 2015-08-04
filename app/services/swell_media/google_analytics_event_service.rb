@@ -8,6 +8,7 @@ module SwellMedia
 		def self.log( user_event, args = {} )
 			puts "GoogleAnalyticsEventService.log" if SwellMedia.google_analytics_debug
 
+			puts "GoogleAnalyticsEventService.log args #{args.to_json}"
 
 			params = {
 					v: 1,
