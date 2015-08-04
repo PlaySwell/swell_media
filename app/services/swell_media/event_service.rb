@@ -46,10 +46,18 @@ module SwellMedia
 			event.parent_obj_type = parent_obj.nil? ? nil : parent_obj.class.name
 			event.parent_obj_id = parent_obj.try( :id )
 
-			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate )
-			if parent_obj.present?
+			dup_events = UserEvent.where( name: event.name ).within_last( rate )
+
+			if event.user_id.present?
+				dup_events = dup_events.where( user_id: event.user_id )
+			elsif event.guest_session_id.present?
+				dup_events = dup_events.where( guest_session_id: event.guest_session_id )
+			end
+
+			if event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
-			elsif event.name == 'impression'
+			end
+			if event.name == 'impression'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
 			
