@@ -56,27 +56,25 @@ module SwellMedia
 
 			if event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
-			end
-			if event.name == 'impression'
+			elsif event.name == 'impression'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
 			
 			# DO NOT record if existing events within rate
-			return false if dup_events.count > 0
+			if dup_events.count > 0
+				return false
+			else
+				event.save
+				count_cache_field = "cached_#{name}_count"
 
-			event.save
+				if parent_obj.present? && parent_obj.respond_to?( count_cache_field )
+					parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
+				end
 
-			count_cache_field = "cached_#{name}_count"
+				GoogleAnalyticsEventService.log( event, { client_id: args[:ga_client_id] } ) unless !SwellMedia.google_analytics_event_logging || args[:opt_out_google_analytics]
 
-			if parent_obj.present? && parent_obj.respond_to?( count_cache_field )
-				parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
+				return event
 			end
-
-
-			GoogleAnalyticsEventService.log( event, { client_id: args[:ga_client_id] } ) unless !SwellMedia.google_analytics_event_logging || args[:opt_out_google_analytics]
-
-
-			return event
 
 		end
 
