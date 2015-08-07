@@ -97,10 +97,12 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.integer		:availability, 					default: 1	# anyone, logged_in, just_me
 			t.datetime		:publish_at
 			t.hstore		:properties
+			t.string 		:tags, array: true, default: '{}'
 
 			t.timestamps
 		end
 
+		add_index :media, :tags, using: 'gin'
 		add_index :media, :user_id
 		add_index :media, :managed_by_id
 		add_index :media, :public_id

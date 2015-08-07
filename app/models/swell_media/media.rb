@@ -5,6 +5,7 @@ module SwellMedia
 
 		include SwellMedia::Concerns::URLConcern
 		include SwellMedia::Concerns::AvatarAsset
+		include SwellMedia::Concerns::TagArrayConcern
 
 		mounted_at '/'
 
@@ -31,6 +32,7 @@ module SwellMedia
 		acts_as_nested_set
 
 		acts_as_taggable
+		acts_as_taggable_array_on :tmp_tags
 
 
 		def self.published( args = {} )

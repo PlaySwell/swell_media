@@ -6,7 +6,7 @@
 			@tags = Article.published.tag_counts
 
 			if @tagged = params[:tagged]
-				@articles = @articles.tagged_with( @tagged )
+				@articles = @articles.with_any_tmp_tags( @tagged )
 			end
 
 			if @keyword = params[:keyword]
