@@ -72,7 +72,7 @@
 							%td
 								= article.category.try( :name ) || 'None'
 							%td
-								= article.tag_list
+								= article.tags.join(', ')
 							%td
 								.btn-group
 									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }

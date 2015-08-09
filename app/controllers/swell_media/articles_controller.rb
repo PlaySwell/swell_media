@@ -3,10 +3,10 @@
 		
 		def index
 			@articles = Article.published.order( publish_at: :desc )
-			@tags = Article.published.tag_counts
+			@tags = []# Article.published.tags_counts
 
 			if @tagged = params[:tagged]
-				@articles = @articles.with_any_tmp_tags( @tagged )
+				@articles = @articles.with_any_tags( @tagged )
 			end
 
 			if @keyword = params[:keyword]

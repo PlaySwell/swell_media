@@ -31,8 +31,7 @@ module SwellMedia
 
 		acts_as_nested_set
 
-		acts_as_taggable
-		acts_as_taggable_array_on :tmp_tags
+		acts_as_taggable_array_on :tags
 
 
 		def self.published( args = {} )
@@ -129,11 +128,11 @@ module SwellMedia
 				# auto-tag hashtags
 				unless self.content.blank?
 					hashtags = self.sanitized_content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
-					self.tag_list << hashtags
+					self.tags += hashtags
 				end
 
 				self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
-				self.tag_list.each{ |tag| self.keywords << tag.to_s }
+				self.tags.each{ |tag| self.keywords << tag.to_s }
 
 			end
 
