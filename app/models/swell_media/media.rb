@@ -16,7 +16,7 @@ module SwellMedia
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 1, 'logged_in_users' => 2, 'just_me' => 3 }
 
-		before_save	:set_publish_at #, :set_keywords_and_tags , :set_cached_counts
+		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
 
 		validates		:title, presence: true, unless: :allow_blank_title?
 
@@ -35,7 +35,7 @@ module SwellMedia
 
 		acts_as_nested_set
 
-		#acts_as_taggable_array_on :tags
+		acts_as_taggable_array_on :tags
 
 
 		def self.published( args = {} )
