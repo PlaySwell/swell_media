@@ -6,13 +6,17 @@ module SwellMedia
 		include SwellMedia::Concerns::URLConcern
 		include SwellMedia::Concerns::AvatarAsset
 		include SwellMedia::Concerns::TagArrayConcern
+		include SwellMedia::Concerns::ExpiresCache
 
 		mounted_at '/'
+
+		expires_cache :user_id, :managed_by_id, :public_id, :category_id, :avatar_asset_id, :parent_id, :lft, :rgt, :type, :sub_type, :title, :subtitle, :avatar, :cover_path, :avatar_caption, :layout, :template, :description, :content, :slug, :is_commentable, :is_sticky, :show_title, :modified_at, :keywords, :duration, :price, :status, :availability, :publish_at, :tags
+
 
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
 		enum availability: { 'anyone' => 1, 'logged_in_users' => 2, 'just_me' => 3 }
 
-		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
+		before_save	:set_publish_at #, :set_keywords_and_tags , :set_cached_counts
 
 		validates		:title, presence: true, unless: :allow_blank_title?
 
@@ -31,7 +35,7 @@ module SwellMedia
 
 		acts_as_nested_set
 
-		acts_as_taggable_array_on :tags
+		#acts_as_taggable_array_on :tags
 
 
 		def self.published( args = {} )
