@@ -1,4 +1,4 @@
-require 'acts-as-taggable-on'
+# require 'acts-as-taggable-on'
 require 'acts-as-taggable-array-on'
 require 'awesome_nested_set'
 require 'browser'

@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.rdoc"]
   s.test_files = Dir["spec/**/*"]
 
-  s.add_dependency "acts-as-taggable-on"
+  #s.add_dependency "acts-as-taggable-on"
 	s.add_dependency "acts-as-taggable-array-on"
   s.add_dependency "awesome_nested_set", '~> 3.0.2'
   s.add_dependency "browser"

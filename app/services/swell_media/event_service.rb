@@ -5,9 +5,13 @@ module SwellMedia
 
 		def self.log( name, args={} )
 			return false unless name.present?
-			return false unless args[:guest_session].present?
+			if args[:guest_session].present?
+				args[:guest_session_attributes] = args[:guest_session].attributes
+			elsif !args[:guest_session_attributes].present?
+				return false
+			end
 
-			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session].id )
+			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
 			event.user_id = args[:user].try( :id )
 
@@ -16,14 +20,14 @@ module SwellMedia
 			event.parent_controller = args[:parent_controller]
 			event.parent_action = args[:parent_action]
 
-			event.traffic_source = args[:guest_session].traffic_source
-			event.traffic_campaign = args[:guest_session].traffic_campaign
-			event.traffic_medium = args[:guest_session].traffic_medium
+			event.traffic_source = args[:guest_session_attributes][:traffic_source]
+			event.traffic_campaign = args[:guest_session_attributes][:traffic_campaign]
+			event.traffic_medium = args[:guest_session_attributes][:traffic_medium]
 
-			event.traffic_src_user = args[:guest_session].traffic_src_user
-			event.content_src_user = args[:guest_session].content_src_user
+			event.traffic_src_user = args[:guest_session_attributes][:traffic_src_user]
+			event.content_src_user = args[:guest_session_attributes][:content_src_user]
 
-			event.ui_variant = args[:params][:ui_variant] || args[:guest_session].ui_variant
+			event.ui_variant = args[:params][:ui_variant] || args[:guest_session_attributes][:ui_variant]
 			event.ui = args[:params][:ui]
 
 			event.session_cluster_created_at = Time.at( args.delete(:session_cluster_created_at) ) if args[:session_cluster_created_at].is_a? Integer
@@ -32,7 +36,7 @@ module SwellMedia
 			event.req_path = event.req_full_path = args[:req_path]
 			event.req_path = event.req_full_path.split('?')[0] unless event.req_full_path.blank? || not( event.req_full_path.include?('?') ) #rescue true
 
-			event.http_referrer = args[:guest_session].last_http_referrer
+			event.http_referrer = args[:guest_session_attributes][:last_http_referrer]
 
 			event.category_id = parent_obj.try( :category_id )
 
@@ -59,7 +63,7 @@ module SwellMedia
 			elsif event.name == 'impression'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
-			
+
 			# DO NOT record if existing events within rate
 			if dup_events.count > 0
 				return false
