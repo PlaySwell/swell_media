@@ -15,9 +15,9 @@ module SwellMedia
 					tid: SwellMedia.google_analytics_code,
 					cid: (args[:client_id] || SecureRandom.uuid),
 					t: 'event',
-					ec: args[:category] || ( user_event.parent_obj.nil? ? 'Site Event' : user_event.parent_obj.class.name ),
+					ec: args[:category] || ( user_event.parent_obj.nil? ? ( user_event.parent_controller.try(:gsub, /_/, ' ').try(:titleize).try(:singularize) || 'Site Event') : user_event.parent_obj.class.name ),
 					ea: args[:action] || user_event.name,
-					el: args[:label] || user_event.parent_obj.to_s,
+					el: args[:label] || (user_event.parent_obj || "#{user_event.parent_controller}##{user_event.parent_action}").to_s,
 					ev: args[:value] || user_event.value || 0
 			}
 
