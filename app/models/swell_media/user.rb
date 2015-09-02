@@ -2,7 +2,7 @@ module SwellMedia
 	class User < ActiveRecord::Base
 		self.table_name = 'users'
 
-		enum status: { 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
+		enum status: { 'unregistered' => -1, 'pending' => 0, 'active' => 1, 'revoked' => 2, 'archive' => 3, 'trash' => 4 }
 		enum role: { 'member' => 1, 'ambassador' => 2, 'admin' => 3 }
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
@@ -14,12 +14,12 @@ module SwellMedia
 
 
 		### VALIDATIONS	---------------------------------------------
-		validates_uniqueness_of		:name, case_sensitive: false, allow_blank: true, if: :name_changed?
+		validates_uniqueness_of		:name, case_sensitive: false, allow_blank: true, if: :name_changed?, unless: :unregistered?
 		validates_uniqueness_of		:email, case_sensitive: false, if: :email_changed?
 		validates_format_of			:email, with: Devise.email_regexp, if: :email_changed?
 
-		validates_confirmation_of	:password, if: :encrypted_password_changed?
-		validates_length_of			:password, within: Devise.password_length, allow_blank: true, if: :encrypted_password_changed?
+		validates_confirmation_of	:password, if: :encrypted_password_changed?, unless: :unregistered?
+		validates_length_of			:password, within: Devise.password_length, allow_blank: true, if: :encrypted_password_changed?, unless: :unregistered?
 
 		### RELATIONSHIPS   	--------------------------------------
 	
@@ -47,6 +47,7 @@ module SwellMedia
 			if user.present?
 
 				user.update( response.user_fields )
+				user.status = SwellMedia.default_user_status || 'pending' if user.unregistered?
 
 				credential = user.oauth_credentials.where( provider: response.provider, uid: response.uid ).first_or_initialize
 				credential.update( response.credential_fields )
@@ -68,6 +69,11 @@ module SwellMedia
 			# user.television = response.television
 
 			return user
+		end
+
+
+		def self.not_unregistered
+			where.not(status: User.statuses[:unregistered])
 		end
 
 

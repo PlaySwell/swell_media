@@ -19,10 +19,9 @@ module SwellMedia
 
 			user_class = SwellMedia.registered_user_class.constantize
 
-			user = user_class.where( email: email ).first ||
-					user_class.new( email: email, name: params[:user][:name], ip: request.ip )
+			user = user_class.where( email: email ).first
 
-			if user.encrypted_password.present?
+			unless user.try(:unregistered?)
 				# this email is already registered for this site
 				set_flash "#{email} is already registered.", :error
 				redirect_to :back
@@ -30,6 +29,12 @@ module SwellMedia
 
 			end
 
+			user ||= user_class.new( email: email, status: (SwellMedia.default_user_status || 'pending') )
+
+			user.status = SwellMedia.default_user_status || 'pending' if user.unregistered?
+
+			user.name = params[:user][:name]
+			user.ip = request.ip
 			user.password = params[:user][:password]
 			user.password_confirmation = params[:user][:password_confirmation]
 
