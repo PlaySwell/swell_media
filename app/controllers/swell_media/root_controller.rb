@@ -16,7 +16,7 @@ module SwellMedia
 				@guest_session.update( content_src_user: @media.user.try( :slug ) )
 			end
 
-			record_user_event( event: 'impression', on: @media, rate: 23.hours, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
+			record_user_event( event: 'page_view', on: @media, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
 

@@ -11,6 +11,7 @@ module SwellMedia
 		belongs_to		:rec_user, class_name: 'User', foreign_key: :rec_user_id
 		belongs_to		:guest_session
 		belongs_to		:parent_obj, polymorphic: true
+		belongs_to		:activity_obj, polymoprhic: true
 
 
 		### Class Methods   	--------------------------------------
@@ -23,6 +24,15 @@ module SwellMedia
 		def self.by_object( obj )
 			return scoped if obj.nil?
 			where( parent_obj_type: obj.class.name, parent_obj_id: obj.id )
+		end
+
+		def self.rates
+			{ 
+				visit: 23.hours,
+				outbound: 23.hours,
+				page_view: 23.hours,
+				default: 1.second
+			}
 		end
 
 		def self.by_referring_user( user )

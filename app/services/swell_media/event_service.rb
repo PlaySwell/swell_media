@@ -17,7 +17,7 @@ module SwellMedia
 
 			event.user_id = args[:user].try( :id )
 
-			parent_obj = args[:on] || args[:parent]
+			parent_obj = args[:on] || args[:parent_obj]
 
 			activity_obj = args[:obj] || args[:activity_obj]
 
@@ -46,7 +46,7 @@ module SwellMedia
 
 			event.content = args[:content]
 
-			rate = args[:rate] || 1.second
+			rate = args[:rate] || UserEvent.rates[ event.name.to_sym ] || UserEvent.rates[ :default ]
 
 			event.publish_at = parent_obj.try( :publish_at ) || args[:publish_at] || Time.zone.now unless args[:unpublished]
 
@@ -78,7 +78,11 @@ module SwellMedia
 				count_cache_field = "cached_#{name}_count"
 
 				if parent_obj.present? && parent_obj.respond_to?( count_cache_field )
-					parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
+					if event.parent_action == 'create'
+						parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
+					elsif event.parent_action == 'destroy'
+						parent_obj.class.name.constantize.decrement_counter( count_cache_field, parent_obj.id )
+					end
 				end
 
 				GoogleAnalyticsEventService.log( event, { client_id: args[:ga_client_id] } ) unless !SwellMedia.google_analytics_event_logging || args[:opt_out_google_analytics]

@@ -18,7 +18,7 @@ module SwellMedia
 			return false unless SwellMedia.log_events
 			
 
-			args[:event] ||= "#{controller_name}##{action_name}"
+			args[:event] ||= "#{controller_name}_#{action_name}"
 
 			args[:request] ||= request
 			args[:params] ||= params
