@@ -11,7 +11,7 @@ module SwellMedia
 		belongs_to		:rec_user, class_name: 'User', foreign_key: :rec_user_id
 		belongs_to		:guest_session
 		belongs_to		:parent_obj, polymorphic: true
-		belongs_to		:activity_obj, polymoprhic: true
+		belongs_to		:activity_obj, polymorphic: true
 
 
 		### Class Methods   	--------------------------------------
