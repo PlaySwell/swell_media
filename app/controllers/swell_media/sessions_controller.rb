@@ -10,7 +10,7 @@ module SwellMedia
 
 				if sign_in( resource_name, resource )
 
-					record_user_event( 'login', user: resource, guest_session: @guest_session, content: 'logged in.' )
+					record_user_event( event: 'login', user: resource, content: 'logged in.' )
 					assign_anonymous_events( resource )
 
 					sign_in_and_redirect( resource )

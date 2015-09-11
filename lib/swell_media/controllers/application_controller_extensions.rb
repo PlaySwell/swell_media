@@ -12,11 +12,14 @@ module SwellMedia
 		end
 
 
-		def record_user_event( event='visit', args={} )
+		def record_user_event( args={} )
 			# this method can be called by any controller to log a specific event
 			# such as a purchase, comment, newsletter signup, etc.
 			return false unless SwellMedia.log_events
 			
+
+			args[:event] ||= "#{controller_name}##{action_name}"
+
 			args[:request] ||= request
 			args[:params] ||= params
 
@@ -34,7 +37,7 @@ module SwellMedia
 
 			args[:req_path] ||= request.fullpath
 
-			if user_event = EventService.log( event, args )
+			if user_event = EventService.log( args )
 				# this is here in the controller so we can access request obj, cookies, etc. if it results in another UserEvent
 				# should move into a cron....
 				return user_event

@@ -3,19 +3,23 @@ module SwellMedia
 
 	class EventService
 
-		def self.log( name, args={} )
-			return false unless name.present?
+		def self.log( args={} )
+
+			return false unless args[:event].present?
+
 			if args[:guest_session].present?
 				args[:guest_session_attributes] = args[:guest_session].attributes
 			elsif !args[:guest_session_attributes].present?
 				return false
 			end
 
-			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session_attributes][:id] )
+			event = UserEvent.new( name: args[:event].to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
 			event.user_id = args[:user].try( :id )
 
-			parent_obj = args[:on] || args[:obj]
+			parent_obj = args[:on] || args[:parent]
+
+			activity_obj = args[:obj] || args[:activity_obj]
 
 			event.parent_controller = args[:parent_controller]
 			event.parent_action = args[:parent_action]
@@ -49,6 +53,8 @@ module SwellMedia
 			# setting owner_type so logging with nill owner doesn't populate owner_type with NilClass
 			event.parent_obj_type = parent_obj.nil? ? nil : parent_obj.class.name
 			event.parent_obj_id = parent_obj.try( :id )
+			event.activity_obj_type = activity_obj.nil? ? nil : activity_obj.class.name
+			event.activity_obj_id = activity_obj.try( :id )
 
 			dup_events = UserEvent.where( name: event.name ).within_last( rate )
 
@@ -58,10 +64,10 @@ module SwellMedia
 				dup_events = dup_events.where( guest_session_id: event.guest_session_id )
 			end
 
-			if event.parent_obj_id.present?
+			if event.activity_obj_id.present?
+				dup_events = dup_events.where( activity_obj_id: activity_obj.id, parent_obj_id: activity_obj.class.name )
+			elsif event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
-			elsif event.name == 'impression'
-				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
 
 			# DO NOT record if existing events within rate

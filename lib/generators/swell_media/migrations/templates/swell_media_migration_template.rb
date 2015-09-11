@@ -1,5 +1,5 @@
 class SwellMediaMigration < ActiveRecord::Migration
-	# V2.0
+	# V4.0
 	
 	def change
 

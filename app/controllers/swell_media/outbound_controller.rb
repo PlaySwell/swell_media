@@ -10,7 +10,7 @@ module SwellMedia
 			host = Addressable::URI.parse( url ).host
 			
 			if @obj && not( url.blank? )
-				record_user_event( "outbound", on: @obj, ui: params[:ui], content: "checked out #{@obj.to_s}: #{url}.", rate: 23.hours )
+				record_user_event( on: @obj, ui: params[:ui], content: "checked out #{@obj.to_s}: #{url}.", rate: 23.hours )
 				redirect_to( url )
 			else
 				raise ActionController::RoutingError.new( 'Not Found' )

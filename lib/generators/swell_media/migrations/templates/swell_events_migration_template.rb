@@ -1,5 +1,5 @@
 class SwellEventsMigration < ActiveRecord::Migration 
-	# V3.0
+	# V4.0
 	
 	def change
 
@@ -36,6 +36,7 @@ class SwellEventsMigration < ActiveRecord::Migration
 			t.references		:user
 			t.references		:guest_session
 			t.references 		:parent_obj, 			polymorphic: true
+			t.references 		:activity_obj, 			polymorphic: true
 			t.string			:traffic_src_user  				# user attribution for traffic
 			t.string			:content_src_user				# user attribution for content
 			t.string			:parent_controller
@@ -50,6 +51,7 @@ class SwellEventsMigration < ActiveRecord::Migration
 			t.string			:name
 			t.text				:content
 			t.integer			:value
+			t.string			:value_name
 			t.string			:http_referrer
 			t.string			:req_path
 			t.string			:req_full_path
@@ -70,6 +72,8 @@ class SwellEventsMigration < ActiveRecord::Migration
 		add_index :user_events, [ :guest_session_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_guest_session_id_timestamped'
 		add_index :user_events, [ :parent_obj_id, :parent_obj_type, :session_cluster_created_at ], name: 'index_user_events_on_parent'
 		add_index :user_events, [ :parent_obj_id, :parent_obj_type, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_parent_timestamped'
+		add_index :user_events, [ :activity_obj_id, :activity_obj_type, :session_cluster_created_at ], name: 'index_user_events_on_act_parent'
+		add_index :user_events, [ :activity_obj_id, :activity_obj_type, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_act_parent_time'
 		add_index :user_events, [ :category_id, :session_cluster_created_at ], name: 'index_user_events_on_category_id'
 		add_index :user_events, [ :category_id, :created_at, :session_cluster_created_at ], name: 'index_user_events_on_category_id_timestamped'
 		add_index :user_events, [ :name, :session_cluster_created_at ], name: 'index_user_events_on_name'
