@@ -46,6 +46,8 @@ module SwellMedia
 
 			event.content = args[:content]
 
+			event.detail_data = args[:detail_data]
+
 			rate = args[:rate] || UserEvent.rates[ event.name.to_sym ] || UserEvent.rates[ :default ]
 
 			event.publish_at = parent_obj.try( :publish_at ) || args[:publish_at] || Time.zone.now unless args[:unpublished]
