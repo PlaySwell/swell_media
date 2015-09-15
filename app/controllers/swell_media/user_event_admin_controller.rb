@@ -34,5 +34,9 @@ module SwellMedia
 			@events = @events.page( params[:page] )
 			
 		end
+
+		def edit
+			@event = UserEvent.find( params[:id] )
+		end
 	end
 end

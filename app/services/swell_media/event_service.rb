@@ -13,6 +13,8 @@ module SwellMedia
 				return false
 			end
 
+			args[:update_caches] = true if args[:update_caches].nil?
+
 			event = UserEvent.new( name: args[:event].to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
 			event.user_id = args[:user].try( :id )
@@ -58,28 +60,27 @@ module SwellMedia
 			event.activity_obj_type = activity_obj.nil? ? nil : activity_obj.class.name
 			event.activity_obj_id = activity_obj.try( :id )
 
-			dup_events = UserEvent.where( name: event.name ).within_last( rate )
-
-			if event.user_id.present?
-				dup_events = dup_events.where( user_id: event.user_id )
-			elsif event.guest_session_id.present?
-				dup_events = dup_events.where( guest_session_id: event.guest_session_id )
-			end
+			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate ).order( created_at: :asc )
 
 			if event.activity_obj_id.present?
 				dup_events = dup_events.where( activity_obj_id: activity_obj.id, parent_obj_id: activity_obj.class.name )
 			elsif event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
+			elsif event.name == 'page_view'
+				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
 			end
 
 			# DO NOT record if existing events within rate
 			if dup_events.count > 0
+				if event.args[:params][:page].present?
+					dup_events.last.update( value: event.args[:params][:page], value_type: 'page_num' )
+				end
 				return false
 			else
 				event.save
 				count_cache_field = "cached_#{name}_count"
 
-				if parent_obj.present? && parent_obj.respond_to?( count_cache_field )
+				if parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
 					if event.parent_action == 'create'
 						parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
 					elsif event.parent_action == 'destroy'

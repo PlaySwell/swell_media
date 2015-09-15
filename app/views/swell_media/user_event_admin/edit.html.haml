@@ -1,0 +1,18 @@
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					= link_to 'User Events', user_event_admin_index_path
+				%li
+					%strong
+						= "#{@event.user} #{@event.content}"
+		.col-xs-2
+
+
+	.row
+		.col-xs-12
+		
