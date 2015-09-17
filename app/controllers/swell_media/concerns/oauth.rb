@@ -81,7 +81,7 @@ module SwellMedia
 
 						set_flash "Registration successful"
 
-						record_user_event( 'registration', user: user, on: user, content: 'Registration successful' )
+						record_user_event( event: 'registration', content: 'registered.' )
 
 						user.on_registration
 

@@ -30,7 +30,7 @@ module SwellMedia
 			{ 
 				visit: 			23.hours,
 				outbound: 		23.hours,
-				page_view: 		23.hours,
+				page_view: 		10.minutes,
 				email_optin: 	1.year,
 				registration: 	1.year,
 				default: 		3.seconds

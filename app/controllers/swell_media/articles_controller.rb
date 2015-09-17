@@ -35,6 +35,8 @@
 
 			set_page_meta title: "#{SwellMedia.app_name} Blog", og: { type: 'blog' }, twitter: { card: 'summary' }
 
+			record_user_event( event: 'page_view', content: "landed on <a href='#{request.url}'>#{controller_name}##{action_name}</a>" )
+			
 		end
 
 
