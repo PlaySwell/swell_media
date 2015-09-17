@@ -28,10 +28,12 @@ module SwellMedia
 
 		def self.rates
 			{ 
-				visit: 23.hours,
-				outbound: 23.hours,
-				page_view: 23.hours,
-				default: 1.second
+				visit: 			23.hours,
+				outbound: 		23.hours,
+				page_view: 		23.hours,
+				email_optin: 	1.year,
+				registration: 	1.year,
+				default: 		3.seconds
 			}
 		end
 

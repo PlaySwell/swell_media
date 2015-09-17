@@ -5,7 +5,8 @@ module SwellMedia
 
 		def self.log( args={} )
 
-			return false unless args[:event].present?
+			name = args[:event] || args[:name]
+			return false unless name.present?
 
 			if args[:guest_session].present?
 				args[:guest_session_attributes] = args[:guest_session].attributes
@@ -15,7 +16,7 @@ module SwellMedia
 
 			args[:update_caches] = true if args[:update_caches].nil?
 
-			event = UserEvent.new( name: args[:event].to_s, guest_session_id: args[:guest_session_attributes][:id] )
+			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
 			event.user_id = args[:user].try( :id )
 

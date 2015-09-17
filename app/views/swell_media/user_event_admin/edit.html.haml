@@ -9,10 +9,9 @@
 					= link_to 'User Events', user_event_admin_index_path
 				%li
 					%strong
-						= "#{@event.user} #{@event.content}"
+						= raw "#{@event.user} #{@event.content}"
 		.col-xs-2
 
 
 	.row
 		.col-xs-12
-		
