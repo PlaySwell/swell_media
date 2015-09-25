@@ -24,6 +24,8 @@ module SwellMedia
 
 			activity_obj = args[:obj] || args[:activity_obj]
 
+			event.scope = args[:scope]
+
 			event.parent_controller = args[:parent_controller]
 			event.parent_action = args[:parent_action]
 
@@ -36,6 +38,9 @@ module SwellMedia
 
 			event.ui_variant = args[:params][:ui_variant] || args[:guest_session_attributes][:ui_variant]
 			event.ui = args[:params][:ui]
+
+			event.value = args[:value]
+			event.value_type = args[:value_type]
 
 			event.session_cluster_created_at = Time.at( args.delete(:session_cluster_created_at) ) if args[:session_cluster_created_at].is_a? Integer
 			event.session_cluster_created_at ||= args[:session_cluster_created_at]
@@ -69,7 +74,12 @@ module SwellMedia
 				dup_events = dup_events.by_object( parent_obj )
 			elsif event.name == 'page_view'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
+				if event.scope.present?
+					dup_events = dup_events.where( scope: event.scope )
+				end
 			end
+
+			
 
 			# DO NOT record if existing events within rate
 			if dup_events.count > 0
@@ -82,10 +92,10 @@ module SwellMedia
 				count_cache_field = "cached_#{name}_count"
 
 				if parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
-					if event.parent_action == 'create'
-						parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
-					elsif event.parent_action == 'destroy'
+					if event.parent_action == 'destroy'
 						parent_obj.class.name.constantize.decrement_counter( count_cache_field, parent_obj.id )
+					else
+						parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
 					end
 				end
 
