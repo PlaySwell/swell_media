@@ -10,11 +10,9 @@ module SwellMedia
 
 			if args[:guest_session].present?
 				args[:guest_session_attributes] = args[:guest_session].attributes
-			elsif !args[:guest_session_attributes].present?
+			elsif not( args[:guest_session_attributes].present? )
 				return false
 			end
-
-			args[:update_caches] = true if args[:update_caches].nil?
 
 			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
@@ -24,7 +22,9 @@ module SwellMedia
 
 			activity_obj = args[:obj] || args[:activity_obj]
 
-			event.scope = args[:scope]
+			event.context = args[:context]
+
+			args[:update_caches] = true if args[:update_caches].nil?
 
 			event.parent_controller = args[:parent_controller]
 			event.parent_action = args[:parent_action]
@@ -54,8 +54,6 @@ module SwellMedia
 
 			event.content = args[:content]
 
-			event.detail_data = args[:detail_data]
-
 			rate = args[:rate] || UserEvent.rates[ event.name.to_sym ] || UserEvent.rates[ :default ]
 
 			event.publish_at = parent_obj.try( :publish_at ) || args[:publish_at] || Time.zone.now unless args[:unpublished]
@@ -74,17 +72,17 @@ module SwellMedia
 				dup_events = dup_events.by_object( parent_obj )
 			elsif event.name == 'page_view'
 				dup_events = dup_events.where( parent_controller: event.parent_controller, parent_action: event.parent_action )
-				if event.scope.present?
-					dup_events = dup_events.where( scope: event.scope )
-				end
 			end
 
+			if event.context.present?
+				dup_events = dup_events.where( context: event.context )
+			end
 			
 
 			# DO NOT record if existing events within rate
 			if dup_events.count > 0
-				if event.args[:params][:page].present?
-					dup_events.last.update( value: event.args[:params][:page], value_type: 'page_num' )
+				if args[:params][:page].present?
+					dup_events.last.update( value: args[:params][:page], value_type: 'page_num' )
 				end
 				return false
 			else

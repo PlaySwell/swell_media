@@ -93,9 +93,9 @@ module SwellMedia
 
 			session ||= GuestSession.create_from_request( request, params: params, user: current_user )
 
-			session.traffic_source = params[:utm_source] || session.traffic_source
-			session.traffic_medium = params[:utm_medium] || session.traffic_medium
-			session.traffic_campaign = params[:utm_campaign] || session.traffic_campaign
+			session.traffic_source ||= params[:utm_source] 
+			session.traffic_medium ||= params[:utm_medium] 
+			session.traffic_campaign ||= params[:utm_campaign] 
 
 			if params[:src].present?
 				session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
