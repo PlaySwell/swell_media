@@ -28,7 +28,7 @@ module SwellMedia
 
 					credential.update( token: response.oauth_token )
 
-					record_user_event( 'login', guest_session: @guest_ession, user: credential.user, on: credential.user, content: 'Login' )
+					record_user_event( event: 'login', user: credential.user, content: 'logged in.' )
 
 					login_redirect( credential.user )
 
