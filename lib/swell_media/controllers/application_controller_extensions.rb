@@ -87,6 +87,7 @@ module SwellMedia
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.
 			@session_cluster_created_at = Time.at( cookies.signed[:session_cluster] || Time.zone.now.to_i )
+
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
 			session = GuestSession.where( id: cookies.signed[:guest] ).first
