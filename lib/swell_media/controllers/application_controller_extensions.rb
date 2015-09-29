@@ -104,6 +104,8 @@ module SwellMedia
 
 			session.last_http_referrer = request.referrer
 
+			session.save
+			
 			# unless session.save
 			# 	NewRelic::Agent.notice_error( Exception.new( session.errors.full_messages ), custom_params: { session: session.to_json } ) if defined?(NewRelic::Agent)
 			# end
