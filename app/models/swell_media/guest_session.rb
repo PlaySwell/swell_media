@@ -49,6 +49,8 @@ module SwellMedia
 				self.device_format = 'tablet' if browser.tablet?
 				self.device_format = 'phone' if browser.mobile?
 				self.human = not( browser.bot? )
+
+				true
 			end
 
 	end
