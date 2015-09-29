@@ -104,9 +104,9 @@ module SwellMedia
 
 			session.last_http_referrer = request.referrer
 
-			unless session.save
-				NewRelic::Agent.notice_error( Exception.new( session.errors.full_messages ), custom_params: { session: session.to_json } ) if defined?(NewRelic::Agent)
-			end
+			# unless session.save
+			# 	NewRelic::Agent.notice_error( Exception.new( session.errors.full_messages ), custom_params: { session: session.to_json } ) if defined?(NewRelic::Agent)
+			# end
 
 			cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
 
