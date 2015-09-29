@@ -103,11 +103,8 @@ module SwellMedia
 
 			session.last_http_referrer = request.referrer
 
-			begin
-				session.save!
-			rescue ActiveRecord::RecordInvalid => invalid
-				NewRelic::Agent.notice_error(invalid, custom_params: { errors: invalid.record.errors.to_s, messages: invalid.record.errors.full_messages }) if defined?(NewRelic::Agent)
-				logger.error invalid
+			unless session.save
+				NewRelic::Agent.notice_error( Exception.new( session.errors.full_messages ), custom_params: { session: session.to_json } ) if defined?(NewRelic::Agent)
 			end
 
 			cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
