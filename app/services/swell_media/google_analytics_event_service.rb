@@ -33,8 +33,7 @@ module SwellMedia
 			rescue  Exception => ex
 				puts "Google Analytics: EXCEPTION, params: #{params}, user_agent: #{user_agent}" if SwellMedia.google_analytics_debug
 
-				logger.error ex.message
-				logger.error ex.backtrace.join("\n")
+				puts ex.message
 
 				NewRelic::Agent.notice_error(ex) if defined?( NewRelic )
 				return false
