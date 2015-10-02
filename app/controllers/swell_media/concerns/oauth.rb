@@ -29,7 +29,8 @@ module SwellMedia
 					credential.update( token: response.oauth_token )
 
 					record_user_event( event: 'login', user: credential.user, content: 'logged in.' )
-
+					assign_anonymous_events( resource )
+					
 					login_redirect( credential.user )
 
 				elsif current_user.present? && credential.nil?
@@ -82,6 +83,7 @@ module SwellMedia
 						set_flash "Registration successful"
 
 						record_user_event( event: 'registration', content: 'registered.' )
+						assign_anonymous_events( user )
 
 						user.on_registration
 
