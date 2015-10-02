@@ -23,6 +23,9 @@ module SwellMedia
 								params: {}, properties: {} )
 			
 			if args[:params].present?
+				session.traffic_source = params[:utm_source]
+				session.traffic_campaign = params[:utm_campaign]
+				session.traffic_medium = params[:utm_medium]
 				session.ui_variant = args[:params][:var] || args[:params][:ui_variant]
 				args[:params].each do |k, v|
 					session.params[k] = v
