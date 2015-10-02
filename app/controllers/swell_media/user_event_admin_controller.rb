@@ -38,5 +38,9 @@ module SwellMedia
 		def edit
 			@event = UserEvent.find( params[:id] )
 		end
+
+		def show
+			@event = UserEvent.find( params[:id] )
+		end
 	end
 end
