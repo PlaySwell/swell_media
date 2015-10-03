@@ -75,7 +75,7 @@ $(document).ready ->
 
 	set_ga_client_id = null
 	set_ga_client_id = (interval)->
-		if window.ga
+		if window.ga && window.ga['getAll']
 			try
 				client_id = ga.getAll()[0].get('clientId');
 
