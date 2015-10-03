@@ -29,7 +29,7 @@ module SwellMedia
 					credential.update( token: response.oauth_token )
 
 					record_user_event( event: 'login', user: credential.user, content: 'logged in.' )
-					assign_anonymous_events( resource )
+					assign_anonymous_events( credential.user )
 					
 					login_redirect( credential.user )
 
