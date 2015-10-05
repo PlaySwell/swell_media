@@ -39,6 +39,9 @@ module SwellMedia
 			user.password_confirmation = params[:user][:password_confirmation]
 
 			if user.save
+
+				user.on_registration
+
 				record_user_event( event: 'registration', obj: user, content: 'Registration successful' )
 
 				if user.active_for_authentication?

@@ -87,7 +87,7 @@ module SwellMedia
 
 						user.on_registration
 
-						login_redirect user
+						register_redirect user
 
 					else
 
@@ -130,6 +130,13 @@ module SwellMedia
 			def login_redirect( user )
 
 				sign_in_and_redirect( user )
+
+			end
+
+
+			def register_redirect( user )
+
+				after_sign_up_path_for( user )
 
 			end
 
