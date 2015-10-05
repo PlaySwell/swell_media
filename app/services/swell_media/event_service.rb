@@ -21,6 +21,8 @@ module SwellMedia
 			parent_obj = args[:on] || args[:parent_obj]
 
 			activity_obj = args[:obj] || args[:activity_obj]
+			activity_obj_id 		= activity_obj.try(:id) 							|| args[:activity_obj_id] 		|| args[:obj_id]
+			activity_obj_class	= activity_obj.try(:class).try(:name) || args[:activity_obj_class]	|| args[:obj_class]
 
 			event.context = args[:context]
 
@@ -61,13 +63,13 @@ module SwellMedia
 			# setting owner_type so logging with nill owner doesn't populate owner_type with NilClass
 			event.parent_obj_type = parent_obj.nil? ? nil : parent_obj.class.name
 			event.parent_obj_id = parent_obj.try( :id )
-			event.activity_obj_type = activity_obj.nil? ? nil : activity_obj.class.name
-			event.activity_obj_id = activity_obj.try( :id )
+			event.activity_obj_type = activity_obj_class
+			event.activity_obj_id = activity_obj_id
 
 			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate ).order( created_at: :asc )
 
 			if event.activity_obj_id.present?
-				dup_events = dup_events.where( activity_obj_id: activity_obj.id, parent_obj_id: activity_obj.class.name )
+				dup_events = dup_events.where( activity_obj_id: activity_obj_id, parent_obj_id: activity_obj_class )
 			elsif event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
 			elsif event.name == 'page_view'
