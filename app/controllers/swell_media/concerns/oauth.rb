@@ -136,7 +136,7 @@ module SwellMedia
 
 			def register_redirect( user )
 
-				after_sign_up_path_for( user )
+				redirect_to after_sign_up_path_for( user )
 
 			end
 
