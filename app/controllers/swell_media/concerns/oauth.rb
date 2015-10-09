@@ -136,7 +136,8 @@ module SwellMedia
 
 			def register_redirect( user )
 
-				redirect_to after_sign_up_path_for( user )
+				session[:dest] = after_sign_up_path_for( user )
+				sign_in_and_redirect( user )
 
 			end
 
