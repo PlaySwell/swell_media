@@ -7,6 +7,7 @@ module SwellMedia
 			# fired when a user logs in or registers...
 			# links guest_session to user
 			if session = GuestSession.find_by( id: cookies.signed[:guest] )
+				
 				session.update( user_id: user.id )
 			end
 		end
