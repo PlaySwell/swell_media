@@ -23,7 +23,7 @@ module SwellMedia
 		end
 
 		def after_sign_up_path_for( user )
-			sign_in_and_redirect( user )
+			after_sign_in_path_for( user )
 		end
 
 	end
