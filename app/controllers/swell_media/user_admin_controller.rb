@@ -29,6 +29,8 @@ module SwellMedia
 			@user = User.friendly.find( params[:id] )
 			@user.attributes = user_params
 
+			@user.settings['email_opt_out'] = params[:settings_email_opt_out]
+
 			if @user.save
 				set_flash "#{@user} updated"
 			else

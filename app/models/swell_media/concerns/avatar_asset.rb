@@ -1,4 +1,4 @@
-sdsmodule SwellMedia
+module SwellMedia
 	module Concerns
 
 		module AvatarAsset
