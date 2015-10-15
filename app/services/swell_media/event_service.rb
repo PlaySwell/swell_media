@@ -66,7 +66,12 @@ module SwellMedia
 			event.activity_obj_type = activity_obj_class
 			event.activity_obj_id = activity_obj_id
 
-			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).within_last( rate ).order( created_at: :asc )
+			event.created_at = args[:created_at] if args[:created_at].present?
+			event.created_at ||= Time.zone.now
+
+			window = event.created_at - rate
+
+			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).where( "created_at >= :t", t: window ).order( created_at: :asc )
 
 			if event.activity_obj_id.present?
 				dup_events = dup_events.where( activity_obj_id: activity_obj_id, parent_obj_id: activity_obj_class )

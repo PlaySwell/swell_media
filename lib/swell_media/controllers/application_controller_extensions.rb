@@ -7,7 +7,7 @@ module SwellMedia
 			# fired when a user logs in or registers...
 			# links guest_session to user
 			if session = GuestSession.find_by( id: cookies.signed[:guest] )
-				
+
 				session.update( user_id: user.id )
 			end
 		end
@@ -37,6 +37,8 @@ module SwellMedia
 			args[:parent_action] ||= action_name
 
 			args[:req_path] ||= request.fullpath
+
+			args[:created_at] = Time.zone.now
 
 			if user_event = EventService.log( args )
 				# this is here in the controller so we can access request obj, cookies, etc. if it results in another UserEvent
