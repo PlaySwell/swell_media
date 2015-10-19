@@ -41,7 +41,7 @@ module SwellMedia
 
 		def self.new_from_response( response, args = {} )
 
-			user = User.find_by( email: response.email ) if response.email
+			user = SwellMedia.registered_user_class.constantize.find_by( email: response.email ) if response.email
 			user ||= OauthCredential.where( provider: response.provider, uid: response.uid ).first.try(:user)
 
 			if user.present?
@@ -73,7 +73,7 @@ module SwellMedia
 
 
 		def self.not_unregistered
-			where.not(status: User.statuses[:unregistered])
+			where.not(status: SwellMedia.registered_user_class.constantize.statuses[:unregistered])
 		end
 
 

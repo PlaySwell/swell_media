@@ -67,10 +67,10 @@
 				= @user.created_at
 
 			= f.label :status
-			= f.collection_select :status, User.statuses, :first, :first, {}, class: 'form-control'
+			= f.collection_select :status, SwellMedia.registered_user_class.constantize.statuses, :first, :first, {}, class: 'form-control'
 
 			= f.label :role
-			= f.collection_select :role, User.roles, :first, :first, {}, class: 'form-control'
+			= f.collection_select :role, SwellMedia.registered_user_class.constantize.roles, :first, :first, {}, class: 'form-control'
 
 			.input-group
 				= f.submit 'Update', class: 'btn btn-primary'

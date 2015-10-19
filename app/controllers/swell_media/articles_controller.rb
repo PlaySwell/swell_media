@@ -13,7 +13,7 @@
 				@articles = @articles.where( "array[:term] && keywords", term: @keyword )
 			end
 
-			if params[:by].present? && @author = User.friendly.find( params[:by] )
+			if params[:by].present? && @author = SwellMedia.registered_user_class.constantize.friendly.find( params[:by] )
 				@articles = @articles.where( user_id: @author.id )
 			end
 

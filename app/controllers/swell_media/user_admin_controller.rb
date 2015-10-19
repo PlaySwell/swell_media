@@ -5,7 +5,7 @@ module SwellMedia
 		layout 'admin'
 
 		def edit
-			@user = User.friendly.find( params[:id] )			
+			@user = SwellMedia.registered_user_class.constantize.friendly.find( params[:id] )
 		end
 
 
@@ -15,7 +15,7 @@ module SwellMedia
 			sort_by = params[:sort_by] || 'created_at'
 			sort_dir = params[:sort_dir] || 'desc'
 
-			@users = User.order( "#{sort_by} #{sort_dir}" )
+			@users = SwellMedia.registered_user_class.constantize.order( "#{sort_by} #{sort_dir}" )
 
 			if params[:q].present?
 				@users = @users.where( "name like :q OR first_name like :q OR last_name like :q OR email like :q", q: "%#{params[:q]}%" )
@@ -26,7 +26,7 @@ module SwellMedia
 		end
 
 		def update
-			@user = User.friendly.find( params[:id] )
+			@user = SwellMedia.registered_user_class.constantize.friendly.find( params[:id] )
 			@user.attributes = user_params
 
 			@user.settings['email_opt_out'] = params[:settings_email_opt_out]
