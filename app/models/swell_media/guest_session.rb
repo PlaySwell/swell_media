@@ -4,7 +4,7 @@ module SwellMedia
 	class GuestSession < ActiveRecord::Base
 		self.table_name = 'guest_sessions'
 
-		enum device_format: { 'desktop' => 0, 'tablet' => 1, 'phone' => 2 }
+		enum device_format: { 'desktop' => 0, 'tablet' => 1, 'phone' => 2, 'app' => 3 }
 
 		before_save 	:parse_agent
 
@@ -51,6 +51,7 @@ module SwellMedia
 				self.platform = browser.platform
 				self.device_format = 'tablet' if browser.tablet?
 				self.device_format = 'phone' if browser.mobile?
+				self.device_format = 'app' if (self.user_agent =~ /^com.shopswell.desktop/).present?
 				self.human = not( browser.bot? )
 			end
 
