@@ -42,7 +42,7 @@ module SwellMedia
 
 				user.on_registration
 
-				record_user_event( event: 'registration', obj: user, content: 'Registration successful' )
+				record_user_event( event: 'registration', user: user, obj: user, content: 'Registration successful' )
 
 				if user.active_for_authentication?
 
