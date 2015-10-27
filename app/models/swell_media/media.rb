@@ -42,6 +42,10 @@ module SwellMedia
 			where( "media.publish_at <= :now", now: Time.zone.now ).active.anyone
 		end
 
+		def published?
+			active? && anyone? && publish_at < Time.zone.now
+		end
+
 
 		# Instance Methods
 

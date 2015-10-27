@@ -3,9 +3,6 @@ module SwellMedia
 		before_filter :get_media
 
 		def show
-
-			redirect_to @media.redirect_url if @media.try(:redirect_url).present?
-
 			@tags = []
 			#@tags = @media.class.active.tags_cloud
 
@@ -48,9 +45,11 @@ module SwellMedia
 						return false
 					else
 						begin
-							@media = Media.published.friendly.find( params[:id] )
+							@media = Media.friendly.find( params[:id] )
 							if @media.try( :redirect_url )
 								redirect_to @media.redirect_url, status: :moved_permanently and return
+							elsif !@media.published?
+								raise ActionController::RoutingError.new( 'Not Found' )
 							end
 						rescue ActiveRecord::RecordNotFound
 							raise ActionController::RoutingError.new( 'Not Found' )
