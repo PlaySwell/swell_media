@@ -4,6 +4,8 @@ module SwellMedia
 
 		def show
 
+			redirect_to @media.redirect_url if @media.try(:redirect_url).present?
+
 			@tags = []
 			#@tags = @media.class.active.tags_cloud
 
