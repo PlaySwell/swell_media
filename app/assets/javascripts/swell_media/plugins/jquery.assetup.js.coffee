@@ -75,7 +75,7 @@ jQuery.assetdirect = (args) ->
 					if args['backgroundPreview']
 						$(args['backgroundPreview']).css('background-image', 'url(\'' + callback_response['url'] + '\')').addClass( '_fileupload_preview' )
 					if args['imgPreview']
-						$(args['imgPreview']).css('src', 'url(\'' + callback_response['url'] + '\')').addClass '_fileupload_preview'
+						$(args['imgPreview']).attr('src', callback_response['url']).addClass '_fileupload_preview'
 					if args['callback']
 						args['callback']( callback_response )
 					return
