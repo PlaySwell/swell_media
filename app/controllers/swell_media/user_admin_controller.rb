@@ -6,6 +6,9 @@ module SwellMedia
 
 		def edit
 			@user = SwellMedia.registered_user_class.constantize.friendly.find( params[:id] )
+
+			@user_events = SwellMedia::UserEvent.where( guest_session_id: SwellMedia::GuestSession.where( user_id: @user.id ).pluck( :id ) ).order( created_at: :asc ).page(params[:page]).per(50)
+
 		end
 
 
