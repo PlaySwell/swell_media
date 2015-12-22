@@ -33,7 +33,10 @@ SwellMedia::Engine.routes.draw do
 
 	resources :stats_admin
 
-	resources :user_events, only: :create
+	resources :user_events, only: :create do
+		get :index, on: :collection, action: :create
+	end
+
 	resources :user_event_admin
 
 	resources :user_admin
