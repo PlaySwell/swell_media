@@ -17,7 +17,12 @@ module SwellMedia
 
 			record_user_event( args )
 
-			render text: '200', layout: nil
+			if params[:pixel] || ['image/png'].include?(request.format)
+				redirect_to view_context.image_path( 'swell_media/1x1.png' )
+			else
+				render text: '200', layout: nil
+			end
+
 
 		end
 
