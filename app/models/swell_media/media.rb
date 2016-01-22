@@ -135,12 +135,12 @@ module SwellMedia
 				
 				# auto-tag hashtags
 				unless self.content.blank?
-					hashtags = self.sanitized_content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
-					self.tags += hashtags
+					hashtags = self.sanitized_content.scan( /#[a-zA-Z_]+/ ).flatten.each{ |tag| tag[0]='' } 
+					hashtags.each{ |tag| self.tags << tag unless self.tags.include?( tag ) }
 				end
 
 				self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
-				self.tags.each{ |tag| self.keywords << tag.to_s }
+				self.tags.each{ |tag| self.keywords << tag.to_s unless self.keywords.include?( tag.to_s )}
 
 			end
 

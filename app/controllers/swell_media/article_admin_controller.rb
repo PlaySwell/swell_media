@@ -71,8 +71,12 @@ module SwellMedia
 		def preview
 			authorize( @article, :admin_preview? )
 			@media = @article
-			layout = 'swell_media/articles' #@media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
-			render "swell_media/articles/show"
+			@media_comments = SwellSocial::UserPost.active.where( parent_obj_id: @media.id, parent_obj_type: @media.class.name ).order( created_at: :desc )
+
+			layout = @media.class.name.underscore.pluralize
+			layout = @media.layout if @media.layout.present?
+			
+			render "swell_media/articles/show", layout: layout
 		end
 
 
