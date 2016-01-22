@@ -29,6 +29,13 @@
 
  *= require_self
  *= require_tree ./summernote
+
+ *= require swell_media/plugins/froala/css/froala_editor
+ *= require swell_media/plugins/froala/css/froala_style
+ *= require swell_media/plugins/froala/css/plugins/video
+ *= require swell_media/plugins/froala/css/plugins/colors
+ *= require swell_media/plugins/froala/css/plugins/code_view
+
  */
 
 

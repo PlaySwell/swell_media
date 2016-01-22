@@ -1,74 +1,145 @@
 /*!
- * froala_editor v1.2.6 (http://editor.froala.com)
- * License http://editor.froala.com/license
+ * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms
  * Copyright 2014-2015 Froala Labs
  */
 
-(function ($) {
-  $.Editable.DEFAULTS = $.extend($.Editable.DEFAULTS, {
-    maxCharacters: -1,
-    countCharacters: true
+(function (factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        
+        // Node/CommonJS
+        module.exports = function( root, jQuery ) {
+            if ( jQuery === undefined ) {
+                // require('jQuery') returns a factory that requires window to
+                // build a jQuery instance, we normalize how we use modules
+                // that require this pattern but the window provided is a noop
+                // if it's defined (how jquery works)
+                if ( typeof window !== 'undefined' ) {
+                    jQuery = require('jquery');
+                }
+                else {
+                    jQuery = require('jquery')(root);
+                }
+            }
+            factory(jQuery);
+            return jQuery;
+        };
+    } else {
+        // Browser globals
+        factory(jQuery);
+    }
+}(function ($) {
+
+  'use strict';
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    charCounterMax: -1,
+    charCounterCount: true
   });
 
-  $.Editable.prototype.validKeyCode = function (keyCode, ctrlKey) {
-    if (ctrlKey) return false;
 
-    return (keyCode > 47 && keyCode < 58)   || // number keys
-            keyCode == 32 || keyCode == 13   || // spacebar & return key(s) (if you want to allow carriage returns)
-            (keyCode > 64 && keyCode < 91)   || // letter keys
-            (keyCode > 95 && keyCode < 112)  || // numpad keys
-            (keyCode > 185 && keyCode < 193) || // ;=,-./` (in order)
-            (keyCode > 218 && keyCode < 223);   // [\]' (in order)
-  }
+  $.FroalaEditor.PLUGINS.charCounter = function (editor) {
+    var $counter;
 
-  $.Editable.prototype.charNumber = function () {
-    return this.getText().length;
-  }
-
-  $.Editable.prototype.checkCharNumber = function (e, editor, originalE) {
-    // Continue if infinite characters;
-    if (editor.options.maxCharacters < 0) return true;
-
-    // Continue if enough characters.
-    if (editor.charNumber() < editor.options.maxCharacters) return true;
-
-    // Stop if the key will produce a new char.
-    var keyCode = originalE.which;
-    var ctrlKey = (originalE.ctrlKey || originalE.metaKey) && !originalE.altKey;
-    if (editor.validKeyCode(keyCode, ctrlKey)) {
-      editor.triggerEvent('maxCharNumberExceeded', [], false);
-      return false;
+    /**
+     * Get the char number.
+     */
+    function _charNumber () {
+      return editor.$el.text().length;
     }
 
-    return true;
-  }
+    /**
+     * Check chars on typing.
+     */
+    function _checkCharNumber (e) {
+      // Continue if infinite characters;
+      if (editor.opts.charCounterMax < 0) return true;
 
-  $.Editable.prototype.checkCharNumberOnPaste = function (e, editor, pastedFrag) {
-    if (editor.options.maxCharacters < 0) return true;
+      // Continue if enough characters.
+      if (_charNumber() < editor.opts.charCounterMax) return true;
 
-    var pastedLength = $('<div>').html(pastedFrag).text().length;
+      // Stop if the key will produce a new char.
+      var keyCode = e.which;
+      if (!editor.keys.ctrlKey(e) && editor.keys.isCharacter(keyCode)) {
+        e.preventDefault();
+        e.stopPropagation();
+        editor.events.trigger('charCounter.exceeded');
+        return false;
+      }
 
-    if (pastedLength + editor.charNumber() <= editor.options.maxCharacters) return pastedFrag;
+      return true;
+    }
 
-    editor.triggerEvent('maxCharNumberExceeded', [], false);
-    return '';
-  }
+    /**
+     * Check chars on paste.
+     */
+    function _checkCharNumberOnPaste (html) {
+      if (editor.opts.charCounterMax < 0) return html;
 
-  $.Editable.prototype.updateCharNumber = function (e, editor) {
-    if (editor.options.countCharacters) {
-      var chars = editor.charNumber() + (editor.options.maxCharacters > 0 ?  '/' + editor.options.maxCharacters : '');
+      var len = $('<div>').html(html).text().length;
+      if (len + _charNumber() <= editor.opts.charCounterMax) return html;
 
-      editor.$box.attr('data-chars', chars);
+      editor.events.trigger('charCounter.exceeded');
+
+      return '';
+    }
+
+    /**
+     * Update the char counter.
+     */
+    function _updateCharNumber () {
+      if (editor.opts.charCounterCount) {
+        var chars = _charNumber() + (editor.opts.charCounterMax > 0 ?  '/' + editor.opts.charCounterMax : '');
+
+        $counter.text(chars);
+
+        if (editor.opts.toolbarBottom) {
+          $counter.css('margin-bottom', editor.$tb.outerHeight(true))
+        }
+
+        // Scroll size correction.
+        var scroll_size = editor.$wp.get(0).offsetWidth - editor.$wp.get(0).clientWidth;
+        if (scroll_size > 0) {
+          if (editor.opts.direction == 'rtl') {
+            $counter.css('margin-left', scroll_size);
+          }
+          else {
+            $counter.css('margin-right', scroll_size);
+          }
+        }
+      }
+    }
+
+    /*
+     * Initialize.
+     */
+    function _init () {
+      if (!editor.$wp) return false;
+
+      if (!editor.opts.charCounterCount) return false;
+
+      $counter = $('<span class="fr-counter"></span>');
+      editor.$box.append($counter);
+
+      editor.events.on('keydown', _checkCharNumber, true);
+      editor.events.on('paste.afterCleanup', _checkCharNumberOnPaste);
+      editor.events.on('keyup', _updateCharNumber);
+      editor.events.on('contentChanged', _updateCharNumber);
+      editor.events.on('charCounter.update', _updateCharNumber);
+
+      _updateCharNumber();
+
+      editor.events.on('destroy', function () {
+        $(editor.original_window).off('resize.char' + editor.id);
+        $counter.removeData().remove();
+      });
+    }
+
+    return {
+      _init: _init
     }
   }
 
-  $.Editable.prototype.initCharNumber = function () {
-    this.$original_element.on('editable.keydown', this.checkCharNumber);
-    this.$original_element.on('editable.onPaste', this.checkCharNumberOnPaste);
-    this.$original_element.on('editable.keyup', this.updateCharNumber);
-    this.$original_element.on('editable.contentChanged', this.updateCharNumber);
-    this.updateCharNumber(null, this);
-  }
-
-  $.Editable.initializers.push($.Editable.prototype.initCharNumber);
-})(jQuery);
+}));

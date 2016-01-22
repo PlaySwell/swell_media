@@ -50,4 +50,23 @@
 //= require_tree ./summernote
 //= require ./plugins/jquery.assetup
 //= require ./plugins/jquery.inputfor
+
+//= require swell_media/plugins/froala/js/froala_editor
+//= require swell_media/plugins/froala/js/plugins/align
+//= require swell_media/plugins/froala/js/plugins/image
+//= require swell_media/plugins/froala/js/plugins/link
+//= require swell_media/plugins/froala/js/plugins/lists
+//= require swell_media/plugins/froala/js/plugins/url
+//= require swell_media/plugins/froala/js/plugins/video
+//= require swell_media/plugins/froala/js/plugins/colors
+//= require swell_media/plugins/froala/js/plugins/code_view
+//= require swell_media/plugins/froala/js/plugins/code_beautifier
+//= require swell_media/plugins/froala/js/plugins/entities
+//= require swell_media/plugins/froala/js/plugins/font_family
+//= require swell_media/plugins/froala/js/plugins/image_manager
+//= require swell_media/plugins/froala/js/plugins/paragraph_format
+//= require swell_media/plugins/froala/js/plugins/paragraph_style
+//= require swell_media/plugins/froala/js/plugins/quote
+//= require swell_media/plugins/froala/js/plugins/table
+
 //= require_tree ./admin

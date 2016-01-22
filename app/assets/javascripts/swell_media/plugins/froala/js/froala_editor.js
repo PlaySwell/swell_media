@@ -1,4204 +1,223 @@
 /*!
- * froala_editor v1.2.6 (http://editor.froala.com)
- * License http://editor.froala.com/license
+ * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms
  * Copyright 2014-2015 Froala Labs
  */
 
-if (typeof jQuery === "undefined") { throw new Error("Froala requires jQuery") }
-
-/*jslint browser: true, debug: true, vars: true, devel: true, expr: true, jQuery: true */
-
-!function ($) {
-  'use strict';
-
+(function (factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        // Node/CommonJS
+        module.exports = function( root, jQuery ) {
+            if ( jQuery === undefined ) {
+                // require('jQuery') returns a factory that requires window to
+                // build a jQuery instance, we normalize how we use modules
+                // that require this pattern but the window provided is a noop
+                // if it's defined (how jquery works)
+                if ( typeof window !== 'undefined' ) {
+                    jQuery = require('jquery');
+                }
+                else {
+                    jQuery = require('jquery')(root);
+                }
+            }
+            factory(jQuery);
+            return jQuery;
+        };
+    } else {
+        // Browser globals
+        factory(jQuery);
+    }
+}(function ($) {
+  /*jslint browser: true, debug: true, vars: true, devel: true, expr: true, jQuery: true */
   // EDITABLE CLASS DEFINITION
   // =========================
 
-  var Editable = function (element, options) {
-    // Set options
-    this.options = $.extend({}, Editable.DEFAULTS, $(element).data(), typeof options == 'object' && options);
+  'use strict';
 
-    // Do not initialize on unsupported browsers.
-    if (this.options.unsupportedAgents.test(navigator.userAgent)) return false;
-
-    // Set valid nodes.
-    this.valid_nodes = $.merge([], Editable.VALID_NODES);
-    this.valid_nodes = $.merge(this.valid_nodes, $.map(Object.keys(this.options.blockTags), function (val) {
-      return val.toUpperCase();
-    }));
-
-    // Find out browser
-    this.browser = Editable.browser();
-
-    // List of disabled options.
-    this.disabledList = [];
-
-    this._id = ++Editable.count;
-
-    this._events = {};
-
-    this.blurred = true;
+  var FroalaEditor = function (element, options) {
+    this.opts = $.extend({}, FroalaEditor.DEFAULTS, $(element).data(), typeof options == 'object' && options);
 
     this.$original_element = $(element);
+    this.$original_element.data('froala.editor', this);
+    this.id = ++$.FroalaEditor.ID;
 
-    this.document = element.ownerDocument;
-    this.window = 'defaultView' in this.document ? this.document.defaultView : this.document.parentWindow;
-    this.$document = $(this.document);
-    this.$window = $(this.window);
+    this.original_document = element.ownerDocument;
+    this.original_window = 'defaultView' in this.original_document ? this.original_document.defaultView :   this.original_document.parentWindow;
+    var c_scroll = $(this.original_window).scrollTop();
 
-    if (this.browser.msie && $.Editable.getIEversion() <= 10) {
-      this.br = '';
-    } else {
-      this.br = '<br/>';
-    }
+    this.$original_element.on('froala.doInit', $.proxy(function () {
+      this.$original_element.off('froala.doInit');
+      this.document = this.$el.get(0).ownerDocument;
+      this.window = 'defaultView' in this.document ? this.document.defaultView : this.document.parentWindow;
+      this.$document = $(this.document);
+      this.$window = $(this.window);
 
-    this.init(element);
+      if (this.opts.initOnClick) {
+        this.load($.FroalaEditor.MODULES);
 
-    $(element).on('editable.focus', $.proxy(function () {
-      for (var i = 1; i <= $.Editable.count; i++) {
-        if (i != this._id) {
-          this.$window.trigger('blur.' + i);
-        }
-      }
-    }, this));
-  };
+        this.$el.on('mousedown.init dragenter.init focus.init', $.proxy(function (e) {
+          if (e.which === 1) {
+            this.$el.off('mousedown.init dragenter.init focus.init');
 
-  Editable.initializers = [];
+            this.load($.FroalaEditor.MODULES);
+            this.load($.FroalaEditor.PLUGINS);
 
-  Editable.count = 0;
+            var target = e.originalEvent && e.originalEvent.originalTarget;
+            if (target && target.tagName == 'IMG') $(target).trigger('mousedown');
 
-  Editable.VALID_NODES = ['P', 'DIV', 'LI', 'TD', 'TH'];
+            if (typeof this.ul == 'undefined') this.destroy();
 
-  Editable.LANGS = [];
-
-  Editable.INVISIBLE_SPACE = '&#x200b;';
-
-  Editable.DEFAULTS = {
-    allowComments: true,
-    allowScript: false,
-    allowStyle: false,
-    allowedAttrs: ['accept', 'accept-charset', 'accesskey', 'action', 'align', 'alt', 'async', 'autocomplete', 'autofocus', 'autoplay', 'autosave', 'background', 'bgcolor', 'border', 'charset', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'color', 'cols', 'colspan', 'content', 'contenteditable', 'contextmenu', 'controls', 'coords', 'data', 'data-.*', 'datetime', 'default', 'defer', 'dir', 'dirname', 'disabled', 'download', 'draggable', 'dropzone', 'enctype', 'for', 'form', 'formaction', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'http-equiv', 'icon', 'id', 'ismap', 'itemprop', 'keytype', 'kind', 'label', 'lang', 'language', 'list', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'multiple', 'name', 'novalidate', 'open', 'optimum', 'pattern', 'ping', 'placeholder', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'reversed', 'rows', 'rowspan', 'sandbox', 'scope', 'scoped', 'scrolling', 'seamless', 'selected', 'shape', 'size', 'sizes', 'span', 'src', 'srcdoc', 'srclang', 'srcset', 'start', 'step', 'summary', 'spellcheck', 'style', 'tabindex', 'target', 'title', 'type', 'translate', 'usemap', 'value', 'valign', 'width', 'wrap'],
-    allowedTags: ['a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base', 'bdi', 'bdo', 'blockquote', 'br', 'button', 'canvas', 'caption', 'cite', 'code', 'col', 'colgroup', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'div', 'dl', 'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend', 'li', 'link', 'main', 'map', 'mark', 'menu', 'menuitem', 'meter', 'nav', 'noscript', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'pre', 'progress', 'queue', 'rp', 'rt', 'ruby', 's', 'samp', 'script', 'section', 'select', 'small', 'source', 'span', 'strike', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'textarea', 'tfoot', 'th', 'thead', 'time', 'title', 'tr', 'track', 'u', 'ul', 'var', 'video', 'wbr'],
-    alwaysBlank: false,
-    alwaysVisible: false,
-    autosave: false,
-    autosaveInterval: 10000,
-    beautifyCode: true,
-    blockTags: {
-      n: 'Normal',
-      blockquote: 'Quote',
-      pre: 'Code',
-      h1: 'Heading 1',
-      h2: 'Heading 2',
-      h3: 'Heading 3',
-      h4: 'Heading 4',
-      h5: 'Heading 5',
-      h6: 'Heading 6'
-    },
-    buttons: ['bold', 'italic', 'underline', 'strikeThrough', 'fontSize', 'fontFamily', 'color', 'sep',
-      'formatBlock', 'blockStyle', 'align', 'insertOrderedList', 'insertUnorderedList', 'outdent', 'indent', 'sep',
-      'createLink', 'insertImage', 'insertVideo', 'insertHorizontalRule', 'undo', 'redo', 'html'
-    ],
-    crossDomain: true,
-    convertMailAddresses: true,
-    customButtons: {},
-    customDropdowns: {},
-    customText: false,
-    defaultTag: 'P',
-    direction: 'ltr',
-    disableRightClick: false,
-    editInPopup: false,
-    editorClass: '',
-    formatTags: ['p', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'div', 'ul', 'ol', 'li', 'table', 'tbody', 'thead', 'tfoot', 'tr', 'th', 'td', 'body', 'head', 'html', 'title', 'meta', 'link', 'base', 'script', 'style'],
-    headers: {},
-    height: 'auto',
-    icons: {}, // {cmd: {type: 'x', value: 'y'}}
-    inlineMode: true,
-    initOnClick: false,
-    fullPage: false,
-    language: 'en_us',
-    linkList: [],
-    linkText: false,
-    linkClasses: {},
-    linkAutoPrefix: '',
-    maxHeight: 'auto',
-    minHeight: 'auto',
-    multiLine: true,
-    noFollow: true,
-    paragraphy: true,
-    placeholder: 'Type something',
-    plainPaste: false,
-    preloaderSrc: '',
-    saveURL: null,
-    saveParams: {},
-    saveRequestType: 'POST',
-    scrollableContainer: 'body',
-    simpleAmpersand: false,
-    shortcuts: true,
-    shortcutsAvailable: ['show', 'bold', 'italic', 'underline', 'createLink', 'insertImage', 'indent',  'outdent', 'html', 'formatBlock n', 'formatBlock h1', 'formatBlock h2', 'formatBlock h3', 'formatBlock h4', 'formatBlock h5', 'formatBlock h6', 'formatBlock blockquote', 'formatBlock pre', 'strikeThrough'],
-    showNextToCursor: false,
-    spellcheck: false,
-    theme: null,
-    toolbarFixed: true,
-    trackScroll: false,
-    unlinkButton: true,
-    useClasses: true,
-    tabSpaces: true,
-    typingTimer: 500,
-    pastedImagesUploadRequestType: 'POST',
-    pastedImagesUploadURL: 'http://i.froala.com/upload_base64',
-    unsupportedAgents: /Opera Mini/i,
-    useFrTag: false,
-    width: 'auto',
-    withCredentials: false,
-    zIndex: 2000
-  };
-
-  /**
-   * Destroy editable object.
-   */
-  Editable.prototype.destroy = function () {
-    this.sync();
-
-    if (this.options.useFrTag) this.addFrTag();
-
-    this.hide();
-
-    if (this.isHTML) {
-      this.html();
-    }
-
-    if (this.$bttn_wrapper) {
-      this.$bttn_wrapper.html('').removeData().remove();
-    }
-
-    if (this.$editor) {
-      this.$editor.html('').removeData().remove();
-    }
-
-    this.raiseEvent('destroy');
-
-    if (this.$popup_editor) {
-      this.$popup_editor.html('').removeData().remove();
-    }
-
-    if (this.$placeholder) {
-      this.$placeholder.html('').removeData().remove();
-    }
-
-    clearTimeout(this.ajaxInterval);
-    clearTimeout(this.typingTimer);
-
-    // Off element events.
-    this.$element.off('mousedown mouseup click keydown keyup cut copy paste focus keypress touchstart touchend touch drop');
-    this.$element.off('mousedown mouseup click keydown keyup cut copy paste focus keypress touchstart touchend touch drop', '**');
-
-    // Off window events.
-    this.$window.off('mouseup.' + this._id);
-    this.$window.off('keydown.' + this._id);
-    this.$window.off('keyup.' + this._id);
-    this.$window.off('blur.' + this._id);
-    this.$window.off('hide.' + this._id);
-    this.$window.off('scroll.' + this._id);
-    this.$window.off('resize.' + this._id);
-    this.$window.off('orientationchange.' + this._id);
-
-    // Off document events.
-    this.$document.off('selectionchange.' + this._id);
-
-    // Off editor events.
-    this.$original_element.off('editable');
-
-    if (this.$upload_frame !== undefined) {
-      this.$upload_frame.remove();
-    }
-
-    if (this.$textarea) {
-      this.$box.remove();
-      this.$textarea.removeData('fa.editable');
-      this.$textarea.show();
-    }
-
-    // Remove events.
-    for (var k in this._events) {
-      delete this._events[k];
-    }
-
-    if (this.$placeholder) this.$placeholder.remove();
-
-    if (!this.isLink) {
-      if (this.$wrapper) {
-        this.$wrapper.replaceWith(this.getHTML(false, false))
-      }
-      else {
-        this.$element.replaceWith(this.getHTML(false, false));
-      }
-
-      if (this.$box && !this.editableDisabled) {
-        this.$box.removeClass('froala-box f-rtl');
-        this.$box.find('.html-switch').remove();
-        this.$box.removeData('fa.editable');
-        clearTimeout(this.typingTimer);
-      }
-    } else {
-      this.$element.removeData('fa.editable');
-    }
-
-    if (this.$lb) this.$lb.remove();
-  };
-
-  /**
-   * Set callbacks.
-   *
-   * @param event - Event name
-   * @param data - Data to pass to the callback.
-   * @param sync - Do a sync after calling the callback.
-   */
-  Editable.prototype.triggerEvent = function (event, data, sync, cleanify) {
-    if (sync === undefined) sync = true;
-    if (cleanify === undefined) cleanify = false;
-
-    // Will break image resize if does sync.
-    if (sync === true) {
-      if (!this.isResizing() && !this.editableDisabled && !this.imageMode && cleanify) {
-        this.cleanify();
-      }
-
-      this.sync();
-    }
-
-    var resp = true;
-
-    if (!data) data = [];
-    resp = this.$original_element.triggerHandler('editable.' + event, $.merge([this], data));
-
-    if (resp === undefined) {
-      return true;
-    }
-
-    return resp;
-  };
-
-  /**
-   * Sync style when fullPage is enabled.
-   */
-  Editable.prototype.syncStyle = function () {
-    if (this.options.fullPage) {
-      var matches = this.$element.html().match(/\[style[^\]]*\].*\[\/style\]/gi);
-      this.$document.find('head style[data-id]').remove();
-      if (matches) {
-        for (var i = 0; i < matches.length; i++) {
-          this.$document.find('head').append(matches[i].replace(/\[/gi, '<').replace(/\]/gi, '>'))
-        }
-      }
-    }
-  }
-
-  /**
-   * Sync between textarea and content.
-   */
-  Editable.prototype.sync = function () {
-    if (!this.isHTML) {
-      this.raiseEvent('sync');
-
-      this.disableImageResize();
-
-      // Check placeholder.
-      if (!this.isLink && !this.isImage) {
-        this.checkPlaceholder();
-      }
-
-      // Check if content has changed.
-      var html = this.getHTML(false, false);
-
-      if (this.trackHTML !== html && this.trackHTML != null) {
-        this.refreshImageList();
-        this.refreshButtons();
-        this.trackHTML = html;
-
-        // Set textarea value.
-        if (this.$textarea) {
-          this.$textarea.val(html);
-        }
-
-        // Save in undo stack.
-        if (!this.doingRedo) this.saveUndoStep();
-
-        this.triggerEvent('contentChanged', [], false);
-      }
-
-      else if (this.trackHTML == null) {
-        this.trackHTML = html;
-      }
-
-      this.syncStyle();
-    }
-  };
-
-  /**
-   * Check if the element passed as argument is empty or not.
-   *
-   * @param element - Dom Object.
-   */
-  Editable.prototype.emptyElement = function (element) {
-    if (element.tagName == 'IMG' || $(element).find('img').length > 0) {
-      return false;
-    }
-
-    if ($(element).find('input, iframe').length > 0) {
-      return false;
-    }
-
-    var text = $(element).text();
-
-    for (var i = 0; i < text.length; i++) {
-      if (text[i] !== '\n' && text[i] !== '\r' && text[i] !== '\t' && text[i].charCodeAt(0) != 8203) {
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  Editable.prototype.initEvents = function () {
-    if (this.mobile()) {
-      this.mousedown = 'touchstart';
-      this.mouseup = 'touchend';
-      this.move = 'touchmove';
-    }
-    else {
-      this.mousedown = 'mousedown';
-      this.mouseup = 'mouseup';
-      this.move = '';
-    }
-
-  }
-
-  Editable.prototype.initDisable = function () {
-    this.$element.on('keypress keydown keyup', $.proxy(function (e) {
-      if (this.isDisabled) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        return false;
-      }
-    }, this));
-  }
-
-  Editable.prototype.continueInit = function () {
-    this.initDisable();
-
-    this.initEvents();
-
-    this.browserFixes();
-
-    this.handleEnter();
-
-    if (!this.editableDisabled) {
-      this.initUndoRedo();
-
-      this.enableTyping();
-
-      this.initShortcuts();
-    }
-
-    this.initTabs();
-
-    this.initEditor();
-
-    // Initializers.
-    for (var i = 0; i < $.Editable.initializers.length; i++) {
-      $.Editable.initializers[i].call(this);
-    }
-
-    this.initOptions();
-
-    this.initEditorSelection();
-
-    this.initAjaxSaver();
-
-    this.setLanguage();
-
-    this.setCustomText();
-
-    if (!this.editableDisabled) {
-      this.registerPaste();
-    }
-
-    this.refreshDisabledState();
-    this.refreshUndo();
-    this.refreshRedo();
-
-    this.initPopupSubmit();
-
-    this.initialized = true;
-
-    this.triggerEvent('initialized', [], false, false);
-  }
-
-  Editable.prototype.initPopupSubmit = function () {
-    this.$popup_editor.find('.froala-popup input').keydown(function (e) {
-      var keyCode = e.which;
-      if (keyCode == 13) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).blur();
-        $(this).parents('.froala-popup').find('button.f-submit').click();
-      }
-    });
-  }
-
-  Editable.prototype.lateInit = function () {
-    // this.$element.attr('contenteditable', false);
-    this.saveSelectionByMarkers();
-    this.continueInit();
-    this.restoreSelectionByMarkers();
-    this.$element.focus();
-
-    this.hideOtherEditors();
-  }
-
-  /**
-   * Init.
-   *
-   * @param element - The element on which to set editor.
-   */
-  Editable.prototype.init = function (element) {
-    if (!this.options.paragraphy) this.options.defaultTag = 'DIV';
-
-    this.initElement(element);
-
-    this.initElementStyle();
-
-    if (!this.isLink || this.isImage) {
-      this.initImageEvents();
-
-      this.buildImageMove();
-    }
-
-    if (this.options.initOnClick) {
-      if (!this.editableDisabled) {
-        this.$element.attr('contenteditable', true);
-        this.$element.attr('spellcheck', false);
-      }
-
-      this.$element.bind('mousedown.element focus.element', $.proxy(function (e) {
-        if (!this.isLink) e.stopPropagation();
-        if (this.isDisabled) return false;
-
-        this.$element.unbind('mousedown.element focus.element');
-
-        this.lateInit();
-      }, this))
-    }
-    else {
-      this.continueInit();
-    }
-  };
-
-  Editable.prototype.phone = function () {
-    var check = false;
-    (function (a) { if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) check = true })(navigator.userAgent || navigator.vendor || window.opera);
-    return check;
-  }
-
-  // http://detectmobilebrowsers.com
-  Editable.prototype.mobile = function () {
-    return this.phone() || this.android() || this.iOS() || this.blackberry();
-  }
-
-  Editable.prototype.iOS = function () {
-    return /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.iOSVersion = function () {
-    if (/iP(hone|od|ad)/.test(navigator.platform)) {
-      var v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
-      var version = [parseInt(v[1], 10), parseInt(v[2], 10), parseInt(v[3] || 0, 10)];
-      if (version && version[0]) return version[0];
-    }
-
-    return 0;
-  }
-
-  Editable.prototype.iPad = function () {
-    return /(iPad)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.iPhone = function () {
-    return /(iPhone)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.iPod = function () {
-    return /(iPod)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.android = function () {
-    return /(Android)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.blackberry = function () {
-    return /(Blackberry)/g.test(navigator.userAgent);
-  }
-
-  Editable.prototype.initOnTextarea = function (element) {
-    this.$textarea = $(element);
-
-    if (this.$textarea.attr('placeholder') !== undefined && this.options.placeholder == 'Type something') {
-      this.options.placeholder = this.$textarea.attr('placeholder');
-    }
-
-    this.$element = $('<div>').html(this.$textarea.val());
-    this.$textarea.before(this.$element).hide();
-
-    // Before submit textarea do a sync.
-    this.$textarea.parents('form').bind('submit', $.proxy(function () {
-      if (this.isHTML) {
-        this.html();
-      } else {
-        this.sync();
-      }
-    }, this));
-
-
-    // Remove submit event on form.
-    this.addListener('destroy', $.proxy(function () {
-      this.$textarea.parents('form').unbind('submit');
-    }, this));
-  }
-
-  Editable.prototype.initOnLink = function (element) {
-    this.isLink = true;
-    this.options.linkText = true;
-    this.selectionDisabled = true;
-    this.editableDisabled = true;
-    this.options.buttons = [];
-    this.$element = $(element);
-    this.options.paragraphy = false;
-    this.options.countCharacters = false;
-    this.$box = this.$element;
-  }
-
-  Editable.prototype.initOnImage = function (element) {
-    var img_float = $(element).css('float')
-    if ($(element).parent().get(0).tagName == 'A') {
-      element = $(element).parent()
-    }
-
-    this.isImage = true;
-    this.editableDisabled = true;
-    this.imageList = [];
-    this.options.buttons = [];
-    this.options.paragraphy = false;
-    this.options.imageMargin = 'auto';
-    $(element).wrap('<div>');
-    this.$element = $(element).parent();
-    this.$element.css('display', 'inline-block');
-    this.$element.css('max-width', '100%');
-    this.$element.css('margin-left', 'auto');
-    this.$element.css('margin-right', 'auto');
-    this.$element.css('float', img_float);
-    this.$element.addClass('f-image');
-    this.$box = $(element);
-  }
-
-  Editable.prototype.initForPopup = function (element) {
-    this.$element = $(element);
-    this.$box = this.$element;
-    this.editableDisabled = true;
-    this.options.countCharacters = false;
-    this.options.buttons = [];
-
-    this.$element.on('click', $.proxy(function (e) {
-      e.preventDefault();
-    }, this));
-  }
-
-  Editable.prototype.initOnDefault = function (element) {
-    // Remove format block if the element is not a DIV.
-    if (element.tagName != 'DIV' && this.options.buttons.indexOf('formatBlock') >= 0) {
-      this.disabledList.push('formatBlock');
-    }
-
-    this.$element = $(element);
-  }
-
-  /**
-   * Init element.
-   *
-   * @param element
-   */
-  Editable.prototype.initElement = function (element) {
-    if (element.tagName == 'TEXTAREA') this.initOnTextarea(element);
-    else if (element.tagName == 'A') this.initOnLink(element);
-    else if (element.tagName == 'IMG') this.initOnImage(element);
-    else if (this.options.editInPopup) this.initForPopup(element);
-    else this.initOnDefault(element);
-
-    if (!this.editableDisabled) {
-      this.$box = this.$element.addClass('froala-box');
-      this.$wrapper = $('<div class="froala-wrapper">');
-      this.$element = $('<div>');
-      var html = this.$box.html();
-      this.$box.html(this.$wrapper.html(this.$element));
-
-      this.$element.on('keyup', $.proxy(function () {
-        if (this.$element.find('ul, ol').length > 1) {
-          this.cleanupLists();
-        }
-      }, this))
-
-      this.setHTML(html, true);
-    }
-
-    // Drop event.
-    this.$element.on('drop', $.proxy(function () {
-      setTimeout($.proxy(function () {
-        $('html').click();
-        this.$element.find('.f-img-wrap').each (function (i, e) {
-          if ($(e).find('img').length === 0) {
-            $(e).remove();
+            this.events.trigger('initialized');
           }
-        })
-
-        this.$element.find(this.options.defaultTag + ':empty').remove();
-      }, this), 1);
-    }, this));
-  };
-
-  /**
-   * Trim text.
-   */
-  Editable.prototype.trim = function (text) {
-    text = String(text).replace(/^\s+|\s+$/g, '');
-
-    text = text.replace(/\u200B/gi, '');
-
-    return text;
-  };
-
-  /**
-   * Unwrap text from editor.
-   */
-  Editable.prototype.unwrapText = function () {
-    if (!this.options.paragraphy) {
-      this.$element.find(this.options.defaultTag).each ($.proxy(function (index, elem) {
-        if (elem.attributes.length === 0) {
-          var $br = $(elem).find('br:last');
-          if ($br.length && this.isLastSibling($br.get(0))) {
-            $(elem).replaceWith($(elem).html());
-          }
-          else {
-            $(elem).replaceWith($(elem).html() + '<br/>');
-          }
-        }
-      }, this));
-    }
-  }
-
-  Editable.prototype.wrapTextInElement = function ($element, force_wrap) {
-    if (force_wrap === undefined) force_wrap = false;
-
-    var newWrap = [];
-    var INSIDE_TAGS = ['SPAN', 'A', 'B', 'I', 'EM', 'U', 'S', 'STRONG', 'STRIKE', 'FONT', 'IMG', 'SUB', 'SUP'];
-
-    var that = this;
-
-    this.no_verify = true;
-
-    var mergeText = function () {
-      if (newWrap.length === 0) return false;
-
-      var $div = $('<' + that.options.defaultTag + '>');
-
-      var $wrap_0 = $(newWrap[0]);
-      if (newWrap.length == 1 && $wrap_0.attr('class') == 'f-marker') {
-        newWrap = []
-        return;
-      }
-
-      for (var i = 0; i < newWrap.length; i++) {
-        var $wrap_obj = $(newWrap[i]);
-        $div.append($wrap_obj.clone());
-        if (i == newWrap.length - 1) {
-          $wrap_obj.replaceWith($div);
-        } else {
-          $wrap_obj.remove();
-        }
-      }
-
-      newWrap = [];
-    }
-
-    var start_marker = false;
-    var end_marker = false;
-    var wrap_at_br = false;
-
-    $element
-      .contents()
-      .filter(function () {
-        var $this = $(this);
-
-        if ($this.hasClass('f-marker') || $this.find('.f-marker').length) {
-          var $marker = $this;
-          if ($this.find('.f-marker').length == 1 || $this.hasClass('f-marker')) {
-            if ($this.find('.f-marker').length) $marker = $($this.find('.f-marker')[0]);
-            else $marker = $this;
-
-            var $prev = $marker.prev();
-            if ($marker.attr('data-type') === 'true') {
-              if ($prev.length && $($prev[0]).hasClass('f-marker')) {
-                wrap_at_br = true;
-              }
-              else {
-                start_marker = true;
-                end_marker = false;
-              }
-            }
-            else {
-              end_marker = true;
-            }
-          }
-          else {
-            wrap_at_br = true;
-          }
-        }
-
-        // Check if node is text, not empty and it is an inside tag.
-        if ((this.nodeType == Node.TEXT_NODE && $this.text().length > 0) || INSIDE_TAGS.indexOf(this.tagName) >= 0) {
-          newWrap.push(this);
-        }
-
-        // Empty text. Remove it.
-        else if ((this.nodeType == Node.TEXT_NODE && $this.text().length === 0) && that.options.beautifyCode) {
-          $this.remove();
-        }
-
-        // Merge text so far.
-        else {
-          if (start_marker || force_wrap || wrap_at_br) {
-            if (this.tagName === 'BR') {
-              if (newWrap.length > 0) $this.remove();
-              else newWrap.push(this);
-            }
-
-            mergeText();
-
-            if (end_marker) start_marker = false;
-
-            wrap_at_br = false;
-          } else {
-            newWrap = [];
-          }
-        }
-      });
-
-    if (start_marker || force_wrap || wrap_at_br) {
-      mergeText();
-    }
-
-    // Add an invisible character at the end of empty elements.
-    $element.find('> ' + this.options.defaultTag).each (function (index, elem) {
-      if ($(elem).text().trim().length === 0 &&
-        $(elem).find('img').length === 0 &&
-        $(elem).find('br').length === 0) {
-        $(elem).append(this.br);
-      }
-    });
-
-    $element.find('div:empty:not([class])').remove();
-
-    if ($element.is(':empty')) {
-      if (that.options.paragraphy === true) {
-        $element.append('<' + this.options.defaultTag + '>' + this.br + '</' + this.options.defaultTag + '>');
-      } else {
-        $element.append(this.br);
-      }
-    }
-
-    this.no_verify = false;
-  }
-
-  /**
-   * Wrap text from editor.
-   */
-  Editable.prototype.wrapText = function (force_wrap) {
-    // No need to do it if image or link.
-    if (this.isImage || this.isLink) {
-      return false;
-    }
-
-    this.allow_div = true;
-
-    // Remove care of blank spans first.
-    this.removeBlankSpans();
-
-    var $elements = this.getSelectionElements();
-    for (var i = 0; i < $elements.length; i++) {
-      var $element = $($elements[i]);
-
-      if (['LI', 'TH', 'TD'].indexOf($element.get(0).tagName) >= 0) {
-        this.wrapTextInElement($element, true);
-      }
-      else if (this.parents($element, 'li').length) {
-        this.wrapTextInElement($(this.parents($element, 'li')[0]), force_wrap);
-      }
-      else {
-        this.wrapTextInElement(this.$element, force_wrap);
-      }
-    }
-
-    this.allow_div = false;
-  };
-
-  /**
-   * Set a HTML into the current editor.
-   *
-   * @param html - The HTML to set.
-   * @param sync - Passing false will not sync after setting the HTML.
-   */
-  Editable.prototype.setHTML = function (html, sync) {
-    this.no_verify = true;
-    this.allow_div = true;
-    if (sync === undefined) sync = true;
-
-    // Clean.
-    html = this.clean(html, true, false);
-
-    // Remove unecessary spaces.
-    html = html.replace(/>\s+</g, '><');
-
-    this.$element.html(html);
-
-    this.$element.find('pre').each (function (i, pre) {
-      var $pre = $(pre);
-      var content = $(pre).html();
-      if (content.indexOf('\n') >= 0) {
-        $pre.html(content.replace(/\n/g, '<br>'));
-      }
-    });
-
-    this.imageList = [];
-    this.refreshImageList();
-
-    // Do paragraphy wrap.
-    if (this.options.paragraphy) this.wrapText(true);
-
-    this.$element.find('li:empty').append($.Editable.INVISIBLE_SPACE);
-    this.cleanupLists();
-
-    this.cleanify(false, true, false);
-
-    // Sync if necessary.
-    if (sync) {
-      // Restore selection.
-      this.restoreSelectionByMarkers();
-      this.sync();
-    }
-
-    this.$element.find('span').attr('data-fr-verified', true);
-
-    if (this.initialized) {
-      this.hide();
-      this.closeImageMode();
-      this.imageMode = false;
-    }
-
-    this.no_verify = false;
-    this.allow_div = false;
-  };
-
-  Editable.prototype.beforePaste = function () {
-    // Save selection
-    this.saveSelectionByMarkers();
-
-    // Set clipboard HTML.
-    this.clipboardHTML = null;
-
-    // Store scroll.
-    this.scrollPosition = this.$window.scrollTop();
-
-    // Remove and store the editable content
-    this.$pasteDiv = $('<div contenteditable="true" style="position: fixed; top: 0; left: -9999px; height: 100%; width: 0; z-index: 99999; line-height: 140%;"></div>').appendTo('body');
-
-    this.$pasteDiv.focus();
-
-    this.window.setTimeout($.proxy(this.processPaste, this), 1);
-  }
-
-  Editable.prototype.processPaste = function () {
-    var pastedFrag = this.clipboardHTML;
-
-    if (this.clipboardHTML === null) {
-      pastedFrag = this.$pasteDiv.html();
-
-      // Restore selection.
-      this.restoreSelectionByMarkers();
-
-      // Restore scroll.
-      this.$window.scrollTop(this.scrollPosition);
-    }
-
-    var clean_html;
-
-    var response = this.triggerEvent('onPaste', [pastedFrag], false);
-    if (typeof(response) === 'string') {
-      pastedFrag = response;
-    }
-
-    // Add image pasted flag.
-    pastedFrag = pastedFrag.replace(/<img /gi, '<img data-fr-image-pasted="true" ');
-
-    // Word paste.
-    if (pastedFrag.match(/(class=\"?Mso|style=\"[^\"]*\bmso\-|w:WordDocument)/gi)) {
-      clean_html = this.wordClean(pastedFrag);
-      clean_html = this.clean($('<div>').append(clean_html).html(), false, true);
-      clean_html = this.removeEmptyTags(clean_html);
-    }
-
-    // Paste.
-    else {
-      clean_html = this.clean(pastedFrag, false, true);
-      clean_html = this.removeEmptyTags(clean_html);
-      if (Editable.copiedText && $('<div>').html(clean_html).text().replace(/\u00A0/gi, ' ') == Editable.copiedText.replace(/(\u00A0|\r|\n)/gi, ' ')) {
-        clean_html = Editable.copiedHTML;
-      }
-    }
-
-    // Do plain paste cleanup.
-    if (this.options.plainPaste) {
-      clean_html = this.plainPasteClean(clean_html);
-    }
-
-    // Check if there is anything to clean.
-    if (clean_html !== '') {
-      // Insert HTML.
-      this.insertHTML(clean_html, true, true);
-
-      // Remove empty spans and other empty valid nodes.
-      this.saveSelectionByMarkers();
-      this.removeBlankSpans();
-      this.$element.find(this.valid_nodes.join(':empty, ') + ':empty').remove();
-      this.restoreSelectionByMarkers();
-
-      // Indent lists.
-      this.$element.find('li[data-indent]').each ($.proxy(function (index, li) {
-        if (this.indentLi) {
-          $(li).removeAttr('data-indent')
-          this.indentLi($(li));
-        }
-        else {
-          $(li).removeAttr('data-indent')
-        }
-      }, this));
-
-      // Li cleanup.
-      this.$element.find('li').each ($.proxy(function (index, li) {
-        this.wrapTextInElement($(li), true);
-      }, this));
-
-      if (this.options.paragraphy) {
-        this.wrapText(true);
-      }
-
-      this.cleanupLists();
-    }
-
-    this.afterPaste();
-  }
-
-  Editable.prototype.afterPaste = function () {
-    this.uploadPastedImages();
-
-    this.checkPlaceholder();
-
-    this.pasting = false;
-
-    this.triggerEvent('afterPaste', [], true, false);
-  }
-
-  Editable.prototype.getSelectedHTML = function () {
-    var that = this;
-
-    function wrapSelection(container, parentNode) {
-      while (parentNode.nodeType == 3 || that.valid_nodes.indexOf(parentNode.tagName) < 0) {
-        if (parentNode.nodeType != 3) $(container).wrapInner('<' + parentNode.tagName + that.attrs(parentNode) + '>' + '</' + parentNode.tagName + '>');
-        parentNode = parentNode.parentNode;
-      }
-    }
-
-    var html = '';
-    if (typeof window.getSelection != 'undefined') {
-      var ranges = this.getRanges();
-      for (var i = 0; i < ranges.length; i++) {
-        var container = document.createElement('div');
-        container.appendChild(ranges[i].cloneContents());
-        wrapSelection(container, this.getSelectionParent());
-        html += container.innerHTML;
-      }
-    }
-
-    else if (typeof document.selection != 'undefined') {
-      if (document.selection.type == 'Text') {
-        html = document.selection.createRange().htmlText;
-      }
-    }
-    return html;
-  }
-
-  /**
-   * Register paste event.
-   */
-  Editable.prototype.registerPaste = function () {
-    this.$element.on('copy cut', $.proxy(function () {
-      if (!this.isHTML) {
-        Editable.copiedHTML = this.getSelectedHTML();
-        Editable.copiedText = $('<div>').html(Editable.copiedHTML).text();
-      }
-    }, this));
-
-    this.$element.on('paste', $.proxy(function (e) {
-      if (!this.isHTML) {
-        if (e.originalEvent) e = e.originalEvent;
-
-        if (!this.triggerEvent('beforePaste', [], false)) {
-          return false;
-        }
-
-        // Clipboard paste.
-        if (this.clipboardPaste(e)) return false;
-
-        this.clipboardHTML = '';
-
-        // Enable pasting.
-        this.pasting = true;
-
-        // Store scroll position.
-        this.scrollPosition = this.$window.scrollTop();
-
-        // Read data from clipboard.
-        var clipboard = false;
-        if (e && e.clipboardData && e.clipboardData.getData) {
-          var types = '';
-          var clipboard_types = e.clipboardData.types;
-
-          if ($.Editable.isArray(clipboard_types)) {
-            for (var i = 0 ; i < clipboard_types.length; i++) {
-              types += clipboard_types[i] + ';';
-            }
-          } else {
-            types = clipboard_types;
-          }
-
-          // HTML.
-          if (/text\/html/.test(types)) {
-            this.clipboardHTML = e.clipboardData.getData('text/html');
-          }
-
-          // Safari HTML.
-          else if (/text\/rtf/.test(types) && this.browser.safari) {
-            this.clipboardHTML = e.clipboardData.getData('text/rtf');
-          }
-
-          else if (/text\/plain/.test(types) && !this.browser.mozilla) {
-            this.clipboardHTML = e.clipboardData.getData('text/plain').replace(/\n/g, '<br/>');
-          }
-
-          if (this.clipboardHTML !== '') {
-            clipboard = true;
-          } else {
-            this.clipboardHTML = null;
-          }
-
-          if (clipboard) {
-            this.processPaste();
-
-            if (e.preventDefault) {
-              e.stopPropagation();
-              e.preventDefault();
-            }
-
-            return false;
-          }
-        }
-
-        // Normal paste.
-        this.beforePaste();
-      }
-    }, this));
-  };
-
-  // Image upload Chrome. http://www.foliotek.com/devblog/copy-images-from-clipboard-in-javascript/
-  Editable.prototype.clipboardPaste = function (e) {
-    if (e && e.clipboardData) {
-      if (e.clipboardData.items && e.clipboardData.items[0]) {
-
-        var file = e.clipboardData.items[0].getAsFile();
-
-        if (file) {
-          var reader = new FileReader();
-          reader.onload = $.proxy(function (e) {
-            var result = e.target.result;
-
-            this.insertHTML('<img data-fr-image-pasted="true" src="' + result + '" />');
-
-            this.afterPaste();
-          }, this);
-
-          reader.readAsDataURL(file);
-
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  Editable.prototype.uploadPastedImages = function () {
-    // Safari won't work https://bugs.webkit.org/show_bug.cgi?id=49141
-    this.$element.find('img[data-fr-image-pasted]').each ($.proxy(function (index, img) {
-      if (!this.options.pasteImage) {
-        $(img).remove();
-      }
-
-      else {
-        // Data images.
-        if (img.src.indexOf('data:') === 0) {
-
-          // Set image width.
-          if (this.options.defaultImageWidth) {
-            $(img).attr('width', this.options.defaultImageWidth);
-          }
-
-          if (this.options.pastedImagesUploadURL) {
-            setTimeout($.proxy(function () {
-              this.showImageLoader();
-              this.$progress_bar.find('span').css('width', '100%').text('Please wait!');
-              this.showByCoordinates($(img).offset().left + $(img).width() / 2, $(img).offset().top + $(img).height() + 10);
-              this.isDisabled = true;
-            }, this), 10);
-
-            $.ajax({
-              type: this.options.pastedImagesUploadRequestType,
-              url: this.options.pastedImagesUploadURL,
-              data: $.extend({ image: decodeURIComponent(img.src) }, this.options.imageUploadParams),
-              crossDomain: this.options.crossDomain,
-              xhrFields: {
-                withCredentials: this.options.withCredentials
-              },
-              headers: this.options.headers,
-              dataType: 'json'
-            })
-            .done($.proxy(function (resp) {
-              try {
-                if (resp.link) {
-                  var img_x = new Image();
-
-                  // Bad image url.
-                  img_x.onerror = $.proxy(function () {
-                    $(img).remove();
-                    this.hide();
-                    this.throwImageError(1);
-                  }, this);
-
-                  // Image loaded.
-                  img_x.onload = $.proxy(function () {
-                    img.src = resp.link;
-
-                    this.hideImageLoader();
-                    this.hide();
-                    this.enable();
-
-                    setTimeout (function () {
-                      $(img).trigger('touchend');
-                    }, 50);
-
-                    this.triggerEvent('afterUploadPastedImage', [$(img)]);
-                  }, this);
-
-                  // Set image src.
-                  img_x.src = resp.link;
-                }
-
-                else if (resp.error) {
-                  $(img).remove();
-                  this.hide();
-                  this.throwImageErrorWithMessage(resp.error);
-                }
-
-                else {
-                  // No link in upload request.
-                  $(img).remove();
-                  this.hide();
-                  this.throwImageError(2);
-                }
-              } catch (ex) {
-                // Bad response.
-                $(img).remove();
-                this.hide();
-                this.throwImageError(4);
-              }
-            }, this))
-            .fail($.proxy(function () {
-              // Failed during upload.
-              $(img).remove();
-              this.hide();
-              this.throwImageError(3);
-            }, this));
-          }
-        }
-
-        // Images without http (Safari ones.).
-        else if (img.src.indexOf('http') !== 0) {
-          $(img).remove();
-        }
-
-        $(img).removeAttr('data-fr-image-pasted');
-      }
-    }, this));
-  }
-
-  Editable.prototype.disable = function () {
-    this.isDisabled = true;
-    this.$element.blur();
-    this.$box.addClass('fr-disabled');
-    this.$element.attr('contenteditable', false);
-  }
-
-  Editable.prototype.enable = function () {
-    this.isDisabled = false;
-    this.$box.removeClass('fr-disabled');
-    this.$element.attr('contenteditable', true);
-  }
-
-  /**
-   * Word clean.
-   */
-  Editable.prototype.wordClean = function (html) {
-    // Keep only body.
-    if (html.indexOf('<body') >= 0) {
-      html = html.replace(/[.\s\S\w\W<>]*<body[^>]*>([.\s\S\w\W<>]*)<\/body>[.\s\S\w\W<>]*/g, '$1');
-    }
-
-    // Single item list.
-    html = html.replace(
-      /<p(.*?)class="?'?MsoListParagraph"?'? ([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<ul><li>$3</li></ul>'
-    );
-    html = html.replace(
-      /<p(.*?)class="?'?NumberedText"?'? ([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<ol><li>$3</li></ol>'
-    );
-
-    // List start.
-    html = html.replace(
-      /<p(.*?)class="?'?MsoListParagraphCxSpFirst"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<ul><li$3>$5</li>'
-    );
-    html = html.replace(
-      /<p(.*?)class="?'?NumberedTextCxSpFirst"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<ol><li$3>$5</li>'
-    );
-
-    // List middle.
-    html = html.replace(
-      /<p(.*?)class="?'?MsoListParagraphCxSpMiddle"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<li$3>$5</li>'
-    );
-    html = html.replace(
-      /<p(.*?)class="?'?NumberedTextCxSpMiddle"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<li$3>$5</li>'
-    );
-
-    // List end.
-    html = html.replace(
-      /<p(.*?)class="?'?MsoListParagraphCxSpLast"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<li$3>$5</li></ul>'
-    );
-    html = html.replace(
-      /<p(.*?)class="?'?NumberedTextCxSpLast"?'?([\s\S]*?)(level\d)([\s\S]*?)>([\s\S]*?)<\/p>/gi,
-      '<li$3>$5</li></ol>'
-    );
-
-    // Clean list bullets.
-    html = html.replace(/<span([^<]*?)style="?'?mso-list:Ignore"?'?([\s\S]*?)>([\s\S]*?)<span/gi, '<span><span');
-
-    // Webkit clean list bullets.
-    html = html.replace(/<!--\[if \!supportLists\]-->([\s\S]*?)<!--\[endif\]-->/gi, '');
-    html = html.replace(/<!\[if \!supportLists\]>([\s\S]*?)<!\[endif\]>/gi, '');
-
-    // Remove mso classes.
-    html = html.replace(/(\n|\r| class=(")?Mso[a-zA-Z0-9]+(")?)/gi, ' ');
-
-    // Remove comments.
-    html = html.replace(/<!--[\s\S]*?-->/gi, '');
-
-    // Remove tags but keep content.
-    html = html.replace(/<(\/)*(meta|link|span|\\?xml:|st1:|o:|font)(.*?)>/gi, '');
-
-    // Remove no needed tags.
-    var word_tags = ['style', 'script', 'applet', 'embed', 'noframes', 'noscript'];
-    for (var i = 0; i < word_tags.length; i++) {
-      var regex = new RegExp('<' + word_tags[i] + '.*?' + word_tags[i] + '(.*?)>', 'gi');
-      html = html.replace(regex, '');
-    }
-
-    // Remove attributes.
-    html = html.replace(/([\w\-]*)=("[^<>"]*"|'[^<>']*'|\w+)/gi, '');
-
-    // Remove spaces.
-    html = html.replace(/&nbsp;/gi, ' ');
-
-    // Remove empty tags.
-    var oldHTML;
-    do {
-      oldHTML = html;
-      html = html.replace(/<[^\/>][^>]*><\/[^>]+>/gi, '');
-    } while (html != oldHTML);
-
-    // Process list indentation.
-    html = html.replace(/<lilevel([^1])([^>]*)>/gi, '<li data-indent="true"$2>');
-    html = html.replace(/<lilevel1([^>]*)>/gi, '<li$1>');
-
-    html = this.clean(html);
-
-    // Clean empty links.
-    html = html.replace(/<a>(.[^<]+)<\/a>/gi, '$1');
-
-    return html;
-  }
-
-  Editable.prototype.tabs = function (tabs_no) {
-    var html = '';
-
-    for (var k = 0; k < tabs_no; k++) {
-      html += '  ';
-    }
-
-    return html;
-  }
-
-  /**
-   * Clean tags.
-   */
-  Editable.prototype.cleanTags = function (html, new_line_to_br) {
-    if (new_line_to_br === undefined) new_line_to_br = false;
-
-    var chr;
-    var i;
-    var ok;
-    var last;
-
-    var open_tags = [];
-    var dom = [];
-    var is_pre = false;
-    var keep_head = false;
-
-    var format_tags = this.options.formatTags;
-
-    // Iterate through the html.
-    for (i = 0; i < html.length; i++) {
-      chr = html.charAt(i);
-
-      // Tag start.
-      if (chr == '<') {
-        // Tag end.
-        var j = html.indexOf('>', i + 1);
-        if (j !== -1) {
-          // Get tag.
-          var tag = html.substring(i, j + 1);
-          var tag_name = this.tagName(tag);
-
-          // Keep all content inside head unaltered.
-          if (tag_name == 'head' && this.options.fullPage) keep_head = true;
-          if (keep_head) {
-            dom.push(tag);
-            i = j;
-            if (tag_name == 'head' && this.isClosingTag(tag)) keep_head = false;
-            continue;
-          }
-
-          if (this.options.allowedTags.indexOf(tag_name) < 0 && (!this.options.fullPage || ['html', 'head', 'body', '!doctype'].indexOf(tag_name) < 0)) {
-            i = j;
-            continue;
-          }
-
-          // Handle comments.
-          if (tag_name.indexOf('!') === 0) {
-            dom.push(tag);
-            i = j;
-            continue;
-          }
-
-          // Closing tag.
-          var is_closing = this.isClosingTag(tag);
-
-          // Determine if pre.
-          if (tag_name === 'pre') {
-            if (is_closing) {
-              is_pre = false;
-            } else {
-              is_pre = true;
-            }
-          }
-
-          // Self enclosing tag.
-          if (this.isSelfClosingTag(tag)) {
-            if (tag_name === 'br' && is_pre) {
-              dom.push('\n');
-            }
-            else {
-              dom.push(tag);
-            }
-          }
-          // New open tag.
-          else if (!is_closing) {
-            // Keep tag in dom.
-            dom.push(tag);
-
-            // Store open tag.
-            open_tags.push({
-              tag_name: tag_name,
-              i: (dom.length - 1)
-            });
-
-          } else {
-            ok = false;
-            last = true;
-
-            // Search for opened tag.
-            while (ok === false && last !== undefined) {
-              // Get last node.
-              last = open_tags.pop();
-
-              // Remove nodes that are not closed correctly.
-              if (last !== undefined && last.tag_name !== tag_name) {
-                dom.splice(last.i, 1);
-              } else {
-                ok = true;
-
-                // Last tag should be the correct one and not undefined.
-                if (last !== undefined) {
-                  dom.push(tag);
-                }
-              }
-            }
-          }
-
-          // Update i position.
-          i = j;
-        }
-      }
-
-      else {
-        if (chr === '\n' && this.options.beautifyCode) {
-          if (new_line_to_br && is_pre) {
-            dom.push('<br/>');
-          }
-          else if (is_pre) {
-            dom.push(chr);
-          }
-          else if (open_tags.length > 0) {
-            dom.push(' ');
-          }
-        } else if (chr.charCodeAt(0) != 9) {
-          dom.push(chr);
-        }
-      }
-    }
-
-    // Remove open tags.
-    while (open_tags.length > 0) {
-      last = open_tags.pop();
-      dom.splice(last.i, 1);
-    }
-
-    var new_line_sep = '\n';
-    if (!this.options.beautifyCode) {
-      new_line_sep = '';
-    }
-
-    // Build the new html.
-    html = '';
-    open_tags = 0;
-    var remove_space = true;
-    for (i = 0; i < dom.length; i++) {
-      if (dom[i].length == 1) {
-        if (!(remove_space && dom[i] === ' ')) {
-          html += dom[i];
-          remove_space = false;
-        }
-      }
-      else if (format_tags.indexOf(this.tagName(dom[i]).toLowerCase()) < 0) {
-        html += dom[i];
-        if (this.tagName(dom[i]) == 'br') html += new_line_sep;
-      }
-      else if (this.isSelfClosingTag(dom[i])) {
-        if (format_tags.indexOf(this.tagName(dom[i]).toLowerCase()) >= 0) {
-          html += this.tabs(open_tags) + dom[i] + new_line_sep;
-          remove_space = false;
-        }
-        else {
-          html += dom[i];
-        }
-      }
-      else if (!this.isClosingTag(dom[i])) {
-        html += new_line_sep + this.tabs(open_tags) + dom[i];
-        open_tags += 1;
-        remove_space = false;
-      }
-      else {
-        open_tags -= 1;
-
-        if (open_tags === 0) remove_space = true;
-
-        if (html.length > 0 && html[html.length - 1] == new_line_sep) {
-          html += this.tabs(open_tags);
-        }
-
-        html += dom[i] + new_line_sep;
-      }
-    }
-
-    // Remove starting \n.
-    if (html[0] == new_line_sep) {
-      html = html.substring(1, html.length);
-    }
-
-    // Remove ending \n.
-    if (html[html.length - 1] == new_line_sep) {
-      html = html.substring(0, html.length - 1);
-    }
-
-    return html;
-  };
-
-  Editable.prototype.cleanupLists = function () {
-    this.$element.find('ul, ol').each (function (index, list) {
-      var $list = $(list);
-
-      if ($list.find('.close-ul, .open-ul, .close-ol, .open-ol, .open-li, .close-li').length > 0) {
-        var oldHTML = '<' + list.tagName.toLowerCase() + '>' + $list.html() + '</' + list.tagName.toLowerCase() + '>';
-        oldHTML = oldHTML.replace(new RegExp('<span class="close-ul" data-fr-verified="true"></span>', 'g'), '</ul>');
-        oldHTML = oldHTML.replace(new RegExp('<span class="open-ul" data-fr-verified="true"></span>', 'g'), '<ul>');
-        oldHTML = oldHTML.replace(new RegExp('<span class="close-ol" data-fr-verified="true"></span>', 'g'), '</ol>');
-        oldHTML = oldHTML.replace(new RegExp('<span class="open-ol" data-fr-verified="true"></span>', 'g'), '<ol>');
-        oldHTML = oldHTML.replace(new RegExp('<span class="close-li" data-fr-verified="true"></span>', 'g'), '</li>');
-        oldHTML = oldHTML.replace(new RegExp('<span class="open-li" data-fr-verified="true"></span>', 'g'), '<li>');
-
-        $list.replaceWith(oldHTML);
-      }
-    });
-
-    this.$element.find('li > td').remove();
-    this.$element.find('li td:empty').append($.Editable.INVISIBLE_SPACE);
-
-    // Remove empty ul and ol.
-    this.$element.find('ul, ol').each ($.proxy(function (index, lst) {
-      var $lst = $(lst);
-      if ($lst.find(this.valid_nodes.join(',')).length === 0) {
-        $lst.remove();
-      }
-    }, this));
-
-    // Make sure we can type in nested list.
-    this.$element.find('li > ul, li > ol').each ($.proxy(function (idx, lst) {
-      if (this.isFirstSibling(lst)) $(lst).before('<br/>');
-    }, this));
-
-    // Remove empty li.
-    this.$element.find('li:empty').remove();
-
-    var lists = this.$element.find('ol + ol, ul + ul');
-    for (var k = 0; k < lists.length; k++) {
-      var $list = $(lists[k]);
-      $list.prev().append($list.html());
-      $list.remove();
-    }
-
-    this.$element.find('li > td').remove();
-    this.$element.find('li td:empty').append($.Editable.INVISIBLE_SPACE);
-
-    // Remove first p in li.
-    this.$element.find('li > ' + this.options.defaultTag).each(function (index, p) {
-      if (p.attributes.length === 0) {
-        $(p).replaceWith($(p).html());
-      }
-    });
-  }
-
-  /**
-   * Clean the html.
-   */
-  Editable.prototype.clean = function (html, allow_id, clean_style, allowed_tags, allowed_attrs) {
-    // List of allowed attributes.
-    if (!allowed_attrs) allowed_attrs = $.merge([], this.options.allowedAttrs);
-
-    // List of allowed tags.
-    if (!allowed_tags) allowed_tags = $.merge([], this.options.allowedTags);
-
-    // Remove the id.
-    if (!allow_id) {
-      if (allowed_attrs.indexOf('id') > -1) allowed_attrs.splice(allowed_attrs.indexOf('id'), 1);
-    }
-
-    if (this.options.fullPage) {
-      html = html.replace(/<!DOCTYPE([^>]*?)>/i, '<!-- DOCTYPE$1 -->')
-      html = html.replace(/<html([^>]*?)>/i, '<!-- html$1 -->')
-      html = html.replace(/<\/html([^>]*?)>/i, '<!-- \/html$1 -->')
-      html = html.replace(/<body([^>]*?)>/i, '<!-- body$1 -->')
-      html = html.replace(/<\/body([^>]*?)>/i, '<!-- \/body$1 -->')
-      html = html.replace(/<head>([\w\W]*)<\/head>/i, function (str, a1) {
-        var x = 1;
-        a1 = a1.replace(/(<style)/gi, function (str, x1) {
-          return x1 + ' data-id=' + x++;
-        });
-
-        return '<!-- head ' + a1.replace(/(>)([\s|\t]*)(<)/gi, '$1$3').replace(/</gi, '[').replace(/>/gi, ']') + ' -->';
-      });
-    }
-
-    if (!this.options.allowComments) {
-      html = html.replace(/<!--.*?-->/gi, '');
-    }
-    else {
-      this.options.allowedTags.push('!--');
-      this.options.allowedTags.push('!');
-    }
-
-    // Remove script tag.
-    if (!this.options.allowScript) html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    else allowed_tags.push('script');
-
-    // Remove style tag.
-    if (!this.options.allowStyle) html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    else allowed_tags.push('style');
-
-    // Remove all tags not in allowed tags.
-    var at_reg = new RegExp('<\\/?((?!(?:' + allowed_tags.join(' |') + ' |' + allowed_tags.join('>|') + '>|' + allowed_tags.join('/>|') + '/>))\\w+)[^>]*?>', 'gi');
-    html = html.replace(at_reg, '');
-
-    // Remove all attributes not in allowed attrs.
-    var aa_reg = new RegExp('( (?!(?:' + allowed_attrs.join('|') + '))[a-zA-Z0-9-_]+)=((?:.(?!\\s+(?:\\S+)=|[>]|(\\/>)))+.)', 'gi');
-    html = html.replace(/<\/?[^>]*?>/gi, function (all) {
-      return all.replace(aa_reg, '');
-    });
-
-    // Pasting.
-    if (this.pasting && Editable.copiedText === $('<div>').html(html).text()) {
-      clean_style = false;
-      allow_id = true;
-    }
-
-    // Clean style.
-    if (clean_style) {
-      var style_reg = new RegExp('style=("[a-zA-Z0-9:;\\.\\s\\(\\)\\-\\,!\\/\'%]*"|\'[a-zA-Z0-9:;\\.\\s\\(\\)\\-\\,!\\/"%]*\')', 'gi');
-      html = html.replace(style_reg, '');
-
-      html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    }
-
-    // Clean tags.
-    html = this.cleanTags(html, true);
-
-    // Sanitize SRC or HREF.
-    html = html.replace(/(\r|\n)/gi, '');
-    var s_reg = new RegExp('<([^>]*)( src| href)=(\'[^\']*\'|"[^"]*"|[^\\s>]+)([^>]*)>', 'gi');
-    html = html.replace(s_reg, $.proxy(function (str, a1, a2, a3, a4) {
-      return '<' + a1 + a2 + '="' + this.sanitizeURL(a3.replace(/^["'](.*)["']\/?$/gi, '$1')) + '"' + a4 + '>';
-    }, this));
-
-    // Remove the class.
-    if (!allow_id) {
-      var $div = $('<div>').append(html);
-      $div.find('[class]:not([class^="fr-"])').each (function (index, el) {
-        $(el).removeAttr('class');
-      })
-
-      html = $div.html();
-    }
-
-    return html;
-  };
-
-  Editable.prototype.removeBlankSpans = function () {
-    // Clean possible empty spans, specially in Webkit browsers.
-    this.no_verify = true;
-    this.$element.find('span').removeAttr('data-fr-verified');
-    this.$element.find('span').each($.proxy(function (index, span) {
-      if (this.attrs(span).length === 0) $(span).replaceWith($(span).html());
-    }, this));
-    this.$element.find('span').attr('data-fr-verified', true);
-    this.no_verify = false;
-  }
-
-  Editable.prototype.plainPasteClean = function (html) {
-    var $div = $('<div>').html(html);
-
-    $div.find('h1, h2, h3, h4, h5, h6, pre, blockquote, li').each ($.proxy(function (i, el) {
-      $(el).replaceWith('<' + this.options.defaultTag + '>' + $(el).html() + '</' + this.options.defaultTag + '>');
-    }, this));
-
-    var replacePlain = function (i, el) {
-      $(el).replaceWith($(el).html());
-    }
-
-    while ($div.find('strong, em, strike, b, u, i, sup, sub, span, a').length) {
-      $div.find('strong, em, strike, b, u, i, sup, sub, span, a').each (replacePlain);
-    }
-
-    return $div.html();
-  }
-
-  Editable.prototype.removeEmptyTags = function (html) {
-    var i;
-    var $div = $('<div>').html(html);
-
-    // Clean empty tags.
-    var empty_tags = $div.find('*:empty:not(br, img, td, th)');
-    while (empty_tags.length) {
-      for (i = 0; i < empty_tags.length; i++) {
-        $(empty_tags[i]).remove();
-      }
-
-      empty_tags = $div.find('*:empty:not(br, img, td, th)');
-    }
-
-    // Workaround for Notepad paste.
-    $div.find('> div').each(function (i, div) {
-      $(div).replaceWith($(div).html() + '<br/>');
-    })
-
-    // Remove divs.
-    var divs = $div.find('div');
-    while (divs.length) {
-      for (i = 0; i < divs.length; i++) {
-        var $el = $(divs[i]);
-        var text = $el.html().replace(/\u0009/gi, '').trim();
-
-        $el.replaceWith(text);
-      }
-
-      divs = $div.find('div');
-    }
-
-    return $div.html();
-  }
-
-  /**
-   * Init style for element.
-   */
-  Editable.prototype.initElementStyle = function () {
-    // Enable content editable.
-    if (!this.editableDisabled) {
-      this.$element.attr('contenteditable', true);
-    }
-
-    var cls = 'froala-view froala-element ' + this.options.editorClass;
-
-    if (this.browser.msie && Editable.getIEversion() < 9) {
-      cls += ' ie8';
-    }
-
-    // Remove outline.
-    this.$element.css('outline', 0);
-
-    if (!this.browser.msie) {
-      cls += ' not-msie';
-    }
-
-    this.$element.addClass(cls);
-  };
-
-  Editable.prototype.CJKclean = function (text) {
-    var regex = /[\u3041-\u3096\u30A0-\u30FF\u4E00-\u9FFF\u3130-\u318F\uAC00-\uD7AF]/gi;
-    return text.replace(regex, '');
-  }
-
-  /**
-   * Typing is saved in undo stack.
-   */
-  Editable.prototype.enableTyping = function () {
-    this.typingTimer = null;
-
-    this.$element.on('keydown', 'textarea, input', function (e) {
-      e.stopPropagation();
-    })
-
-    this.$element.on('keydown cut', $.proxy(function (e) {
-      if (!this.isHTML) {
-        if (!this.options.multiLine && e.which == 13) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-
-        if (e.type === 'keydown' && !this.triggerEvent('keydown', [e], false)) {
-          return false;
-        }
-
-        clearTimeout(this.typingTimer);
-        this.ajaxSave = false;
-
-        this.oldHTML = this.getHTML(true, false);
-
-        this.typingTimer = setTimeout($.proxy(function () {
-          var html = this.getHTML(true, false);
-
-          if (!this.ime && (this.CJKclean(html) !== this.CJKclean(this.oldHTML) && this.CJKclean(html) === html)) {
-            // Do sync.
-            this.sync();
-          }
-        }, this), Math.max(this.options.typingTimer, 500));
-      }
-    }, this));
-  };
-
-  Editable.prototype.removeMarkersByRegex = function (html) {
-    return html.replace(/<span[^>]*? class\s*=\s*["']?f-marker["']?[^>]+>([\S\s][^\/])*<\/span>/gi, '');
-  };
-
-  Editable.prototype.getImageHTML = function () {
-    return JSON.stringify({
-      src: this.$element.find('img').attr('src'),
-      style: this.$element.find('img').attr('style'),
-      alt: this.$element.find('img').attr('alt'),
-      width: this.$element.find('img').attr('width'),
-      link: this.$element.find('a').attr('href'),
-      link_title: this.$element.find('a').attr('title'),
-      link_target: this.$element.find('a').attr('target')
-    })
-  };
-
-  Editable.prototype.getLinkHTML = function () {
-    return JSON.stringify ({
-      body: this.$element.html(),
-      href: this.$element.attr('href'),
-      title: this.$element.attr('title'),
-      popout: this.$element.hasClass('popout'),
-      nofollow: this.$element.attr('ref') == 'nofollow',
-      blank: this.$element.attr('target') == '_blank',
-      cls: !this.$element.attr('class') ? '' : this.$element.attr('class').replace(/froala-element ?|not-msie ?|froala-view ?/gi, '').trim()
-    })
-  };
-
-  Editable.prototype.addFrTag = function () {
-    this.$element.find(this.valid_nodes.join(',') + ', table, ul, ol, img').addClass('fr-tag');
-  }
-
-  Editable.prototype.removeFrTag = function () {
-    // Restore fr-tag class.
-    this.$element.find(this.valid_nodes.join(',') + ', table, ul, ol, img').removeClass('fr-tag');
-  }
-
-  /**
-   * Get HTML from the editor.
-   * Default: (false, false, true)
-   */
-  Editable.prototype.getHTML = function (keep_markers, add_fr_tag, remove_verifier) {
-    if (keep_markers === undefined) keep_markers = false;
-    if (add_fr_tag === undefined) add_fr_tag = this.options.useFrTag;
-    if (remove_verifier === undefined) remove_verifier = true;
-
-    if (this.$element.hasClass('f-placeholder') && !keep_markers) return '';
-
-    if (this.isHTML) return this.$html_area.val();
-
-    if (this.isImage) return this.getImageHTML();
-
-    if (this.isLink) return this.getLinkHTML();
-
-    // Add f-link to links.
-    this.$element.find('a').data('fr-link', true);
-
-    // fr-tag class.
-    if (add_fr_tag) {
-      this.addFrTag();
-    }
-
-    // Set image margin.
-    this.$element.find('.f-img-editor > img').each($.proxy(function (index, elem) {
-      $(elem)
-        .removeClass('fr-fin fr-fil fr-fir fr-dib fr-dii')
-        .addClass(this.getImageClass($(elem).parent().attr('class')));
-    }, this));
-
-    if (!this.options.useClasses) {
-      this.$element.find('img').each ($.proxy (function (index, img) {
-        var $img = $(img);
-
-        $img.attr('data-style', this.getImageStyle($img));
-      }, this));
-    }
-
-    // Replace &nbsp; from pre.
-    this.$element.find('pre').each ($.proxy(function (index, pre) {
-      var $pre = $(pre);
-      var old_html = $pre.html();
-      var new_html = old_html.replace(/\&nbsp;/gi, ' ');
-
-      if (old_html != new_html) {
-        this.saveSelectionByMarkers();
-        $pre.html(new_html);
-        this.restoreSelectionByMarkers();
-      }
-    }, this));
-
-    this.$element.find('pre br').addClass('fr-br');
-
-    this.$element.find('[class=""]').removeAttr('class');
-
-    // Clone element.
-    var html = this.$element.html();
-
-    this.removeFrTag();
-    this.$element.find('pre br').removeAttr('class');
-
-    // Remove empty link.
-    html = html.replace(/<a[^>]*?><\/a>/g, '');
-
-    if (!keep_markers) {
-      // Remove markers.
-      html = this.removeMarkersByRegex(html);
-    }
-
-    // Remove image handles.
-    html = html.replace(/<span[^>]*? class\s*=\s*["']?f-img-handle[^>]+><\/span>/gi, '');
-
-    // Remove f-img-editor.
-    html = html.replace(/^([\S\s]*)<span[^>]*? class\s*=\s*["']?f-img-editor[^>]+>([\S\s]*)<\/span>([\S\s]*)$/gi, '$1$2$3');
-
-    // Remove image wrapper.
-    html = html.replace(/^([\S\s]*)<span[^>]*? class\s*=\s*["']?f-img-wrap[^>]+>([\S\s]*)<\/span>([\S\s]*)$/gi, '$1$2$3');
-
-    // Add image style.
-    if (!this.options.useClasses) {
-      html = html.replace(/data-style/gi, 'style');
-      html = html.replace(/(<img[^>]*)( class\s*=['"]?[a-zA-Z0-9- ]+['"]?)([^>]*\/?>)/gi, '$1$3');
-    }
-
-    // Ampersand fix.
-    if (this.options.simpleAmpersand) {
-      html = html.replace(/\&amp;/gi, '&');
-    }
-
-    // Remove data-fr-verified
-    if (remove_verifier) {
-      html = html.replace(/ data-fr-verified="true"/gi, '');
-    }
-
-    // Remove new lines.
-    if (this.options.beautifyCode) {
-      html = html.replace(/\n/gi, '');
-    }
-
-    html = html.replace(/<br class="fr-br">/gi, '\n');
-
-    // Remove invisible whitespace.
-    html = html.replace(/\u200B/gi, '');
-
-    if (this.options.fullPage) {
-      html = html.replace(/<!-- DOCTYPE([^>]*?) -->/i, '<!DOCTYPE$1>')
-      html = html.replace(/<!-- html([^>]*?) -->/i, '<html$1>')
-      html = html.replace(/<!-- \/html([^>]*?) -->/i, '<\/html$1>')
-      html = html.replace(/<!-- body([^>]*?) -->/i, '<body$1>')
-      html = html.replace(/<!-- \/body([^>]*?) -->/i, '<\/body$1>')
-      html = html.replace(/<!-- head ([\w\W]*?) -->/i, function (str, a1) {
-        return '<head>' + a1.replace(/\[/gi, '<').replace(/\]/gi, '>') + '</head>';
-      });
-    }
-
-    // Trigger getHTML event.
-    if (add_fr_tag) {
-      var new_html = this.triggerEvent('getHTML', [html], false);
-      if (typeof(new_html) === 'string') {
-        return new_html
-      }
-    }
-
-    return html;
-
-  };
-
-  /**
-   * Get the text from the current element.
-   */
-  Editable.prototype.getText = function () {
-    return this.$element.text();
-  };
-
-  /**
-   * Set a dirty flag which indicates if there are any changes for autosave.
-   */
-  Editable.prototype.setDirty = function (dirty) {
-    this.dirty = dirty;
-
-    if (!dirty) {
-      clearTimeout (this.ajaxInterval);
-      this.ajaxHTML = this.getHTML(false, false);
-    }
-  }
-
-
-  /**
-   * Make ajax requests if autosave is enabled.
-   */
-  Editable.prototype.initAjaxSaver = function () {
-    this.ajaxHTML = this.getHTML(false, false);
-    this.ajaxSave = true;
-
-    this.ajaxInterval = setInterval($.proxy(function () {
-      var html = this.getHTML(false, false);
-      if ((this.ajaxHTML != html || this.dirty) && this.ajaxSave) {
-        if (this.options.autosave) {
-          this.save();
-        }
-
-        this.dirty = false;
-        this.ajaxHTML = html;
-      }
-
-      this.ajaxSave = true;
-    }, this), Math.max(this.options.autosaveInterval, 100));
-  };
-
-  /**
-   * Disable browser undo.
-   */
-  Editable.prototype.disableBrowserUndo = function () {
-    this.$element.keydown($.proxy(function (e) {
-      var keyCode = e.which;
-      var ctrlKey = (e.ctrlKey || e.metaKey) && !e.altKey;
-
-      if (!this.isHTML && ctrlKey) {
-        if (keyCode == 90 && e.shiftKey) {
-          e.preventDefault();
-          return false;
-        }
-
-        if (keyCode == 90) {
-          e.preventDefault();
-          return false;
-        }
-      }
-    }, this));
-  };
-
-  Editable.prototype.shortcutEnabled = function (shortcut) {
-    return this.options.shortcutsAvailable.indexOf(shortcut) >= 0;
-  }
-
-  Editable.prototype.shortcuts_map = {
-    69: { cmd: 'show', params: [null], id: 'show' },
-    66: { cmd: 'exec', params: ['bold'], id: 'bold' },
-    73: { cmd: 'exec', params: ['italic'], id: 'italic' },
-    85: { cmd: 'exec', params: ['underline'], id: 'underline' },
-    83: { cmd: 'exec', params: ['strikeThrough'], id: 'strikeThrough' },
-    75: { cmd: 'exec', params: ['createLink'], id: 'createLink' },
-    80: { cmd: 'exec', params: ['insertImage'], id: 'insertImage' },
-    221: { cmd: 'exec', params: ['indent'], id: 'indent' },
-    219: { cmd: 'exec', params: ['outdent'], id: 'outdent' },
-    72: { cmd: 'exec', params: ['html'], id: 'html' },
-    48: { cmd: 'exec', params: ['formatBlock', 'n'], id: 'formatBlock n' },
-    49: { cmd: 'exec', params: ['formatBlock', 'h1'], id: 'formatBlock h1' },
-    50: { cmd: 'exec', params: ['formatBlock', 'h2'], id: 'formatBlock h2' },
-    51: { cmd: 'exec', params: ['formatBlock', 'h3'], id: 'formatBlock h3' },
-    52: { cmd: 'exec', params: ['formatBlock', 'h4'], id: 'formatBlock h4' },
-    53: { cmd: 'exec', params: ['formatBlock', 'h5'], id: 'formatBlock h5' },
-    54: { cmd: 'exec', params: ['formatBlock', 'h6'], id: 'formatBlock h6' },
-    222: { cmd: 'exec', params: ['formatBlock', 'blockquote'], id: 'formatBlock blockquote' },
-    220: { cmd: 'exec', params: ['formatBlock', 'pre'], id: 'formatBlock pre' }
-  };
-
-  // Check if we should consider that CTRL key is pressed.
-  Editable.prototype.ctrlKey = function (e) {
-    if (navigator.userAgent.indexOf('Mac OS X') != -1) {
-      if (e.metaKey && !e.altKey) return true;
-    } else {
-      if (e.ctrlKey && !e.altKey) return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Enable editor shortcuts.
-   */
-  Editable.prototype.initShortcuts = function () {
-    if (this.options.shortcuts) {
-      this.$element.on('keydown', $.proxy(function (e) {
-        var keyCode = e.which;
-        var ctrlKey = this.ctrlKey(e);
-
-        if (!this.isHTML && ctrlKey) {
-          if (this.shortcuts_map[keyCode] && this.shortcutEnabled(this.shortcuts_map[keyCode].id))  {
-            return this.execDefaultShortcut(this.shortcuts_map[keyCode].cmd, this.shortcuts_map[keyCode].params);
-          }
-
-          // CTRL + SHIFT + z
-          if (keyCode == 90 && e.shiftKey) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            this.redo();
-
-            return false;
-          }
-
-          // CTRL + z
-          if (keyCode == 90) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            this.undo();
-
-            return false;
-          }
-        }
-      }, this));
-    }
-  };
-
-  Editable.prototype.initTabs = function () {
-    this.$element.on('keydown', $.proxy(function (e) {
-      var keyCode = e.which;
-
-      // TAB.
-      if (keyCode == 9 && !e.shiftKey) {
-        if (!this.raiseEvent('tab')) {
-          e.preventDefault();
-        }
-
-        else if (this.options.tabSpaces) {
-          e.preventDefault();
-
-          var spaces = '&nbsp;&nbsp;&nbsp;&nbsp;';
-          var element = this.getSelectionElements()[0];
-          if (element.tagName === 'PRE') {
-            spaces = '    ';
-          }
-
-          this.insertHTML(spaces, false);
-        }
-        else {
-          this.blur();
-        }
-      }
-
-      // SHIFT + TAB.
-      else if (keyCode == 9 && e.shiftKey) {
-        if (!this.raiseEvent('shift+tab')) {
-          e.preventDefault();
-        }
-        else if (this.options.tabSpaces) {
-          e.preventDefault();
-        }
-        else {
-          this.blur();
-        }
-      }
-    }, this));
-  }
-
-  /*
-   * Check if element is text empty.
-   */
-  Editable.prototype.textEmpty = function (element) {
-    var text = $(element).text().replace(/(\r\n|\n|\r|\t)/gm, '');
-
-    return (text === '' || element === this.$element.get(0)) && $(element).find('br').length === 0;
-  }
-
-  Editable.prototype.inEditor = function (el) {
-    while (el && el.tagName !== 'BODY') {
-      if (el === this.$element.get(0)) return true;
-      el = el.parentNode;
-    }
-
-    return false;
-  }
-
-  /*
-   * Focus in element.
-   */
-  Editable.prototype.focus = function (try_to_focus) {
-    if (this.isDisabled) return false;
-
-    if (try_to_focus === undefined) try_to_focus = true;
-
-    if (this.text() !== '' && !this.$element.is(':focus')) {
-      if (!this.browser.msie) this.$element.focus();
-
-      return;
-    }
-
-    if (!this.isHTML) {
-      if (try_to_focus && !this.pasting) {
-        this.$element.focus();
-      }
-
-      if (this.pasting && !this.$element.is(':focus')) {
-        this.$element.focus();
-      }
-
-      // Focus when there is placeholder.
-      if (this.$element.hasClass('f-placeholder')) {
-        if (this.$element.find(this.options.defaultTag).length > 0) {
-          this.setSelection(this.$element.find(this.options.defaultTag)[0]);
-        }
-        else {
-          this.setSelection(this.$element.get(0));
-        }
-        return;
-      }
-
-      var range = this.getRange();
-
-
-      if (this.text() === '' && (range && (range.startOffset === 0 || range.startContainer === this.$element.get(0) || !this.inEditor(range.startContainer)))) {
-        var i;
-        var element;
-        var elements = this.getSelectionElements();
-
-        // Keep focus in elements such as SPAN, STRONG, etc.
-        if ($.merge(['IMG', 'BR'], this.valid_nodes).indexOf(this.getSelectionElement().tagName) < 0) {
-          return false;
-        }
-
-        // Selection is in text not at the beginning.
-        if ((range.startOffset > 0 && this.valid_nodes.indexOf(this.getSelectionElement().tagName) >= 0 && range.startContainer.tagName != 'BODY') ||  (range.startContainer && range.startContainer.nodeType === 3)) {
-          return;
-        }
-
-        // Paragraphy is false and selection element is the main one.
-        if (!this.options.paragraphy && elements.length >= 1 && elements[0] === this.$element.get(0)) {
-          var search_text = function (node) {
-            if (!node) return null;
-            if (node.nodeType == 3 && node.textContent.length > 0) return node;
-            if (node.nodeType == 1 && node.tagName == 'BR') return node;
-
-            var contents = $(node).contents();
-            for (var i = 0; i < contents.length; i++) {
-              var nd = search_text(contents[i]);
-              if (nd != null) return nd;
-            }
-
-            return null;
-          }
-
-          if (range.startOffset === 0 && this.$element.contents().length > 0 && this.$element.contents()[0].nodeType != 3) {
-            var node = search_text(this.$element.get(0));
-            if (node != null) {
-              if (node.tagName == 'BR') {
-                if (this.$element.is(':focus')) {
-                  $(node).before(this.markers_html);
-                  this.restoreSelectionByMarkers();
-                }
-              }
-              else {
-                this.setSelection(node);
-              }
-            }
-          }
-
-          return false;
-        }
-
-        // There is an element and not the main element.
-        if (elements.length >= 1 && elements[0] !== this.$element.get(0)) {
-          for (i = 0; i < elements.length; i++) {
-            element = elements[i];
-            if (!this.textEmpty(element) || this.browser.msie) {
-              this.setSelection(element);
-              return;
-            }
-
-            // Empty Li and TD.
-            if (this.textEmpty(element) && ['LI', 'TD'].indexOf(element.tagName) >= 0) {
-              return;
-            }
-          }
-        }
-
-        // Range starts in element at a higher position.
-        if (range.startContainer === this.$element.get(0) && range.startOffset > 0 && !this.options.paragraphy) {
-          this.setSelection(this.$element.get(0), range.startOffset);
-          return;
-        }
-
-        elements = this.$element.find(this.valid_nodes.join(','));
-        for (i = 0; i < elements.length; i++) {
-          element = elements[i];
-          if (!this.textEmpty(element) && $(element).find(this.valid_nodes.join(',')).length === 0) {
-            this.setSelection(element);
-            return;
-          }
-        }
-
-        this.setSelection(this.$element.get(0));
-      }
-    }
-  };
-
-  Editable.prototype.addMarkersAtEnd = function ($element) {
-    var elements = $element.find(this.valid_nodes.join(', '));
-    if (elements.length === 0) elements.push($element.get(0))
-
-    var el = elements[elements.length - 1];
-    $(el).append(this.markers_html);
-  }
-
-  Editable.prototype.setFocusAtEnd = function ($element) {
-    if ($element === undefined) $element = this.$element;
-
-    this.addMarkersAtEnd($element);
-    this.restoreSelectionByMarkers();
-  }
-
-  Editable.prototype.breakHTML = function (clean_html) {
-    // Clear selection first.
-    this.removeMarkers();
-    if (this.$element.find('break').length === 0) {
-      this.insertSimpleHTML('<break></break>');
-    }
-
-    // Search for focus element.
-    var element = this.parents(this.$element.find('break'), $.merge(['UL', 'OL'], this.valid_nodes).join(','))[0];
-
-    // Special UL/OL parent case condition.
-    if (this.parents($(element), 'ul, ol').length) element = this.parents($(element), 'ul, ol')[0];
-
-    if (element === undefined) element = this.$element.get(0);
-
-    // Wrap pasted li content in UL. Firefox doesn't do that.
-    if (['UL', 'OL'].indexOf(element.tagName) >= 0) {
-      var $div = $('<div>').html(clean_html);
-      $div.find('> li').wrap('<' + element.tagName + '>');
-      clean_html = $div.html();
-    }
-
-    // Insert in main element.
-    if (element == this.$element.get(0)) {
-      if (this.$element.find('break').next().length) {
-        this.insertSimpleHTML('<div id="inserted-div">' + clean_html + '</div>');
-
-        var $insDiv = this.$element.find('div#inserted-div');
-        this.setFocusAtEnd($insDiv);
-        this.saveSelectionByMarkers();
-        $insDiv.replaceWith($insDiv.contents());
-        this.restoreSelectionByMarkers();
-      }
-      else {
-        this.insertSimpleHTML(clean_html);
-        this.setFocusAtEnd();
-      }
-
-      this.$element.find('break').remove();
-      this.checkPlaceholder();
-      return true;
-    }
-
-    // Insert in TD.
-    if (element.tagName === 'TD') {
-      this.$element.find('break').remove();
-      this.insertSimpleHTML(clean_html);
-      return true;
-    }
-
-    // Set markers.
-    var $divx = $('<div>').html(clean_html);
-    this.addMarkersAtEnd($divx);
-    clean_html = $divx.html();
-
-    // Empty element.
-    if (this.emptyElement($(element))) {
-      $(element).replaceWith(clean_html);
-      this.restoreSelectionByMarkers();
-      this.checkPlaceholder();
-      return true;
-    }
-
-    // Mark empty li.
-    this.$element.find('li').each ($.proxy(function (index, li) {
-      if (this.emptyElement(li)) $(li).addClass('empty-li');
-    }, this));
-
-    var html = $('<div></div>').append($(element).clone()).html();
-    var tag;
-    var open_tags = [];
-    var tag_indexes = {};
-    var li_html = [];
-    var chr;
-    var chars = 0;
-
-    for (var i = 0; i < html.length; i++) {
-      chr = html.charAt(i);
-
-      // Tag start.
-      if (chr == '<') {
-        // Tag end.
-        var j = html.indexOf('>', i + 1);
-        if (j !== -1) {
-
-          // Get tag.
-          tag = html.substring(i, j + 1);
-          var tag_name = this.tagName(tag);
-          i = j;
-
-          // Do break here.
-          if (tag_name == 'break') {
-            if (!this.isClosingTag(tag)) {
-              for (var k = open_tags.length - 1; k >= 0; k--) {
-                var open_tag_name = this.tagName(open_tags[k]);
-
-                li_html.push('</' + open_tag_name + '>');
-              }
-
-              li_html.push(clean_html);
-
-              for (var p = 0; p < open_tags.length; p++) {
-                li_html.push(open_tags[p]);
-              }
-            }
-          } else {
-            li_html.push(tag);
-
-            if (!this.isSelfClosingTag(tag)) {
-              if (this.isClosingTag(tag)) {
-                var idx = tag_indexes[tag_name].pop();
-
-                // Remove the open tag.
-                open_tags.splice(idx, 1);
-
-              } else {
-                open_tags.push(tag);
-
-                if (tag_indexes[tag_name] === undefined) tag_indexes[tag_name] = [];
-                tag_indexes[tag_name].push(open_tags.length - 1);
-              }
-            }
-          }
-        }
-      }
-      else {
-        chars++;
-        li_html.push(chr);
-      }
-    }
-
-    $(element).replaceWith(li_html.join(''));
-
-    // Remove new empty li.
-    this.$element.find('li').each ($.proxy(function (index, li) {
-      var $li = $(li);
-      if ($li.hasClass('empty-li')) {
-        $li.removeClass('empty-li');
-      }
-      else if (this.emptyElement(li)) {
-        $li.remove();
-      }
-    }, this));
-
-    this.cleanupLists();
-    this.restoreSelectionByMarkers();
-  }
-
-  Editable.prototype.insertSimpleHTML = function (html) {
-    var sel;
-    var range;
-    this.no_verify = true;
-    if (this.window.getSelection) {
-      // IE9 and non-IE
-      sel = this.window.getSelection();
-      if (sel.getRangeAt && sel.rangeCount) {
-        range = sel.getRangeAt(0);
-        range.deleteContents();
-
-        var el = this.document.createElement('div');
-        el.innerHTML = html;
-
-        var frag = this.document.createDocumentFragment();
-        var node;
-        var lastNode;
-
-        while ((node = el.firstChild)) {
-          lastNode = frag.appendChild(node);
-        }
-        range.insertNode(frag);
-
-        // Preserve the selection
-        if (lastNode) {
-          range = range.cloneRange();
-          range.setStartAfter(lastNode);
-          range.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-      }
-    } else if ((sel = this.document.selection) && sel.type != 'Control') {
-      // IE < 9
-      var originalRange = sel.createRange();
-      originalRange.collapse(true);
-      sel.createRange().pasteHTML(html);
-    }
-    this.no_verify = false;
-  }
-
-  // http://stackoverflow.com/questions/6690752/insert-html-at-caret-in-a-contenteditable-div/6691294#6691294
-  Editable.prototype.insertHTML = function (html, do_focus, force_focus_after) {
-    if (do_focus === undefined) do_focus = true;
-    if (force_focus_after === undefined) force_focus_after = false;
-
-    if (!this.isHTML && do_focus) {
-      this.focus();
-    }
-
-    // Clear selection first.
-    this.removeMarkers();
-    this.insertSimpleHTML('<break></break>');
-    this.checkPlaceholder(true);
-
-    // Empty.
-    if (this.$element.hasClass('f-placeholder')) {
-      this.$element.html(html);
-      if (this.options.paragraphy) this.wrapText(true);
-      this.$element.find('break').remove();
-      this.setFocusAtEnd();
-      this.checkPlaceholder();
-      return false;
-    }
-
-    // Break if it's necessary.
-    var elems = $('<div>').append(html).find('*');
-    for (var i = 0; i < elems.length; i++) {
-      if (this.valid_nodes.indexOf(elems[i].tagName) >= 0) {
-        this.breakHTML(html);
-        this.$element.find('break').remove();
-        return false;
-      }
-    }
-
-    this.$element.find('break').remove();
-    this.insertSimpleHTML(html);
-  };
-
-  /**
-   * Run shortcut.
-   *
-   * @param command - Command name.
-   * @param val - Command value.
-   * @returns {boolean}
-   */
-  Editable.prototype.execDefaultShortcut = function (method, params) {
-    this[method].apply(this, params);
-
-    return false;
-  };
-
-  /**
-   * Init editor.
-   */
-  Editable.prototype.initEditor = function () {
-    var cls = 'froala-editor';
-    if (this.mobile()) {
-      cls += ' touch';
-    }
-    if (this.browser.msie && Editable.getIEversion() < 9) {
-      cls += ' ie8';
-    }
-
-    this.$editor = $('<div class="' + cls + '" style="display: none;">');
-
-    var $container = this.$document.find(this.options.scrollableContainer);
-    $container.append(this.$editor);
-
-    if (this.options.inlineMode) {
-      this.initInlineEditor();
-    } else {
-      this.initBasicEditor();
-    }
-  };
-
-  Editable.prototype.refreshToolbarPosition = function () {
-    // Scroll is where the editor is.
-    if (this.$window.scrollTop() > this.$box.offset().top && this.$window.scrollTop() < this.$box.offset().top + this.$box.outerHeight() - this.$editor.outerHeight()) {
-      this.$element.css('padding-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-      this.$placeholder.css('margin-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-
-      this.$editor
-        .addClass('f-scroll')
-        .removeClass('f-scroll-abs')
-        .css('bottom', '')
-        .css('left', this.$box.offset().left + parseFloat(this.$box.css('padding-left'), 10) - this.$window.scrollLeft())
-        .width(this.$box.width() - parseFloat(this.$editor.css('border-left-width'), 10) - parseFloat(this.$editor.css('border-right-width'), 10))
-
-      // IOS.
-      if (this.iOS()) {
-        if (this.$element.is(':focus')) {
-          this.$editor.css('top', this.$window.scrollTop())
-        }
-        else {
-          this.$editor.css('top', '');
-        }
-      }
-    }
-
-    // Scroll is above or below the editor.
-    else {
-      // Scroll is above.
-      if (this.$window.scrollTop() < this.$box.offset().top) {
-        if (this.iOS() && this.$element.is(':focus')) {
-          this.$element.css('padding-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-          this.$placeholder.css('margin-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-
-          this.$editor
-            .addClass('f-scroll')
-            .removeClass('f-scroll-abs')
-            .css('bottom', '')
-            .css('left', this.$box.offset().left + parseFloat(this.$box.css('padding-left'), 10) - this.$window.scrollLeft())
-            .width(this.$box.width() - parseFloat(this.$editor.css('border-left-width'), 10) - parseFloat(this.$editor.css('border-right-width'), 10))
-
-          this.$editor.css('top', this.$box.offset().top)
-        }
-        else {
-          this.$editor
-            .removeClass('f-scroll f-scroll-abs')
-            .css('bottom', '')
-            .css('top', '')
-            .width('');
-
-          this.$element.css('padding-top', '');
-          this.$placeholder.css('margin-top', '');
-        }
-      }
-
-      // Scroll is below.
-      else if (this.$window.scrollTop() > this.$box.offset().top + this.$box.outerHeight() - this.$editor.outerHeight() && !this.$editor.hasClass('f-scroll-abs')) {
-        this.$element.css('padding-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-        this.$placeholder.css('margin-top', this.$editor.outerHeight() + this.$element.data('padding-top'))
-
-        this.$editor.removeClass('f-scroll').addClass('f-scroll-abs');
-        this.$editor.css('bottom', 0).css('top', '').css('left', '');
-      }
-    }
-  }
-
-  Editable.prototype.toolbarTop = function () {
-    if (!this.options.toolbarFixed && !this.options.inlineMode) {
-      this.$element.data('padding-top', parseInt(this.$element.css('padding-top'), 10));
-      this.$window.on('scroll resize load', $.proxy(function () {
-        this.refreshToolbarPosition();
-      }, this));
-
-      if (this.iOS()) {
-        this.$element.on('focus blur', $.proxy(function () {
-          this.refreshToolbarPosition();
         }, this));
       }
-    }
-  };
-
-  /**
-   * Basic editor.
-   */
-  Editable.prototype.initBasicEditor = function () {
-    this.$element.addClass('f-basic');
-    this.$wrapper.addClass('f-basic');
-
-    this.$popup_editor = this.$editor.clone();
-
-    // if (this.options.scrollableContainer == 'body') this.options.scrollableContainer = this.$wrapper;
-    var $container = this.$document.find(this.options.scrollableContainer)
-    this.$popup_editor.appendTo($container).addClass('f-inline');
-
-    this.$editor.addClass('f-basic').show();
-    this.$editor.insertBefore(this.$wrapper);
-
-    this.toolbarTop();
-  };
-
-  /**
-   * Inline editor.
-   */
-  Editable.prototype.initInlineEditor = function () {
-    this.$editor.addClass('f-inline');
-    this.$element.addClass('f-inline');
-
-    this.$popup_editor = this.$editor;
-  };
-
-  /**
-   * Init drag for image insertion.
-   */
-  Editable.prototype.initDrag = function () {
-    // Drag and drop support.
-    this.drag_support = {
-      filereader: typeof FileReader != 'undefined',
-      formdata: !!this.window.FormData,
-      progress: 'upload' in new XMLHttpRequest()
-    };
-  };
-
-  /**
-   * Init options.
-   */
-  Editable.prototype.initOptions = function () {
-    this.setDimensions();
-
-    this.setSpellcheck();
-
-    this.setImageUploadURL();
-
-    this.setButtons();
-
-    this.setDirection();
-
-    this.setZIndex();
-
-    this.setTheme();
-
-    if (this.options.editInPopup) {
-      this.buildEditPopup();
-    }
-
-    if (!this.editableDisabled) {
-      this.setPlaceholder();
-
-      this.setPlaceholderEvents();
-    }
-  };
-
-  /**
-   * Determine if is touch device.
-   */
-  Editable.prototype.isTouch = function () {
-    return WYSIWYGModernizr.touch && this.window.Touch !== undefined;
-  };
-
-  /**
-   * Selection events.
-   */
-  Editable.prototype.initEditorSelection = function () {
-    this.$element.on('keyup', $.proxy(function (e) {
-      return this.triggerEvent('keyup', [e], false);
-    }, this));
-
-    this.$element.on('focus', $.proxy(function () {
-      if (this.blurred) {
-        this.blurred = false;
-
-        if (!this.pasting && this.text() === '') {
-          this.focus(false);
-        }
-
-        this.triggerEvent('focus', [], false);
-      }
-    }, this));
-
-    // Hide editor on mouse down.
-    this.$element.on('mousedown touchstart', $.proxy(function () {
-      if (this.isDisabled) return false;
-
-      if (!this.isResizing()) {
-        this.closeImageMode();
-        this.hide();
-      }
-    }, this));
-
-    if (this.options.disableRightClick) {
-      // Disable right click.
-      this.$element.contextmenu($.proxy(function (e) {
-        e.preventDefault();
-
-        if (this.options.inlineMode) {
-          this.$element.focus();
-        }
-
-        return false;
-      }, this))
-    }
-
-    // Mouse up on element.
-    this.$element.on(this.mouseup, $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      if (!this.isResizing()) {
-        var text = this.text();
-
-        e.stopPropagation();
-        this.imageMode = false;
-
-        // There is text selected.
-        if ((text !== '' || this.options.alwaysVisible || this.options.editInPopup || ((e.which == 3 || e.button == 2) && this.options.inlineMode && !this.isImage && this.options.disableRightClick)) && !this.link && !this.imageMode) {
-          setTimeout($.proxy(function () {
-            text = this.text();
-            if ((text !== '' || this.options.alwaysVisible || this.options.editInPopup || ((e.which == 3 || e.button == 2) && this.options.inlineMode && !this.isImage && this.options.disableRightClick)) && !this.link && !this.imageMode) {
-              this.show(e);
-
-              if (this.options.editInPopup) {
-                this.showEditPopup();
-              }
-            }
-          }, this), 0);
-        }
-
-        // We are in basic mode. Refresh button state.
-        else if (!this.options.inlineMode) {
-          this.refreshButtons();
-        }
-      }
-
-      this.hideDropdowns();
-      this.hideOtherEditors()
-    }, this));
-
-
-    // Hide editor if not in inline mode.
-    this.$editor.on(this.mouseup, $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      if (!this.isResizing()) {
-        e.stopPropagation();
-
-        if (this.options.inlineMode === false) {
-          this.hide();
-        }
-      }
-    }, this));
-
-
-    this.$editor.on('mousedown', '.fr-dropdown-menu', $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      e.stopPropagation();
-      this.noHide = true;
-    }, this));
-
-    this.$popup_editor.on('mousedown', '.fr-dropdown-menu', $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      e.stopPropagation();
-      this.noHide = true;
-    }, this));
-
-
-    // Mouse up on editor. If we have text or we are in image mode stop it.
-    this.$popup_editor.on('mouseup', $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      if (!this.isResizing()) {
-        e.stopPropagation();
-      }
-    }, this));
-
-
-    // Stop event propagation in link wrapper.
-    if (this.$edit_popup_wrapper) {
-      this.$edit_popup_wrapper.on('mouseup', $.proxy(function (e) {
-        if (this.isDisabled) return false;
-
-        if (!this.isResizing()) {
-          e.stopPropagation();
-        }
-      }, this));
-    }
-
-    this.setDocumentSelectionChangeEvent();
-
-    this.setWindowMouseUpEvent();
-
-    this.setWindowKeyDownEvent();
-
-    this.setWindowKeyUpEvent();
-
-    this.setWindowOrientationChangeEvent();
-
-    this.setWindowHideEvent();
-
-    this.setWindowBlurEvent();
-
-    // Add scrolling event.
-    if (this.options.trackScroll) {
-      this.setWindowScrollEvent();
-    }
-
-    this.setWindowResize();
-  };
-
-  Editable.prototype.setWindowResize = function () {
-    this.$window.on('resize.' + this._id, $.proxy(function () {
-      this.hide();
-      this.closeImageMode();
-      this.imageMode = false;
-    }, this));
-  }
-
-  Editable.prototype.blur = function (clear_selection) {
-    if (!this.blurred && !this.pasting) {
-      this.selectionDisabled = true;
-      this.triggerEvent('blur', []);
-
-      if (clear_selection && $('*:focus').length === 0) {
-        this.clearSelection();
-      }
-
-      if (!this.isLink && !this.isImage) this.selectionDisabled = false;
-
-      this.blurred = true;
-    }
-  }
-
-  Editable.prototype.setWindowBlurEvent = function () {
-    this.$window.on('blur.' + this._id, $.proxy(function (e, clear_selection) {
-      this.blur(clear_selection);
-    }, this));
-  }
-
-  Editable.prototype.setWindowHideEvent = function () {
-    // Hide event.
-    this.$window.on('hide.' + this._id, $.proxy(function () {
-      if (!this.isResizing()) {
-        this.hide(false);
-      } else {
-        this.$element.find('.f-img-handle').trigger('moveend');
-      }
-    }, this));
-  }
-
-  // Hide on orientation change.
-  Editable.prototype.setWindowOrientationChangeEvent = function () {
-    this.$window.on('orientationchange.' + this._id, $.proxy(function () {
-      setTimeout($.proxy(function () {
-        this.hide();
-      }, this), 10);
-    }, this));
-  };
-
-  Editable.prototype.setDocumentSelectionChangeEvent = function () {
-    // Selection changed. Touch support..
-    this.$document.on('selectionchange.' + this._id, $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      if (!this.isResizing() && !this.isScrolling) {
-        clearTimeout(this.selectionChangedTimeout);
-        this.selectionChangedTimeout = setTimeout($.proxy(function () {
-          if (this.options.inlineMode && this.selectionInEditor() && this.link !== true && this.isTouch()) {
-            var text = this.text();
-
-            // There is text selected.
-            if (text !== '') {
-              if (!this.iPod()) {
-                this.show(null);
-              } else if (this.options.alwaysVisible) {
-                this.hide();
-              }
-
-              e.stopPropagation();
-            } else if (!this.options.alwaysVisible) {
-              this.hide();
-              this.closeImageMode();
-              this.imageMode = false;
-            } else {
-              this.show(null);
-            }
-          }
-        }, this), 75);
-      }
-    }, this));
-  }
-
-  Editable.prototype.setWindowMouseUpEvent = function () {
-    // Window mouseup for current editor.
-    this.$window.on(this.mouseup + '.' + this._id, $.proxy(function () {
-      if (!this.isResizing() && !this.isScrolling && !this.isDisabled) {
-        this.$bttn_wrapper.find('button.fr-trigger').removeClass('active');
-
-        if (this.selectionInEditor() && this.text() !== '' && !this.isTouch()) {
-          this.show(null);
-        } else if (this.$popup_editor.is(':visible')) {
-          this.hide();
-          this.closeImageMode();
-          this.imageMode = false;
-        }
-
-        this.blur(true);
-      }
-
-      // Remove button down.
-      $('[data-down]').removeAttr('data-down');
-    }, this));
-  }
-
-  Editable.prototype.setWindowKeyDownEvent = function () {
-    // Key down anywhere on window.
-    this.$window.on('keydown.' + this._id, $.proxy(function (e) {
-      var keyCode = e.which;
-
-      if (keyCode == 27) {
-        this.focus();
-        this.restoreSelection();
-        this.hide();
-        this.closeImageMode();
-        this.imageMode = false;
-      }
-
-      if (this.imageMode) {
-        // Insert br before image if enter is hit.
-        if (keyCode == 13) {
-          this.$element.find('.f-img-editor').parents('.f-img-wrap').before('<br/>')
-          this.sync();
-          this.$element.find('.f-img-editor img').click();
-          return false;
-        }
-
-        // Delete.
-        if (keyCode == 46 || keyCode == 8) {
-          e.stopPropagation();
-          e.preventDefault();
-          setTimeout($.proxy(function () {
-            this.removeImage(this.$element.find('.f-img-editor img'));
-          }, this), 0);
-          return false;
-        }
-      }
-
-      else if (this.selectionInEditor()) {
-        if (this.isDisabled) return true;
-
-        var ctrlKey = (e.ctrlKey || e.metaKey) && !e.altKey;
-        if (!ctrlKey && this.$popup_editor.is(':visible')) {
-          if ((this.$bttn_wrapper.is(':visible') && this.options.inlineMode)) {
-            this.hide();
-            this.closeImageMode();
-            this.imageMode = false;
-          }
-        }
-      }
-    }, this));
-
-  }
-
-  Editable.prototype.setWindowKeyUpEvent = function () {
-    // Key up anywhere on window.
-    this.$window.on('keyup.' + this._id, $.proxy(function () {
-      if (this.isDisabled) return false;
-
-      if (this.selectionInEditor() && this.text() !== '' && !this.$popup_editor.is(':visible')) {
-        this.repositionEditor();
-      }
-    }, this));
-  }
-
-  Editable.prototype.setWindowScrollEvent = function () {
-    $.merge(this.$window, $(this.options.scrollableContainer)).on('scroll.' + this._id, $.proxy(function () {
-      if (this.isDisabled) return false;
-
-      clearTimeout(this.scrollTimer);
-      this.isScrolling = true;
-      this.scrollTimer = setTimeout($.proxy(function () {
-        this.isScrolling = false;
-      }, this), 2500);
-    }, this));
-  }
-
-  /**
-   * Set placeholder.
-   *
-   * @param text - Placeholder text.
-   */
-  Editable.prototype.setPlaceholder = function (text) {
-    if (text) {
-      this.options.placeholder = text;
-    }
-
-    if (this.$textarea) {
-      this.$textarea.attr('placeholder', this.options.placeholder);
-    }
-
-    if (!this.$placeholder) {
-      this.$placeholder = $('<span class="fr-placeholder" unselectable="on"></span>')
-        .bind('click', $.proxy(function () {
-          this.focus();
-        }, this));
-
-      this.$element.after(this.$placeholder);
-    }
-
-    this.$placeholder.text(this.options.placeholder);
-  };
-
-  Editable.prototype.isEmpty = function () {
-    var text = this.$element.text().replace(/(\r\n|\n|\r|\t|\u200B|\u0020)/gm, '');
-    return text === '' &&
-      this.$element.find('img, table, iframe, input, textarea, hr, li').length === 0 &&
-      this.$element.find(this.options.defaultTag + ' > br, br').length === 0 &&
-      this.$element.find($.map(this.valid_nodes, $.proxy(function (val) {
-        return this.options.defaultTag == val ? null : val;
-      }, this)).join(', ')).length === 0;
-  };
-
-  Editable.prototype.checkPlaceholder = function (ignore_flags) {
-    if (this.isDisabled && !ignore_flags) return false;
-    if (this.pasting && !ignore_flags) return false;
-
-    this.$element.find('td:empty, th:empty').append($.Editable.INVISIBLE_SPACE);
-    this.$element.find(this.valid_nodes.join(':empty, ') + ':empty').append(this.br);
-
-    if (!this.isHTML) {
-      // Empty.
-      if (this.isEmpty() && !this.fakeEmpty()) {
-        var $p;
-        var focused = this.selectionInEditor() || this.$element.is(':focus');
-
-        if (this.options.paragraphy) {
-          $p = $('<' + this.options.defaultTag + '>' + this.br + '</' + this.options.defaultTag + '>');
-          this.$element.html($p);
-
-          if (focused) {
-            this.setSelection($p.get(0));
-          }
-
-          this.$element.addClass('f-placeholder');
-        }
-
-        else {
-          if (this.$element.find('br').length === 0 && !(this.browser.msie && Editable.getIEversion() <= 10)) {
-            this.$element.append(this.br);
-            if (focused && this.browser.msie) {
-              this.focus();
-            }
-          }
-
-          this.$element.addClass('f-placeholder');
-        }
-      }
-
-      // There is a p.
-      else if (!this.$element.find(this.options.defaultTag + ', li').length && this.options.paragraphy) {
-        // Wrap text.
-        this.wrapText(true);
-
-        // Place cursor.
-        if (this.$element.find(this.options.defaultTag).length && this.text() === '') {
-          this.setSelection(this.$element.find(this.options.defaultTag)[0], this.$element.find(this.options.defaultTag).text().length, null, this.$element.find(this.options.defaultTag).text().length);
-        } else {
-          this.$element.removeClass('f-placeholder');
-        }
-      }
-
-      // Not empty at all.
-      else if (this.fakeEmpty() === false && (!this.options.paragraphy || this.$element.find(this.valid_nodes.join(',')).length >= 1)) {
-        this.$element.removeClass('f-placeholder');
-      }
-
-      else if (!this.options.paragraphy && this.$element.find(this.valid_nodes.join(',')).length >= 1) {
-        this.$element.removeClass('f-placeholder');
-      }
-
       else {
-        this.$element.addClass('f-placeholder');
+        this.load($.FroalaEditor.MODULES);
+        this.load($.FroalaEditor.PLUGINS);
+
+        $(this.original_window).scrollTop(c_scroll);
+
+        if (typeof this.ul == 'undefined') this.destroy();
+
+        this.events.trigger('initialized');
       }
-    }
-
-    return true;
-  }
-
-  // Determine if it's not fake empty.
-  Editable.prototype.fakeEmpty = function ($element) {
-    if ($element === undefined) {
-      $element = this.$element;
-    }
-
-    var defaultTag = true;
-    if (this.options.paragraphy) {
-      if ($element.find(this.options.defaultTag).length == 1) defaultTag = true;
-      else defaultTag = false;
-    }
-
-    var text = $element.text().replace(/(\r\n|\n|\r|\t|\u200B)/gm, '');
-    return text === '' && (defaultTag && $element.find('br, li').length == 1)
-      && $element.find('img, table, iframe, input, textarea, hr, li').length === 0;
-  }
-
-  // For Korean keydown keyup events are not dispatched in Firefox.
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=354358
-  Editable.prototype.setPlaceholderEvents = function () {
-    // Older browsers.
-    if (!(this.browser.msie && Editable.getIEversion() < 9)) {
-      // IE needs click for focus on outside of the contenteditable.
-      this.$element.on('focus click', $.proxy(function (e) {
-        if (this.isDisabled) return false;
-
-        if ((this.$element.text() === '') && !this.pasting) {
-          // If click instead of focus then do focus. IE only.
-          if (!this.$element.data('focused') && e.type === 'click') {
-            this.$element.focus();
-          }
-          else if (e.type == 'focus') {
-            this.focus(false);
-          }
-
-          this.$element.data('focused', true);
-        }
-      }, this))
-
-      this.$element.on('keyup keydown input focus placeholderCheck', $.proxy(function () {
-        return this.checkPlaceholder();
-      }, this));
-
-      this.$element.trigger('placeholderCheck');
-    }
-  };
-
-  /**
-   * Set element dimensions.
-   *
-   * @param width - Editor width.
-   * @param height - Editor height.
-   */
-  Editable.prototype.setDimensions = function (height, width, minHeight, maxHeight) {
-
-    if (height) {
-      this.options.height = height;
-    }
-
-    if (width) {
-      this.options.width = width;
-    }
-
-    if (minHeight) {
-      this.options.minHeight = minHeight;
-    }
-
-    if (maxHeight) {
-      this.options.maxHeight = maxHeight;
-    }
-
-    if (this.options.height != 'auto') {
-      this.$wrapper.css('height', this.options.height);
-      this.$element.css('minHeight', this.options.height - parseInt(this.$element.css('padding-top'), 10) - parseInt(this.$element.css('padding-bottom'), 10));
-    }
-
-    if (this.options.minHeight != 'auto') {
-      this.$wrapper.css('minHeight', this.options.minHeight);
-      this.$element.css('minHeight', this.options.minHeight);
-    }
-
-    if (this.options.maxHeight != 'auto') {
-      this.$wrapper.css('maxHeight', this.options.maxHeight);
-    }
-
-    if (this.options.width != 'auto') {
-      this.$box.css('width', this.options.width);
-    }
-  };
-
-  /**
-   * Set element direction.
-   *
-   * @param dir - Text direction.
-   */
-  Editable.prototype.setDirection = function (dir) {
-    if (dir) {
-      this.options.direction = dir;
-    }
-
-    if (this.options.direction != 'ltr' && this.options.direction != 'rtl') {
-      this.options.direction = 'ltr';
-    }
-
-    if (this.options.direction == 'rtl') {
-      this.$box.addClass('f-rtl');
-      this.$element.addClass('f-rtl');
-      this.$editor.addClass('f-rtl');
-      this.$popup_editor.addClass('f-rtl');
-      if (this.$image_modal) {
-        this.$image_modal.addClass('f-rtl');
-      }
-    } else {
-      this.$box.removeClass('f-rtl');
-      this.$element.removeClass('f-rtl');
-      this.$editor.removeClass('f-rtl');
-      this.$popup_editor.removeClass('f-rtl');
-      if (this.$image_modal) {
-        this.$image_modal.removeClass('f-rtl');
-      }
-    }
-  };
-
-  Editable.prototype.setZIndex = function (zIndex) {
-    if (zIndex) {
-      this.options.zIndex = zIndex;
-    }
-
-    this.$editor.css('z-index', this.options.zIndex);
-    this.$popup_editor.css('z-index', this.options.zIndex + 1);
-    if (this.$overlay) {
-      this.$overlay.css('z-index', this.options.zIndex + 2);
-    }
-    if (this.$image_modal) {
-      this.$image_modal.css('z-index', this.options.zIndex + 3);
-    }
-  }
-
-  Editable.prototype.setTheme = function (theme) {
-    if (theme) {
-      this.options.theme = theme;
-    }
-
-    if (this.options.theme != null) {
-      this.$editor.addClass(this.options.theme + '-theme');
-      this.$popup_editor.addClass(this.options.theme + '-theme');
-      if (this.$box) {
-        this.$box.addClass(this.options.theme + '-theme');
-      }
-      if (this.$image_modal) {
-        this.$image_modal.addClass(this.options.theme + '-theme');
-        // this.$overlay.addClass(this.options.theme + '-theme');
-      }
-    }
-  }
-
-  Editable.prototype.setSpellcheck = function (enable) {
-    if (enable !== undefined) {
-      this.options.spellcheck = enable;
-    }
-
-    this.$element.attr('spellcheck', this.options.spellcheck);
-  };
-
-  Editable.prototype.customizeText = function (customText) {
-    if (customText) {
-      var list = this.$editor.find('[title]').add(this.$popup_editor.find('[title]'));
-
-      if (this.$image_modal) {
-        list = list.add(this.$image_modal.find('[title]'));
-      }
-
-      list.each($.proxy(function (index, elem) {
-        for (var old_text in customText) {
-          if ($(elem).attr('title').toLowerCase() == old_text.toLowerCase()) {
-            $(elem).attr('title', customText[old_text]);
-          }
-        }
-      }, this));
-
-
-      list = this.$editor.find('[data-text="true"]').add(this.$popup_editor.find('[data-text="true"]'))
-      if (this.$image_modal) {
-        list = list.add(this.$image_modal.find('[data-text="true"]'));
-      }
-
-      list.each($.proxy(function (index, elem) {
-        for (var old_text in customText) {
-          if ($(elem).text().toLowerCase() == old_text.toLowerCase()) {
-            $(elem).text(customText[old_text]);
-          }
-        }
-      }, this));
-    }
-  };
-
-  Editable.prototype.setLanguage = function (lang) {
-    if (lang !== undefined) {
-      this.options.language = lang;
-    }
-
-    if ($.Editable.LANGS[this.options.language]) {
-      this.customizeText($.Editable.LANGS[this.options.language].translation);
-      if ($.Editable.LANGS[this.options.language].direction && $.Editable.LANGS[this.options.language].direction != $.Editable.DEFAULTS.direction) {
-        this.setDirection($.Editable.LANGS[this.options.language].direction);
-      }
-
-      if ($.Editable.LANGS[this.options.language].translation[this.options.placeholder]) {
-        this.setPlaceholder($.Editable.LANGS[this.options.language].translation[this.options.placeholder]);
-      }
-    }
-  };
-
-  Editable.prototype.setCustomText = function (customText) {
-    if (customText) {
-      this.options.customText = customText;
-    }
-
-    if (this.options.customText) {
-      this.customizeText(this.options.customText);
-    }
-  };
-
-  Editable.prototype.execHTML = function () {
-    this.html();
-  };
-
-  Editable.prototype.initHTMLArea = function () {
-    this.$html_area = $('<textarea wrap="hard">')
-      .keydown(function (e) {
-        var keyCode = e.keyCode || e.which;
-
-        if (keyCode == 9) {
-          e.preventDefault();
-          var start = $(this).get(0).selectionStart;
-          var end = $(this).get(0).selectionEnd;
-
-          // set textarea value to: text before caret + tab + text after caret
-          $(this).val($(this).val().substring(0, start) + '\t' + $(this).val().substring(end));
-
-          // put caret at right position again
-          $(this).get(0).selectionStart = $(this).get(0).selectionEnd = start + 1;
-        }
-      })
-      .focus($.proxy(function () {
-        if (this.blurred) {
-          this.blurred = false;
-
-          this.triggerEvent('focus', [], false);
-        }
-      }, this))
-      .mouseup($.proxy(function () {
-        if (this.blurred) {
-          this.blurred = false;
-
-          this.triggerEvent('focus', [], false);
-        }
-      }, this))
-  };
-
-  Editable.prototype.command_dispatcher = {
-    align: function (command) {
-      var dropdown = this.buildDropdownAlign(command);
-      var btn = this.buildDropdownButton(command, dropdown);
-      return btn;
-    },
-
-    formatBlock: function (command) {
-      var dropdown = this.buildDropdownFormatBlock(command);
-      var btn = this.buildDropdownButton(command, dropdown);
-      return btn;
-    },
-
-    html: function (command) {
-      var btn = this.buildDefaultButton(command);
-
-      if (this.options.inlineMode) {
-        this.$box.append($(btn).clone(true).addClass('html-switch').attr('title', 'Hide HTML').click($.proxy(this.execHTML, this)));
-      }
-
-      this.initHTMLArea();
-
-      return btn;
-    }
-  }
-
-  /**
-   * Set buttons for editor.
-   *
-   * @param buttons
-   */
-  Editable.prototype.setButtons = function (buttons) {
-    if (buttons) {
-      this.options.buttons = buttons;
-    }
-
-    this.$editor.append('<div class="bttn-wrapper" id="bttn-wrapper-' + this._id + '">');
-    this.$bttn_wrapper = this.$editor.find('#bttn-wrapper-' + this._id);
-
-    if (this.mobile()) {
-      this.$bttn_wrapper.addClass('touch');
-    }
-
-    var dropdown;
-    var btn;
-
-    var btn_string = '';
-    // Add commands to editor.
-    for (var i = 0; i < this.options.buttons.length; i++) {
-      var button_name = this.options.buttons[i];
-
-      if (button_name == 'sep') {
-        if (this.options.inlineMode) {
-          btn_string += '<div class="f-clear"></div><hr/>';
-        } else {
-          btn_string += '<span class="f-sep"></span>';
-        }
-        continue;
-      }
-
-      // Look for custom button with that name.
-      var command = Editable.commands[button_name];
-      if (command === undefined) {
-        command = this.options.customButtons[button_name];
-
-        if (command === undefined) {
-          command = this.options.customDropdowns[button_name];
-
-          if (command === undefined) {
-            continue;
-          }
-          else {
-            btn = this.buildCustomDropdown(command, button_name);
-            btn_string += btn;
-            this.bindRefreshListener(command);
-            continue;
-          }
-        } else {
-          btn = this.buildCustomButton(command, button_name);
-          btn_string += btn;
-          this.bindRefreshListener(command);
-          continue;
-        }
-      }
-
-      command.cmd = button_name;
-      var command_dispatch = this.command_dispatcher[command.cmd];
-
-      if (command_dispatch) {
-        btn_string += command_dispatch.apply(this, [command]);
-      } else {
-        if (command.seed) {
-          dropdown = this.buildDefaultDropdown(command);
-          btn = this.buildDropdownButton(command, dropdown);
-          btn_string += btn;
-        } else {
-          btn = this.buildDefaultButton(command);
-          btn_string += btn;
-          this.bindRefreshListener(command);
-        }
-      }
-    }
-
-    this.$bttn_wrapper.html(btn_string);
-    this.$bttn_wrapper.find('button[data-cmd="undo"], button[data-cmd="redo"]').prop('disabled', true);
-
-    // Assign events.
-    this.bindButtonEvents();
-  };
-
-  Editable.prototype.bindRefreshListener = function (command) {
-    if (command.refresh) {
-      this.addListener('refresh', $.proxy(function () {
-        command.refresh.apply(this, [command.cmd])
-      }, this));
-    }
-  }
-
-  /**
-   * Create button for command.
-   *
-   * @param command - Command name.
-   * @returns {*}
-   */
-  Editable.prototype.buildDefaultButton = function (command) {
-    var btn = '<button tabIndex="-1" type="button" class="fr-bttn" title="' + command.title + '" data-cmd="' + command.cmd + '">';
-
-    if (this.options.icons[command.cmd] === undefined) {
-      btn += this.addButtonIcon(command);
-    } else {
-      btn += this.prepareIcon(this.options.icons[command.cmd], command.title);
-    }
-
-    btn += '</button>';
-
-    return btn;
-  };
-
-  /*
-   * Prepare icon.
-   */
-  Editable.prototype.prepareIcon = function (icon, title) {
-    switch (icon.type) {
-      case 'font':
-        return this.addButtonIcon({
-          icon: icon.value
-        });
-
-      case 'img':
-        return this.addButtonIcon({
-          icon_img: icon.value,
-          title: title
-        });
-
-      case 'txt':
-        return this.addButtonIcon({
-          icon_txt: icon.value
-        });
-    }
-  };
-
-
-  /**
-   * Add icon to button.
-   *
-   * @param $btn - jQuery object.
-   * @param command - Command name.
-   */
-  Editable.prototype.addButtonIcon = function (command) {
-    if (command.icon) {
-      return '<i class="' + command.icon + '"></i>';
-    } else if (command.icon_alt) {
-      return '<i class="for-text">' + command.icon_alt + '</i>';
-    } else if (command.icon_img) {
-      return '<img src="' + command.icon_img + '" alt="' + command.title + '"/>';
-    } else if (command.icon_txt) {
-      return '<i>' + command.icon_txt + '</i>';
-    } else {
-      return command.title;
-    }
-  };
-
-  Editable.prototype.buildCustomButton = function (button, button_name) {
-    this['call_' + button_name] = button.callback;
-    var btn = '<button tabIndex="-1" type="button" class="fr-bttn" data-callback="call_' + button_name + '" data-cmd="button_name" data-name="' + button_name + '" title="' + button.title + '">' + this.prepareIcon(button.icon, button.title) + '</button>';
-
-    return btn;
-  };
-
-  Editable.prototype.callDropdown = function (btn_name, callback) {
-    this.$bttn_wrapper.on('click touch', '[data-name="' + btn_name + '"]', $.proxy(function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      callback.apply(this);
-    }, this))
-  };
-
-  Editable.prototype.buildCustomDropdown = function (button, button_name) {
-    // Dropdown button.
-    var btn_wrapper = '<div class="fr-bttn fr-dropdown">';
-
-    btn_wrapper += '<button tabIndex="-1" type="button" class="fr-trigger" title="' + button.title + '" data-name="' + button_name + '">' + this.prepareIcon(button.icon, button.title) + '</button>';
-
-    btn_wrapper += '<ul class="fr-dropdown-menu">';
-
-    var i = 0;
-    for (var text in button.options) {
-      this['call_' + button_name + i] = button.options[text];
-      var m_btn = '<li data-callback="call_' + button_name + i + '" data-cmd="' + button_name + i + '" data-name="' + button_name + i + '"><a href="#">' + text + '</a></li>';
-
-      btn_wrapper += m_btn;
-
-      i++ ;
-    }
-
-    btn_wrapper += '</ul></div>';
-
-    return btn_wrapper;
-  };
-
-  /**
-   * Default dropdown.
-   *
-   * @param command - Command.
-   * @param cls - Dropdown custom class.
-   * @returns {*}
-   */
-  Editable.prototype.buildDropdownButton = function (command, dropdown, cls) {
-    cls = cls || '';
-
-    // Dropdown button.
-    var btn_wrapper = '<div class="fr-bttn fr-dropdown ' + cls + '">';
-
-    var icon = '';
-    if (this.options.icons[command.cmd] === undefined) {
-      icon += this.addButtonIcon(command);
-    } else {
-      icon += this.prepareIcon(this.options.icons[command.cmd], command.title);
-    }
-
-    var btn = '<button tabIndex="-1" type="button" data-name="' + command.cmd + '" class="fr-trigger" title="' + command.title + '">' + icon + '</button>';
-
-    btn_wrapper += btn;
-    btn_wrapper += dropdown;
-    btn_wrapper += '</div>';
-
-    return btn_wrapper;
-  };
-
-  /**
-   * Dropdown for align.
-   *
-   * @param command
-   * @returns {*}
-   */
-  Editable.prototype.buildDropdownAlign = function (command) {
-    this.bindRefreshListener(command);
-
-    var dropdown = '<ul class="fr-dropdown-menu f-align">';
-
-    // Iterate color seed.
-    for (var j = 0; j < command.seed.length; j++) {
-      var align = command.seed[j];
-
-      dropdown += '<li data-cmd="align" data-val="' + align.cmd + '" title="' + align.title + '"><a href="#"><i class="' + align.icon + '"></i></a></li>';
-    }
-
-    dropdown += '</ul>';
-
-    return dropdown;
-  };
-
-
-
-  /**
-   * Dropdown for formatBlock.
-   *
-   * @param command
-   * @returns {*}
-   */
-  Editable.prototype.buildDropdownFormatBlock = function (command) {
-    var dropdown = '<ul class="fr-dropdown-menu">';
-
-    // Iterate format block seed.
-    for (var b_name in this.options.blockTags) {
-      var format_btn = '<li data-cmd="' + command.cmd + '" data-val="' + b_name + '">';
-      format_btn += '<a href="#" data-text="true" class="format-' + b_name + '" title="' + this.options.blockTags[b_name] + '">' + this.options.blockTags[b_name] + '</a></li>';
-
-      dropdown += format_btn;
-    }
-
-    dropdown += '</ul>';
-
-    return dropdown;
-  };
-
-  /**
-   * Dropdown for formatBlock.
-   *
-   * @param command
-   * @returns {*}
-   */
-  Editable.prototype.buildDefaultDropdown = function (command) {
-    var dropdown = '<ul class="fr-dropdown-menu">';
-
-    // Iterate format block seed.
-    for (var j = 0; j < command.seed.length; j++) {
-      var cmd = command.seed[j];
-
-      var format_btn = '<li data-namespace="' + command.namespace + '" data-cmd="' + (cmd.cmd || command.cmd) + '" data-val="' + cmd.value + '" data-param="' + (cmd.param || command.param) + '">'
-      format_btn += '<a href="#" data-text="true" class="' + cmd.value + '" title="' + cmd.title + '">' + cmd.title + '</a></li>';
-
-      dropdown += format_btn;
-    }
-
-    dropdown += '</ul>';
-
-    return dropdown;
-  };
-
-  Editable.prototype.createEditPopupHTML = function () {
-    var html = '<div class="froala-popup froala-text-popup" style="display:none;">';
-    html += '<h4><span data-text="true">Edit text</span><i title="Cancel" class="fa fa-times" id="f-text-close-' + this._id + '"></i></h4></h4>';
-    html += '<div class="f-popup-line"><input type="text" placeholder="http://www.example.com" class="f-lu" id="f-ti-' + this._id + '">';
-    html += '<button data-text="true" type="button" class="f-ok" id="f-edit-popup-ok-' + this._id + '">OK</button>';
-    html += '</div>';
-    html += '</div>';
-
-    return html;
-  }
-
-  /**
-   * Build create link.
-   */
-  Editable.prototype.buildEditPopup = function () {
-    this.$edit_popup_wrapper = $(this.createEditPopupHTML());
-    this.$popup_editor.append(this.$edit_popup_wrapper);
-
-    this.$edit_popup_wrapper.find('#f-ti-' + this._id).on('mouseup keydown', function (e) {
-      e.stopPropagation();
-    });
-
-    this.addListener('hidePopups', $.proxy(function () {
-      this.$edit_popup_wrapper.hide();
     }, this));
 
-    this.$edit_popup_wrapper.on('click', '#f-edit-popup-ok-' + this._id, $.proxy(function () {
-      this.$element.text(this.$edit_popup_wrapper.find('#f-ti-' + this._id).val());
-      this.sync();
-      this.hide();
-    }, this));
-
-    // Close button.
-    this.$edit_popup_wrapper
-      .on('click', 'i#f-text-close-' + this._id, $.proxy(function () {
-        this.hide();
-      }, this))
+    this._init();
   };
 
-  /**
-   * Make request with CORS.
-   *
-   * @param method
-   * @param url
-   * @returns {XMLHttpRequest}
-   */
-  Editable.prototype.createCORSRequest = function (method, url) {
-    var xhr = new XMLHttpRequest();
-    if ('withCredentials' in xhr) {
-
-      // Check if the XMLHttpRequest object has a "withCredentials" property.
-      // "withCredentials" only exists on XMLHTTPRequest2 objects.
-      xhr.open(method, url, true);
-
-      // Set with credentials.
-      if (this.options.withCredentials) {
-        xhr.withCredentials = true;
-      }
-
-      // Set headers.
-      for (var header in this.options.headers) {
-        xhr.setRequestHeader(header, this.options.headers[header]);
-      }
-
-    } else if (typeof XDomainRequest != 'undefined') {
-
-      // Otherwise, check if XDomainRequest.
-      // XDomainRequest only exists in IE, and is IE's way of making CORS requests.
-      xhr = new XDomainRequest();
-      xhr.open(method, url);
-    } else {
-      // Otherwise, CORS is not supported by the browser.
-      xhr = null;
-
-    }
-    return xhr;
+  FroalaEditor.DEFAULTS = {
+    initOnClick: false
   };
 
-  /**
-   * Check if command is enabled.
-   *
-   * @param cmd - Command name.
-   * @returns {boolean}
-   */
-  Editable.prototype.isEnabled = function (cmd) {
-    return $.inArray(cmd, this.options.buttons) >= 0;
-  };
+  FroalaEditor.MODULES = {};
 
+  FroalaEditor.PLUGINS = {};
 
-  /**
-   * Bind events for buttons.
-   */
-  Editable.prototype.bindButtonEvents = function () {
-    this.bindDropdownEvents(this.$bttn_wrapper);
+  FroalaEditor.VERSION = '2.0.1';
 
-    this.bindCommandEvents(this.$bttn_wrapper);
-  };
+  FroalaEditor.INSTANCES = [];
 
-  /**
-   * Bind events for dropdown.
-   */
-  Editable.prototype.bindDropdownEvents = function ($div) {
-    var that = this;
+  FroalaEditor.ID = 0;
 
-    $div.on(this.mousedown, '.fr-dropdown .fr-trigger:not([disabled])', function (e) {
-      if (e.type === 'mousedown' && e.which !== 1) return true;
+  FroalaEditor.prototype._init = function () {
+    // Get the tag name of the original element.
+    var tag_name = this.$original_element.prop('tagName');
 
-      if (!(this.tagName === 'LI' && e.type === 'touchstart' && that.android()) && !that.iOS()) {
-        e.preventDefault();
+    // Initialize on anything else.
+    var initOnDefault = $.proxy(function () {
+      this._original_html = (this._original_html || this.$original_element.html());
+      this.$box = this.$box || this.$original_element;
+
+      // Turn on iframe if fullPage is on.
+      if (this.opts.fullPage) this.opts.iframe = true;
+
+      if (!this.opts.iframe) {
+        this.$el = $('<div></div>');
+        this.$wp = $('<div></div>').append(this.$el);
+        this.$box.html(this.$wp);
+        this.$original_element.trigger('froala.doInit');
       }
-
-      // Simulate click.
-      $(this).attr('data-down', true);
-    });
-
-    // Dropdown event.
-    $div.on(this.mouseup, '.fr-dropdown .fr-trigger:not([disabled])', function (e) {
-      if (that.isDisabled) return false;
-
-      e.stopPropagation();
-      e.preventDefault();
-
-      if (!$(this).attr('data-down')) {
-        $('[data-down]').removeAttr('data-down');
-        return false;
-      }
-
-      $('[data-down]').removeAttr('data-down');
-
-      if (that.options.inlineMode === false && $(this).parents('.froala-popup').length === 0) {
-        that.hide();
-        that.closeImageMode();
-        that.imageMode = false;
-      }
-
-      $(this)
-        .toggleClass('active')
-        .trigger('blur');
-
-      var refreshCallback;
-      var btn_name = $(this).attr('data-name');
-
-      if (Editable.commands[btn_name]) {
-        refreshCallback = Editable.commands[btn_name].refreshOnShow;
-      } else if (that.options.customDropdowns[btn_name]) {
-        refreshCallback = that.options.customDropdowns[btn_name].refreshOnShow;
-      } else if (Editable.image_commands[btn_name]) {
-        refreshCallback = Editable.image_commands[btn_name].refreshOnShow;
-      }
-
-      if (refreshCallback) {
-        refreshCallback.call(that);
-      }
-
-
-      $div.find('button.fr-trigger').not(this).removeClass('active');
-
-      return false;
-    });
-
-    $div.on(this.mouseup, '.fr-dropdown', function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    });
-
-    this.$element.on('mouseup', 'img, a', $.proxy(function () {
-      if (this.isDisabled) return false;
-
-      $div.find('.fr-dropdown .fr-trigger').removeClass('active');
-    }, this));
-
-    // Prevent click in A tag inside LI.
-    $div.on('click', 'li[data-cmd] > a', function (e) {
-      e.preventDefault();
-    });
-  };
-
-  /**
-   * Bind events for button command.
-   */
-  Editable.prototype.bindCommandEvents = function ($div) {
-    var that = this;
-
-    $div.on(this.mousedown, 'button[data-cmd], li[data-cmd], span[data-cmd], a[data-cmd]', function (e) {
-      if (e.type === 'mousedown' && e.which !== 1) return true;
-
-      if (!(this.tagName === 'LI' && e.type === 'touchstart' && that.android()) && !that.iOS()) {
-        e.preventDefault();
-      }
-
-      // Simulate click.
-      $(this).attr('data-down', true);
-    });
-
-    $div.on(this.mouseup + ' ' + this.move, 'button[data-cmd], li[data-cmd], span[data-cmd], a[data-cmd]', $.proxy(function (e) {
-      if (that.isDisabled) return false;
-
-      if (e.type === 'mouseup' && e.which !== 1) return true;
-
-      var elem = e.currentTarget;
-
-      if (e.type != 'touchmove') {
-        e.stopPropagation();
-        e.preventDefault();
-
-        // Simulate click.
-        if (!$(elem).attr('data-down')) {
-          $('[data-down]').removeAttr('data-down');
-          return false;
-        }
-        $('[data-down]').removeAttr('data-down');
-
-        if ($(elem).data('dragging') || $(elem).attr('disabled')) {
-          $(elem).removeData('dragging');
-          return false;
-        }
-
-        var timeout = $(elem).data('timeout');
-        if (timeout) {
-          clearTimeout(timeout);
-          $(elem).removeData('timeout');
-        }
-
-        var callback = $(elem).attr('data-callback');
-
-        if (that.options.inlineMode === false && $(elem).parents('.froala-popup').length === 0) {
-          that.hide();
-          that.closeImageMode();
-          that.imageMode = false;
-        }
-
-        if (callback) {
-          // Hide possible dropdowns.
-          $(elem).parents('.fr-dropdown').find('.fr-trigger.active').removeClass('active');
-
-          // Callback.
-          that[callback]();
-        }
-        else {
-          var namespace = $(elem).attr('data-namespace');
-          var cmd = $(elem).attr('data-cmd');
-          var val = $(elem).attr('data-val');
-          var param = $(elem).attr('data-param');
-          if (namespace) {
-            that['exec' + namespace](cmd, val, param);
-          }
-          else {
-            that.exec(cmd, val, param);
-            that.$bttn_wrapper.find('.fr-dropdown .fr-trigger').removeClass('active');
-          }
-        }
-
-        return false;
-      }
-
       else {
-        if (!$(elem).data('timeout')) {
-          $(elem).data('timeout', setTimeout(function () {
-            $(elem).data('dragging', true);
-          }, 200));
-        }
+        this.$iframe = $('<iframe frameBorder="0">');
+        this.$wp = $('<div></div>');
+        this.$box.html(this.$wp);
+        this.$wp.append(this.$iframe);
+        this.$iframe.get(0).contentWindow.document.open();
+        this.$iframe.get(0).contentWindow.document.write('<!DOCTYPE html>');
+        this.$iframe.get(0).contentWindow.document.write('<html><head></head><body></body></html>');
+        this.$iframe.get(0).contentWindow.document.close();
+
+        this.$el = this.$iframe.contents().find('body');
+        this.$head = this.$iframe.contents().find('head');
+        this.$html = this.$iframe.contents().find('html');
+        this.iframe_document = this.$iframe.get(0).contentWindow.document;
+
+        this.$original_element.trigger('froala.doInit');
       }
-    }, this));
-  };
+    }, this);
 
-  /**
-   * Save in DB.
-   */
-  Editable.prototype.save = function () {
-    if (!this.triggerEvent('beforeSave', [], false)) {
-      return false;
-    }
+    // Initialize on a TEXTAREA.
+    var initOnTextarea = $.proxy(function () {
+      this.$box = $('<div>');
+      this.$original_element.before(this.$box).hide();
 
-    if (this.options.saveURL) {
-      var params = {};
-      for (var key in this.options.saveParams) {
-        var param = this.options.saveParams[key];
-        if (typeof(param) == 'function') {
-          params[key] = param.call(this);
-        } else {
-          params[key] = param;
-        }
-      }
+      this._original_html = this.$original_element.val();
 
-      $.ajax({
-        type: this.options.saveRequestType,
-        url: this.options.saveURL,
-        data: $.extend({ body: this.getHTML() }, this.options.saveParams),
-        crossDomain: this.options.crossDomain,
-        xhrFields: {
-          withCredentials: this.options.withCredentials
-        },
-        headers: this.options.headers
-      })
-      .done($.proxy(function (data) {
-        // data
-        this.triggerEvent('afterSave', [data]);
-      }, this))
-      .fail($.proxy(function () {
-        // (error)
-        this.triggerEvent('saveError', ['Save request failed on the server.']);
+      // Before submit textarea do a sync.
+      this.$original_element.parents('form').on('submit.' + this.id, $.proxy(function () {
+        this.events.trigger('form.submit');
       }, this));
 
-    } else {
-      // (error)
-      this.triggerEvent('saveError', ['Missing save URL.']);
-    }
-  };
+      initOnDefault();
+    }, this);
 
-  Editable.prototype.isURL = function (url) {
-    if (!/^(https?:|ftps?:|)\/\//.test(url)) return false;
+    // Initialize on a Link.
+    var initOnA = $.proxy(function () {
+      this.$el = this.$original_element;
+      this.$el.attr('contenteditable', true).css('outline', 'none');
+      this.opts.multiLine = false;
 
-    url = String(url)
-            .replace(/</g, '%3C')
-            .replace(/>/g, '%3E')
-            .replace(/"/g, '%22')
-            .replace(/ /g, '%20');
+      this.$original_element.trigger('froala.doInit');
+    }, this)
 
+    // Initialize on an Image.
+    var initOnImg = $.proxy(function () {
+      this.$el = this.$original_element;
 
-    var test_reg = /\(?(?:(https?:|ftps?:|)\/\/)?(?:((?:[^\W\s]|\.|-|[:]{1})+)@{1})?((?:www.)?(?:[^\W\s]|\.|-)+[\.][^\W\s]{2,4}|(?:www.)?(?:[^\W\s]|\.|-)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::(\d*))?([\/]?[^\s\?]*[\/]{1})*(?:\/?([^\s\n\?\[\]\{\}\#]*(?:(?=\.)){1}|[^\s\n\?\[\]\{\}\.\#]*)?([\.]{1}[^\s\?\#]*)?)?(?:\?{1}([^\s\n\#\[\]]*))?([\#][^\s\n]*)?\)?/gi;
+      this.$original_element.trigger('froala.doInit');
+    }, this)
 
-    return test_reg.test(url);
-  }
+    var editInPopup = $.proxy(function () {
+      this.$el = this.$original_element;
 
-  Editable.prototype.sanitizeURL = function (url) {
-    if (/^(https?:|ftps?:|)\/\//.test(url)) {
-      if (!this.isURL(url)) {
-        return '';
-      }
+      this.$original_element.trigger('froala.doInit');
+    }, this);
+
+    // Check on what element it was initialized.
+    if (this.opts.editInPopup) editInPopup();
+    else if (tag_name == 'TEXTAREA') initOnTextarea();
+    else if (tag_name == 'A') initOnA();
+    else if (tag_name == 'IMG') initOnImg();
+    else if (tag_name == 'BUTTON') {
+      this.opts.editInPopup = true;
+      editInPopup();
     }
     else {
-      url = encodeURIComponent(url)
-                .replace(/%23/g, '#')
-                .replace(/%2F/g, '/')
-                .replace(/%25/g, '%')
-                .replace(/mailto%3A/g, 'mailto:')
-                .replace(/tel%3A/g, 'tel:')
-                .replace(/data%3Aimage/g, 'data:image')
-                .replace(/webkit-fake-url%3A/g, 'webkit-fake-url:')
-                .replace(/%3F/g, '?')
-                .replace(/%3D/g, '=')
-                .replace(/%26/g, '&')
-                .replace(/&amp;/g, '&')
-                .replace(/%2C/g, ',')
-                .replace(/%3B/g, ';')
-                .replace(/%2B/g, '+')
-                .replace(/%40/g, '@');
+      if (tag_name !== 'DIV') this.opts.enter = $.FroalaEditor.ENTER_BR;
+      initOnDefault();
     }
-
-    return url;
   }
 
-  Editable.prototype.parents = function ($element, selector) {
-    if ($element.get(0) != this.$element.get(0)) {
-      return $element.parentsUntil(this.$element, selector);
-    }
+  FroalaEditor.prototype.load = function (module_list) {
+    // Bind modules to the current instance and tear them up.
+    for (var m_name in module_list) {
+      if (this[m_name]) continue;
 
-    return [];
-  }
-
-  Editable.prototype.option = function (prop, val) {
-    if (prop === undefined) {
-      return this.options;
-    } else if (prop instanceof Object) {
-      this.options = $.extend({}, this.options, prop);
-
-      this.initOptions();
-      this.setCustomText();
-      this.setLanguage();
-    } else if (val !== undefined) {
-      this.options[prop] = val;
-
-      switch (prop) {
-        case 'direction':
-          this.setDirection();
-          break;
-        case 'height':
-        case 'width':
-        case 'minHeight':
-        case 'maxHeight':
-          this.setDimensions();
-          break;
-        case 'spellcheck':
-          this.setSpellcheck();
-          break;
-        case 'placeholder':
-          this.setPlaceholder();
-          break;
-        case 'customText':
-          this.setCustomText();
-          break;
-        case 'language':
-          this.setLanguage();
-          break;
-        case 'textNearImage':
-          this.setTextNearImage();
-          break;
-        case 'zIndex':
-          this.setZIndex();
-          break;
-        case 'theme':
-          this.setTheme();
-          break;
+      this[m_name] = new module_list[m_name](this);
+      if (this[m_name]._init) {
+        this[m_name]._init();
+        if (this.opts.initOnClick && m_name == 'core') {
+          return false;
+        }
       }
-    } else {
-      return this.options[prop];
     }
-  };
+  }
 
-  // EDITABLE PLUGIN DEFINITION
+  // Do destroy.
+  FroalaEditor.prototype.destroy = function () {
+    this.events.trigger('destroy');
+
+    this.$original_element.parents('form').off('submit.' + this.id);
+    this.$original_element.removeData('froala.editor');
+  }
+
+  // FROALA EDITOR PLUGIN DEFINITION
   // ==========================
-
-  var old = $.fn.editable;
-
-  $.fn.editable = function (option) {
+  $.fn.froalaEditor = function (option) {
     var arg_list = [];
     for (var i = 0; i < arguments.length; i++) {
       arg_list.push(arguments[i]);
@@ -4209,10 +228,29 @@ if (typeof jQuery === "undefined") { throw new Error("Froala requires jQuery") }
 
       this.each(function () {
         var $this = $(this);
-        var editor = $this.data('fa.editable');
+        var editor = $this.data('froala.editor');
 
-        if (editor[option]) {
-          var returned_value = editor[option].apply(editor, arg_list.slice(1));
+        if (!editor) {
+          return console.warn('Editor should be initialized before calling the ' + option + ' method.');
+        }
+
+        var context;
+        var nm;
+
+        // Might do a module call.
+        if (option.indexOf('.') > 0 && editor[option.split('.')[0]]) {
+          if (editor[option.split('.')[0]]) {
+            context = editor[option.split('.')[0]];
+          }
+          nm = option.split('.')[1];
+        }
+        else {
+          context = editor;
+          nm = option.split('.')[0]
+        }
+
+        if (context[nm]) {
+          var returned_value = context[nm].apply(editor, arg_list.slice(1));
           if (returned_value === undefined) {
             returns.push(this);
           } else if (returns.length === 0) {
@@ -4228,6633 +266,8736 @@ if (typeof jQuery === "undefined") { throw new Error("Froala requires jQuery") }
     }
     else if (typeof option === 'object' || !option) {
       return this.each(function () {
-        var that = this;
-        var $this = $(that);
-        var editor = $this.data('fa.editable');
+        var editor = $(this).data('froala.editor');
 
-        if (!editor) $this.data('fa.editable', (editor = new Editable(that, option)));
+        if (!editor) new FroalaEditor(this, option);
       });
     }
-  };
-
-  $.fn.editable.Constructor = Editable;
-  $.Editable = Editable;
-
-  $.fn.editable.noConflict = function () {
-    $.fn.editable = old;
-    return this;
-  };
-}(window.jQuery);
-
-(function ($) {
-  /**
-   * Init undo support.
-   */
-  $.Editable.prototype.initUndoRedo = function () {
-    // Undo stack array.
-    this.undoStack = [];
-    this.undoIndex = 0;
-    this.saveUndoStep();
-
-    this.disableBrowserUndo();
-  };
-
-  /**
-   * Undo.
-   */
-  $.Editable.prototype.undo = function () {
-    this.no_verify = true;
-    if (this.undoIndex > 1) {
-      clearTimeout(this.typingTimer);
-
-      this.triggerEvent('beforeUndo', [], false);
-
-      var snapshot = this.undoStack[--this.undoIndex - 1];
-      this.restoreSnapshot(snapshot);
-
-      this.doingRedo = true;
-      this.triggerEvent('afterUndo', []);
-      this.doingRedo = false;
-
-      if (this.text() !== '') {
-        this.repositionEditor();
-      }
-      else {
-        this.hide();
-      }
-
-      this.$element.trigger('placeholderCheck');
-      this.focus();
-      this.refreshButtons();
-    }
-    this.no_verify = false;
-  };
-
-  /**
-   * Redo.
-   */
-  $.Editable.prototype.redo = function () {
-    this.no_verify = true;
-
-    if (this.undoIndex < this.undoStack.length) {
-      clearTimeout(this.typingTimer);
-
-      this.triggerEvent('beforeRedo', [], false);
-
-      var snapshot = this.undoStack[this.undoIndex++];
-      this.restoreSnapshot(snapshot);
-
-      this.doingRedo = true;
-      this.triggerEvent('afterRedo', []);
-      this.doingRedo = false;
-
-      if (this.text() !== '') {
-        this.repositionEditor();
-      }
-      else {
-        this.hide();
-      }
-
-      this.$element.trigger('placeholderCheck');
-      this.focus();
-      this.refreshButtons();
-    }
-    this.no_verify = false;
-  };
-
-  /**
-   * Save current HTML in undo stack.
-   */
-  $.Editable.prototype.saveUndoStep = function () {
-    if (!this.undoStack) return false;
-
-    while (this.undoStack.length > this.undoIndex) {
-      this.undoStack.pop();
-    }
-
-    var snapshot = this.getSnapshot();
-
-    if (!this.undoStack[this.undoIndex - 1] || !this.identicSnapshots(this.undoStack[this.undoIndex - 1], snapshot)) {
-      this.undoStack.push(snapshot);
-      this.undoIndex++;
-    }
-
-    this.refreshUndo();
-    this.refreshRedo();
-  };
-
-  /**
-   * Refresh undo, redo buttons.
-   */
-  $.Editable.prototype.refreshUndo = function () {
-    if (this.isEnabled('undo')) {
-      if (this.$editor === undefined) return;
-
-      this.$bttn_wrapper.find('[data-cmd="undo"]').removeAttr('disabled');
-
-      if (this.undoStack.length === 0 || this.undoIndex <= 1 || this.isHTML) {
-        this.$bttn_wrapper.find('[data-cmd="undo"]').attr('disabled', true);
-      }
-    }
-  };
-
-  $.Editable.prototype.refreshRedo = function () {
-    if (this.isEnabled('redo')) {
-      if (this.$editor === undefined) return;
-
-      this.$bttn_wrapper.find('[data-cmd="redo"]').removeAttr('disabled');
-
-      if (this.undoIndex == this.undoStack.length || this.isHTML) {
-        this.$bttn_wrapper.find('[data-cmd="redo"]').prop('disabled', true);
-      }
-    }
-  };
-
-  $.Editable.prototype.getNodeIndex = function (node) {
-    var childNodes = node.parentNode.childNodes;
-    var idx = 0;
-    var prevNode = null;
-    for (var i = 0; i < childNodes.length; i++) {
-      if (prevNode) {
-        // Current node is text and it is empty.
-        var isEmptyText = childNodes[i].nodeType === 3 && childNodes[i].textContent === '';
-
-        // Previous node is text, current node is text.
-        var twoTexts = prevNode.nodeType === 3 && childNodes[i].nodeType === 3;
-
-        if (!isEmptyText && !twoTexts) idx++;
-      }
-
-      if (childNodes[i] == node) return idx;
-
-      prevNode = childNodes[i];
-    }
   }
 
-  $.Editable.prototype.getNodeLocation = function (node) {
-    var loc = [];
-    if (!node.parentNode) return [];
-    while (node != this.$element.get(0)) {
-      loc.push(this.getNodeIndex(node));
-      node = node.parentNode;
+  $.fn.froalaEditor.Constructor = FroalaEditor;
+  $.FroalaEditor = FroalaEditor;
+
+
+  $.FroalaEditor.MODULES.node = function (editor) {
+    function getContents(node) {
+      if (!node || node.tagName == 'IFRAME') return [];
+      return $(node).contents();
     }
 
-    return loc.reverse();
-  };
+    /**
+     * Determine if the node is a block tag.
+     */
+    function isBlock (node) {
+      if (!node) return false;
+      if (node.nodeType != Node.ELEMENT_NODE) return false;
 
-  $.Editable.prototype.getNodeByLocation = function (loc) {
-    var node = this.$element.get(0);
-    for (var i = 0; i < loc.length; i++) {
-      node = node.childNodes[loc[i]];
+      return $.FroalaEditor.BLOCK_TAGS.indexOf(node.tagName.toLowerCase()) >= 0;
     }
 
-    return node;
-  }
+    /**
+     * Check if a DOM element is empty.
+     */
+    function isEmpty (el, ignore_markers) {
+      if ($(el).find('table').length > 0) return false;
 
-  $.Editable.prototype.getRealNodeOffset = function (node, offset) {
-    while (node && node.nodeType === 3) {
-      var prevNode = node.previousSibling;
-      if (prevNode && prevNode.nodeType == 3) offset+= prevNode.textContent.length;
-      node = prevNode;
-    }
+      // Get element contents.
+      var contents = getContents(el);
 
-    return offset;
-  }
-
-  $.Editable.prototype.getRangeSnapshot = function (range) {
-    return {
-      scLoc: this.getNodeLocation(range.startContainer),
-      scOffset: this.getRealNodeOffset(range.startContainer, range.startOffset),
-      ecLoc: this.getNodeLocation(range.endContainer),
-      ecOffset: this.getRealNodeOffset(range.endContainer, range.endOffset)
-    }
-  }
-
-  $.Editable.prototype.getSnapshot = function () {
-    var snapshot = {};
-
-    snapshot.html = this.$element.html();
-
-    snapshot.ranges = [];
-    if (this.selectionInEditor() && this.$element.is(':focus')) {
-      var ranges = this.getRanges();
-      for (var i = 0; i < ranges.length; i++) {
-        snapshot.ranges.push(this.getRangeSnapshot(ranges[i]));
+      // Check if there is a block tag.
+      if (contents.length == 1 && isBlock(contents[0])) {
+        contents = getContents(contents[0]);
       }
-    }
 
-    return snapshot;
-  }
+      var has_br = false;
+      for (var i = 0; i < contents.length; i++) {
+        var node = contents[i];
 
-  $.Editable.prototype.identicSnapshots = function (s1, s2) {
-    if (s1.html != s2.html) return false;
-    if (JSON.stringify(s1.ranges) != JSON.stringify(s2.ranges)) return false;
+        if (ignore_markers && $(node).hasClass('fr-marker')) continue;
 
-    return true;
-  }
-
-  $.Editable.prototype.restoreRangeSnapshot = function (rangeSnapshot, sel) {
-    try {
-      // Get range info.
-      var startNode = this.getNodeByLocation(rangeSnapshot.scLoc);
-      var startOffset = rangeSnapshot.scOffset;
-      var endNode = this.getNodeByLocation(rangeSnapshot.ecLoc);
-      var endOffset = rangeSnapshot.ecOffset;
-
-      // Restore range.
-      var range = this.document.createRange();
-      range.setStart(startNode, startOffset);
-      range.setEnd(endNode, endOffset);
-
-      sel.addRange(range);
-    }
-    catch (ex) {}
-  }
-
-  $.Editable.prototype.restoreSnapshot = function (snapshot) {
-    // Restore HTML.
-    if (this.$element.html() != snapshot.html) this.$element.html(snapshot.html);
-
-    // Make sure to clear current selection.
-    var sel = this.getSelection();
-    this.clearSelection();
-
-    // Focus.
-    this.$element.focus();
-
-    // Restore Ranges.
-    for (var i = 0; i < snapshot.ranges.length; i++) {
-      this.restoreRangeSnapshot(snapshot.ranges[i], sel);
-    }
-
-    setTimeout($.proxy(function () {
-      this.$element.find('.f-img-wrap img').click();
-    }, this), 0);
-  }
-})(jQuery);
-
-(function ($) {
-  /**
-   * Refresh button state.
-   */
-  $.Editable.prototype.refreshButtons = function (force_refresh) {
-    if (!this.initialized) return false;
-
-    if (((!this.selectionInEditor() || this.isHTML) && !(this.browser.msie && $.Editable.getIEversion() < 9)) && !force_refresh) {
-      return false;
-    }
-
-    // Remove class active from toolbar buttons.
-    this.$editor.find('button[data-cmd]').removeClass('active');
-
-    // Refresh disabled state.
-    this.refreshDisabledState();
-
-    // Trigger refresh event.
-    this.raiseEvent('refresh');
-  };
-
-  $.Editable.prototype.refreshDisabledState = function () {
-    if (this.isHTML) return false;
-
-    if (this.$editor) {
-      // Add disabled where necessary.
-      for (var i = 0; i < this.options.buttons.length; i++) {
-        var button = this.options.buttons[i];
-        if ($.Editable.commands[button] === undefined) {
-          continue;
+        if ((node.tagName != 'BR' && !(node.textContent && node.textContent.replace(/\u200B/gi, '').length == 0)) || has_br == true) {
+          return false;
         }
-
-        var disabled = false;
-        if ($.isFunction($.Editable.commands[button].disabled)) {
-          disabled = $.Editable.commands[button].disabled.apply(this);
-        }
-        else if ($.Editable.commands[button].disabled !== undefined) {
-          disabled = true;
-        }
-
-        if (disabled) {
-          this.$editor.find('button[data-cmd="' + button + '"]').prop('disabled', true);
-          this.$editor.find('button[data-name="' + button + '"]').prop('disabled', true);
-        }
-        else {
-          this.$editor.find('button[data-cmd="' + button + '"]').removeAttr('disabled');
-          this.$editor.find('button[data-name="' + button + '"]').removeAttr('disabled');
+        else if (node.tagName == 'BR') {
+          has_br = true;
         }
       }
 
-      this.refreshUndo();
-      this.refreshRedo();
-    }
-  }
-
-  $.Editable.prototype.refreshFormatBlocks = function () {
-    var element = this.getSelectionElements()[0];
-    var tag = element.tagName.toLowerCase();
-
-    if (this.options.paragraphy && tag === this.options.defaultTag.toLowerCase()) {
-      tag = 'n';
+      return true;
     }
 
-    // Update format block first so that we can refresh block style list.
-    this.$editor.find('.fr-bttn > button[data-name="formatBlock"] + ul li').removeClass('active');
-    this.$bttn_wrapper.find('.fr-bttn > button[data-name="formatBlock"] + ul li[data-val="' + tag + '"]').addClass('active');
-  }
-
-  /**
-   * Refresh default buttons.
-   *
-   * @param elem
-   */
-  $.Editable.prototype.refreshDefault = function (cmd) {
-    try {
-      if (this.document.queryCommandState(cmd) === true) {
-        this.$editor.find('[data-cmd="' + cmd + '"]').addClass('active');
-      }
-    } catch (ex) {}
-  };
-
-  /**
-   * Refresh alignment.
-   *
-   * @param elem
-   */
-  $.Editable.prototype.refreshAlign = function () {
-    var $element = $(this.getSelectionElements()[0]);
-    this.$editor.find('.fr-dropdown > button[data-name="align"] + ul li').removeClass('active');
-
-    var cmd;
-    var alignment = $element.css('text-align');
-    if (['left', 'right', 'justify', 'center'].indexOf(alignment) < 0) alignment = 'left';
-
-    if (alignment == 'left') {
-      cmd = 'justifyLeft';
-    } else if (alignment == 'right') {
-      cmd = 'justifyRight';
-    } else if (alignment == 'justify') {
-      cmd = 'justifyFull';
-    } else if (alignment == 'center') {
-      cmd = 'justifyCenter';
-    }
-
-    this.$editor.find('.fr-dropdown > button[data-name="align"].fr-trigger i').attr('class', 'fa fa-align-' + alignment);
-    this.$editor.find('.fr-dropdown > button[data-name="align"] + ul li[data-val="' + cmd + '"]').addClass('active');
-  };
-
-  $.Editable.prototype.refreshHTML = function () {
-    if (this.isActive('html')) {
-      this.$editor.find('[data-cmd="html"]').addClass('active');
-    } else {
-      this.$editor.find('[data-cmd="html"]').removeClass('active');
-    }
-  }
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.commands = {
-    bold: {
-      title: 'Bold',
-      icon: 'fa fa-bold',
-      shortcut: '(Ctrl + B)',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    italic: {
-      title: 'Italic',
-      icon: 'fa fa-italic',
-      shortcut: '(Ctrl + I)',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    underline: {
-      cmd: 'underline',
-      title: 'Underline',
-      icon: 'fa fa-underline',
-      shortcut: '(Ctrl + U)',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    strikeThrough: {
-      title: 'Strikethrough',
-      icon: 'fa fa-strikethrough',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    subscript: {
-      title: 'Subscript',
-      icon: 'fa fa-subscript',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    superscript: {
-      title: 'Superscript',
-      icon: 'fa fa-superscript',
-      refresh: $.Editable.prototype.refreshDefault,
-      undo: true,
-      callbackWithoutSelection: function (cmd) {
-        this._startInDefault(cmd);
-      }
-    },
-
-    formatBlock: {
-      title: 'Format Block',
-      icon: 'fa fa-paragraph',
-      refreshOnShow: $.Editable.prototype.refreshFormatBlocks,
-      callback: function (cmd, val) {
-        this.formatBlock(val);
-      },
-      undo: true
-    },
-
-    align: {
-      title: 'Alignment',
-      icon: 'fa fa-align-left',
-      refresh: $.Editable.prototype.refreshAlign,
-      refreshOnShow: $.Editable.prototype.refreshAlign,
-      seed: [{
-        cmd: 'justifyLeft',
-        title: 'Align Left',
-        icon: 'fa fa-align-left'
-      }, {
-        cmd: 'justifyCenter',
-        title: 'Align Center',
-        icon: 'fa fa-align-center'
-      }, {
-        cmd: 'justifyRight',
-        title: 'Align Right',
-        icon: 'fa fa-align-right'
-      }, {
-        cmd: 'justifyFull',
-        title: 'Justify',
-        icon: 'fa fa-align-justify'
-      }],
-      callback: function (cmd, val) {
-        this.align(val);
-      },
-      undo: true
-    },
-
-    outdent: {
-      title: 'Indent Less',
-      icon: 'fa fa-dedent',
-      activeless: true,
-      shortcut: '(Ctrl + <)',
-      callback: function () {
-        this.outdent(true);
-      },
-      undo: true
-    },
-
-    indent: {
-      title: 'Indent More',
-      icon: 'fa fa-indent',
-      activeless: true,
-      shortcut: '(Ctrl + >)',
-      callback: function () {
-        this.indent();
-      },
-      undo: true
-    },
-
-    selectAll: {
-      title: 'Select All',
-      icon: 'fa fa-file-text',
-      shortcut: '(Ctrl + A)',
-      callback: function (cmd, val) {
-        this.$element.focus();
-        this.execDefault(cmd, val);
-      },
-      undo: false
-    },
-
-    createLink: {
-      title: 'Insert Link',
-      icon: 'fa fa-link',
-      shortcut: '(Ctrl + K)',
-      callback: function () {
-        this.insertLink();
-      },
-      undo: false
-    },
-
-    insertImage: {
-      title: 'Insert Image',
-      icon: 'fa fa-picture-o',
-      activeless: true,
-      shortcut: '(Ctrl + P)',
-      callback: function () {
-        this.insertImage();
-      },
-      undo: false
-    },
-
-    undo: {
-      title: 'Undo',
-      icon: 'fa fa-undo',
-      activeless: true,
-      shortcut: '(Ctrl+Z)',
-      refresh: $.Editable.prototype.refreshUndo,
-      callback: function () {
-        this.undo();
-      },
-      undo: false
-    },
-
-    redo: {
-      title: 'Redo',
-      icon: 'fa fa-repeat',
-      activeless: true,
-      shortcut: '(Shift+Ctrl+Z)',
-      refresh: $.Editable.prototype.refreshRedo,
-      callback: function () {
-        this.redo();
-      },
-      undo: false
-    },
-
-    html: {
-      title: 'Show HTML',
-      icon: 'fa fa-code',
-      refresh: $.Editable.prototype.refreshHTML,
-      callback: function () {
-        this.html();
-      },
-      undo: false
-    },
-
-    save: {
-      title: 'Save',
-      icon: 'fa fa-floppy-o',
-      callback: function () {
-        this.save();
-      },
-      undo: false
-    },
-
-    insertHorizontalRule: {
-      title: 'Insert Horizontal Line',
-      icon: 'fa fa-minus',
-      callback: function (cmd) {
-        this.insertHR(cmd);
-      },
-      undo: true
-    },
-
-    removeFormat: {
-      title: 'Clear formatting',
-      icon: 'fa fa-eraser',
-      activeless: true,
-      callback: function () {
-        this.removeFormat();
-      },
-      undo: true
-    }
-  };
-
-  /**
-   * Exec command.
-   *
-   * @param cmd
-   * @param val
-   * @returns {boolean}
-   */
-  $.Editable.prototype.exec = function (cmd, val, param) {
-    if (!this.selectionInEditor() && $.Editable.commands[cmd].undo) this.focus();
-
-    if (this.selectionInEditor() && this.text() === '') {
-      if ($.Editable.commands[cmd].callbackWithoutSelection) {
-        $.Editable.commands[cmd].callbackWithoutSelection.apply(this, [cmd, val, param]);
-        return false;
-      }
-    }
-
-    if ($.Editable.commands[cmd].callback) {
-      $.Editable.commands[cmd].callback.apply(this, [cmd, val, param]);
-    } else {
-      this.execDefault(cmd, val);
-    }
-  };
-
-  /**
-   * Set html.
-   */
-  $.Editable.prototype.html = function () {
-    var html;
-
-    if (this.isHTML) {
-      this.isHTML = false;
-
-      html = this.$html_area.val();
-
-      this.$box.removeClass('f-html');
-
-      this.$element.attr('contenteditable', true);
-      this.setHTML(html, false);
-      this.$editor.find('.fr-bttn:not([data-cmd="html"]), .fr-trigger').removeAttr('disabled');
-      this.$editor.find('.fr-bttn[data-cmd="html"]').removeClass('active');
-
-      // Hack to focus right.
-      this.$element.blur();
-      this.focus();
-
-      this.refreshButtons();
-
-      // (html)
-      this.triggerEvent('htmlHide', [html], true, false);
-    } else {
-      this.$box.removeClass('f-placeholder');
-      this.clearSelection();
-
-      this.cleanify(false, true, false);
-
-      html = this.cleanTags(this.getHTML(false, false));
-
-      this.$html_area.val(html).trigger('resize');
-
-      this.$html_area.css('height', this.$element.height() - 1);
-      this.$element.html('').append(this.$html_area).removeAttr('contenteditable');
-      this.$box.addClass('f-html');
-      this.$editor.find('button.fr-bttn:not([data-cmd="html"]), button.fr-trigger').attr('disabled', true);
-      this.$editor.find('.fr-bttn[data-cmd="html"]').addClass('active');
-
-      this.isHTML = true;
-      this.hide();
-      this.imageMode = false;
-
-      this.$element.blur();
-
-      this.$element.removeAttr('contenteditable');
-
-      // html
-      this.triggerEvent('htmlShow', [html], true, false);
-    }
-  };
-
-  $.Editable.prototype.insertHR = function (cmd) {
-    this.$element.find('hr').addClass('fr-tag');
-
-    if (!this.$element.hasClass('f-placeholder')) {
-      this.document.execCommand(cmd);
-    }
-    else {
-      $(this.$element.find('> ' + this.valid_nodes.join(', >'))[0]).before('<hr/>');
-    }
-
-    this.hide();
-
-    var nextElems = this.$element.find('hr:not(.fr-tag)').next(this.valid_nodes.join(','));
-    if (nextElems.length > 0) {
-      $(nextElems[0]).prepend(this.markers_html);
-    }
-    else {
-      if (this.options.paragraphy) {
-        this.$element.find('hr:not(.fr-tag)').after('<p>' + this.markers_html + '<br/></p>');
-      }
-      else {
-        this.$element.find('hr:not(.fr-tag)').after(this.markers_html);
-      }
-    }
-
-    this.restoreSelectionByMarkers();
-
-    this.triggerEvent(cmd, [], true, false);
-  }
-
-  /**
-   * Format block.
-   *
-   * @param val
-   */
-  $.Editable.prototype.formatBlock = function (val) {
-    if (this.disabledList.indexOf('formatBlock') >= 0) {
-      return false;
-    }
-
-    // IE 8.
-    if (this.browser.msie && $.Editable.getIEversion() < 9) {
-      if (val == 'n') {
-        val = this.options.defaultTag;
-      }
-
-      this.document.execCommand('formatBlock', false, '<' + val + '>');
-      this.triggerEvent('formatBlock');
-
-      return false;
-    }
-
-    // Start in a specific mode.
-    if (this.$element.hasClass('f-placeholder')) {
-      if (!(!this.options.paragraphy && val == 'n')) {
-        if (val == 'n') val = this.options.defaultTag;
-
-        var $el = $('<' + val + '><br/>' + '</' + val + '>')
-        this.$element.html($el);
-        this.setSelection($el.get(0), 0);
-
-        this.$element.removeClass('f-placeholder');
-      }
-    }
-    else {
-      // Wrap text.
-      this.saveSelectionByMarkers();
-      this.wrapText();
-      this.restoreSelectionByMarkers();
-
-      // Get selection elements.
-      var elements = this.getSelectionElements();
-      if (elements[0] == this.$element.get(0)) {
-        elements = this.$element.find('> ' + this.valid_nodes.join(', >'));
-      }
-
-      this.saveSelectionByMarkers();
-
-      var $sel;
-
-      var format_pre = function ($element) {
-        // Replace br in PRE.
-        if ($element.get(0).tagName == 'PRE') {
-          while ($element.find('br + br').length > 0) {
-            var $br = $($element.find('br + br')[0]);
-            $br.prev().remove();
-            $br.replaceWith('\n\n');
-          }
-        }
-      }
-
-      for (var i = 0; i < elements.length; i++) {
-        var $element = $(elements[i]);
-
-        if (this.fakeEmpty($element)) continue;
-
-        format_pre($element);
-
-        // If element is empty, then add a br.
-        if (!this.options.paragraphy && this.emptyElement($element.get(0))) $element.append('<br/>');
-
-        // Format or no format.
-        if (val == 'n') {
-          if (this.options.paragraphy) {
-            var h = '<' + this.options.defaultTag + this.attrs($element.get(0)) + '>' + $element.html() + '</' + this.options.defaultTag + '>';
-
-            $sel = $(h);
-          }
-          else {
-            $sel = $element.html() + '<br/>';
-          }
-        }
-        else {
-          $sel = $('<' + val + this.attrs($element.get(0)) + '>').html($element.html());
-        }
-
-        if ($element.get(0) != this.$element.get(0)) {
-          $element.replaceWith($sel);
-        }
-        else {
-          $element.html($sel);
-        }
-      }
-
-      this.unwrapText();
-
-      // Join PRE.
-      this.$element.find('pre + pre').each (function () {
-        $(this).prepend($(this).prev().html() + '<br/><br/>');
-        $(this).prev().remove();
-      })
-
-      // Split what comes from PRE.
-      var that = this;
-      this.$element.find(this.valid_nodes.join(',')).each (function () {
-        if (this.tagName == 'PRE') return;
-
-        $(this).replaceWith('<' + this.tagName + that.attrs(this) + '>' + $(this).html().replace(/\n\n/gi, '</' + this.tagName + '><' + this.tagName + '>') + '</' + this.tagName + '>');
-      })
-
-      // Add br to empty elements that would come from PRE.
-      this.$element.find(this.valid_nodes.join(':empty ,') + ':empty').append('<br/>');
-
-      this.cleanupLists();
-      this.restoreSelectionByMarkers();
-    }
-
-    this.triggerEvent('formatBlock');
-    this.repositionEditor();
-  };
-
-  /**
-   * Align.
-   *
-   * @param val
-   */
-  $.Editable.prototype.align = function (val) {
-    if (this.browser.msie && $.Editable.getIEversion() < 9) {
-      this.document.execCommand(val, false, false);
-
-      // (val)
-      this.triggerEvent('align', [val]);
-
-      return false;
-    }
-
-    this.saveSelectionByMarkers();
-    this.wrapText();
-    this.restoreSelectionByMarkers();
-
-    this.saveSelectionByMarkers();
-    var elements = this.getSelectionElements();
-
-    if (val == 'justifyLeft') {
-      val = 'left';
-    } else if (val == 'justifyRight') {
-      val = 'right';
-    } else if (val == 'justifyCenter') {
-      val = 'center';
-    } else if (val == 'justifyFull') {
-      val = 'justify';
-    }
-
-    for (var i = 0; i < elements.length; i++) {
-      if (this.parents($(elements[i]), 'LI').length > 0) elements[i] = $(elements[i]).parents('LI').get(0);
-      $(elements[i]).css('text-align', val);
-    }
-
-    this.cleanupLists();
-    this.unwrapText();
-    this.restoreSelectionByMarkers();
-    this.repositionEditor();
-
-    // (val)
-    this.triggerEvent('align', [val]);
-  };
-
-  /**
-   * Indent.
-   *
-   * @param outdent - boolean.
-   */
-  $.Editable.prototype.indent = function (outdent, reposition) {
-    if (reposition === undefined) reposition = true;
-
-    if (this.browser.msie && $.Editable.getIEversion() < 9) {
-      if (!outdent) {
-        this.document.execCommand('indent', false, false);
-      } else {
-        this.document.execCommand('outdent', false, false);
-      }
-      return false;
-    }
-
-    var margin = 20;
-    if (outdent) {
-      margin = -20;
-    }
-
-    // Wrap text.
-    this.saveSelectionByMarkers();
-    this.wrapText();
-    this.restoreSelectionByMarkers();
-
-    var elements = this.getSelectionElements();
-
-    this.saveSelectionByMarkers();
-
-    for (var i = 0; i < elements.length; i++) {
-      var $element = $(elements[i]);
-
-      if ($element.parentsUntil(this.$element, 'li').length > 0) {
-        $element = $element.closest('li');
-      }
-
-      if (this.raiseEvent('indent', [$element, outdent])) {
-        if ($element.get(0) != this.$element.get(0)) {
-          var oldMargin = parseInt($element.css('margin-left'), 10);
-          var newMargin = Math.max(0, oldMargin + margin);
-          $element.css('marginLeft', newMargin);
-          if (newMargin === 0) {
-            $element.css('marginLeft', '');
-            if ($element.css('style') === undefined) $element.removeAttr('style');
-          }
-        }
-
-        else {
-          var $sel = $('<div>').html($element.html());
-          $element.html($sel);
-          $sel.css('marginLeft', Math.max(0, margin));
-          if (Math.max(0, margin) === 0) {
-            $sel.css('marginLeft', '');
-            if ($sel.css('style') === undefined) $sel.removeAttr('style');
-          }
-        }
-      }
-    }
-
-    this.unwrapText();
-
-    this.restoreSelectionByMarkers();
-    if (reposition) this.repositionEditor();
-
-    if (!outdent) {
-      this.triggerEvent('indent');
-    }
-  };
-
-  /**
-   * Outdent.
-   */
-  $.Editable.prototype.outdent = function (reposition) {
-    this.indent(true, reposition);
-
-    this.triggerEvent('outdent');
-  };
-
-  /**
-   * Run default command.
-   *
-   * @param cmd - command name.
-   * @param val - command value.
-   */
-  $.Editable.prototype.execDefault = function (cmd, val) {
-    this.saveUndoStep();
-    this.document.execCommand(cmd, false, val);
-
-    this.triggerEvent(cmd, [], true, true);
-  };
-
-  $.Editable.prototype._startInDefault = function (cmd) {
-    this.focus();
-
-    this.document.execCommand(cmd, false, false);
-
-    this.refreshButtons();
-  }
-
-  $.Editable.prototype._startInFontExec = function (prop, cmd, val) {
-    this.focus();
-
-    try {
-      var range = this.getRange();
-      var boundary = range.cloneRange();
-
-      boundary.collapse(false);
-
-      var $span = $('<span data-inserted="true" data-fr-verified="true" style="' + prop + ': ' + val + ';">' + $.Editable.INVISIBLE_SPACE + '</span>', this.document);
-      boundary.insertNode($span[0]);
-
-      $span = this.$element.find('[data-inserted]');
-      $span.removeAttr('data-inserted');
-
-      this.setSelection($span.get(0), 1);
-    }
-    catch (ex) {}
-  }
-
-  /**
-   * Remove format.
-   */
-  $.Editable.prototype.removeFormat = function () {
-    this.document.execCommand('removeFormat', false, false);
-    this.document.execCommand('unlink', false, false);
-  };
-
-  /**
-   * Set font size or family.
-   *
-   * @param val
-   */
-  $.Editable.prototype.inlineStyle = function (prop, cmd, val) {
-    // Preserve font size.
-    if (this.browser.webkit && prop != 'font-size') {
-      var hasFontSizeSet = function ($span) {
-        return $span.attr('style').indexOf('font-size') >= 0;
-      }
-
-      this.$element.find('span').each (function (index, span) {
-        var $span = $(span);
-
-        if ($span.attr('style') && hasFontSizeSet($span)) {
-          $span.data('font-size', $span.css('font-size'));
-          $span.css('font-size', '');
-        }
-      })
-    }
-
-    // Apply format.
-    this.document.execCommand('fontSize', false, 4);
-
-    this.saveSelectionByMarkers();
-
-    // Restore font size.
-    if (this.browser.webkit && prop != 'font-size') {
-      this.$element.find('span').each (function (index, span) {
-        var $span = $(span);
-
-        if ($span.data('font-size')) {
-          $span.css('font-size', $span.data('font-size'));
-          $span.removeData('font-size');
-        }
-      })
-    }
-
-    // Clean font.
-    var clean_format = function (elem) {
-      var $elem = $(elem);
-      if ($elem.css(prop) != val) {
-        $elem.css(prop, '');
-      }
-
-      if ($elem.attr('style') === '') {
-        $elem.replaceWith($elem.html());
-      }
-    }
-
-    // Remove all fonts with size=3.
-    this.$element.find('font').each(function (index, elem) {
-      var $span = $('<span data-fr-verified="true" style="' + prop + ': ' + val + ';">' + $(elem).html() + '</span>');
-      $(elem).replaceWith($span);
-
-      // Replace in reverse order to take care of the inner spans first.
-      var inner_spans = $span.find('span');
-      for (var i = inner_spans.length - 1; i >= 0; i--) {
-        clean_format(inner_spans[i]);
-      }
-    });
-
-    this.removeBlankSpans();
-
-    this.restoreSelectionByMarkers();
-    this.repositionEditor();
-
-    if (cmd != null) this.triggerEvent(cmd, [val], true, true);
-  };
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.addListener = function (event_name, callback) {
-    var events      = this._events;
-    var callbacks   = events[event_name] = events[event_name] || [];
-
-    callbacks.push(callback);
-  }
-
-  $.Editable.prototype.raiseEvent = function (event_name, args) {
-    if (args === undefined) args = [];
-
-    var resp = true;
-
-    var callbacks = this._events[event_name];
-
-    if (callbacks) {
-      for (var i = 0, l = callbacks.length; i < l; i++) {
-        var i_resp = callbacks[i].apply(this, args);
-        if (i_resp !== undefined && resp !== false) resp = i_resp;
-      }
-    }
-
-    if (resp === undefined) resp = true;
-
-    return resp;
-  }
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.start_marker = '<span class="f-marker" data-id="0" data-fr-verified="true" data-type="true"></span>';
-  $.Editable.prototype.end_marker = '<span class="f-marker" data-id="0" data-fr-verified="true" data-type="false"></span>';
-  $.Editable.prototype.markers_html = '<span class="f-marker" data-id="0" data-fr-verified="true" data-type="false"></span><span class="f-marker" data-id="0" data-fr-verified="true" data-type="true"></span>';
-
-  /**
-   * Get selection text.
-   *
-   * @returns {string}
-   */
-  $.Editable.prototype.text = function () {
-    var text = '';
-
-    if (this.window.getSelection) {
-      text = this.window.getSelection();
-    } else if (this.document.getSelection) {
-      text = this.document.getSelection();
-    } else if (this.document.selection) {
-      text = this.document.selection.createRange().text;
-    }
-
-    return text.toString();
-  };
-
-  /**
-   * Determine if selection is inside current editor.
-   *
-   * @returns {boolean}
-   */
-  $.Editable.prototype.selectionInEditor = function () {
-    var parent = this.getSelectionParent();
-    var inside = false;
-
-    if (parent == this.$element.get(0)) {
-      inside = true;
-    }
-
-    if (inside === false) {
-      $(parent).parents().each($.proxy(function (index, elem) {
-        if (elem == this.$element.get(0)) {
-          inside = true;
-        }
-      }, this));
-    }
-
-    return inside;
-  };
-
-  /**
-   * Get current selection.
-   *
-   * @returns {string}
-   */
-  $.Editable.prototype.getSelection = function () {
-    var selection = '';
-    if (this.window.getSelection) {
-      selection = this.window.getSelection();
-    } else if (this.document.getSelection) {
-      selection = this.document.getSelection();
-    } else {
-      selection = this.document.selection.createRange();
-    }
-
-    return selection;
-  };
-
-  /**
-   * Get current range.
-   *
-   * @returns {*}
-   */
-  $.Editable.prototype.getRange = function () {
-    var ranges = this.getRanges();
-    if (ranges.length > 0) {
-      return ranges[0];
-    }
-
-    return null;
-  };
-
-  $.Editable.prototype.getRanges = function () {
-    var sel = this.getSelection();
-
-    // Get ranges.
-    if (sel.getRangeAt && sel.rangeCount) {
-      var ranges = [];
-      for (var i = 0; i < sel.rangeCount; i++) {
-        ranges.push(sel.getRangeAt(i));
-      }
-
-      return ranges;
-    }
-
-    if (this.document.createRange) {
-      return [this.document.createRange()];
-    } else {
-      return [];
-    }
-  }
-
-  /**
-   * Clear selection.
-   *
-   * @returns {*}
-   */
-  $.Editable.prototype.clearSelection = function () {
-    var sel = this.getSelection();
-
-    try {
-      if (sel.removeAllRanges) {
-        sel.removeAllRanges();
-      } else if (sel.empty) {  // IE?
-        sel.empty();
-      } else if (sel.clear) {
-        sel.clear();
-      }
-    }
-    catch (ex) {}
-  };
-
-  /**
-   * Get the element where the current selection starts.
-   *
-   * @returns {*}
-   */
-  $.Editable.prototype.getSelectionElement = function () {
-    var sel = this.getSelection();
-
-    if (sel.rangeCount) {
-      var range = this.getRange();
-      var node = range.startContainer;
-
-      // Get parrent if node type is not DOM.
-      if (node.nodeType == 1) {
-        var node_found = false;
-
-        // Search for node deeper.
-        if (node.childNodes.length > 0 && node.childNodes[range.startOffset] && $(node.childNodes[range.startOffset]).text() === this.text()) {
-          node = node.childNodes[range.startOffset];
-          node_found = true;
-        }
-
-        if (!node_found && node.childNodes.length > 0 && $(node.childNodes[0]).text() === this.text() && ['BR', 'IMG', 'HR'].indexOf(node.childNodes[0].tagName) < 0) {
-          node = node.childNodes[0];
-        }
-      }
-
-      while (node.nodeType != 1 && node.parentNode) {
+    /**
+     * Get the block parent.
+     */
+    function blockParent (node) {
+      while (node && node.parentNode !== editor.$el.get(0) && !(node.parentNode && $(node.parentNode).hasClass('fr-inner'))) {
         node = node.parentNode;
-      }
-
-      // Make sure the node is in editor.
-      var p = node;
-      while (p && p.tagName != 'BODY') {
-        if (p == this.$element.get(0)) {
+        if (isBlock(node)) {
           return node;
         }
-
-        p = $(p).parent()[0];
-      }
-    }
-
-    return this.$element.get(0);
-  };
-
-  /**
-   * Get the parent of the current selection.
-   *
-   * @returns {*}
-   */
-  $.Editable.prototype.getSelectionParent = function () {
-    var parent = null;
-    var sel;
-
-    if (this.window.getSelection) {
-      sel = this.window.getSelection();
-      if (sel.rangeCount) {
-        parent = sel.getRangeAt(0).commonAncestorContainer;
-        if (parent.nodeType != 1) {
-          parent = parent.parentNode;
-        }
-      }
-    } else if ((sel = this.document.selection) && sel.type != 'Control') {
-      parent = sel.createRange().parentElement();
-    }
-
-    if (parent != null && ($.inArray(this.$element.get(0), $(parent).parents()) >= 0 || parent == this.$element.get(0))) {
-      return parent;
-    }
-    else {
-      return null;
-    }
-  };
-
-  /**
-   * Check if DOM node is in range.
-   *
-   * @param range - A range object.
-   * @param node - A DOM node object.
-   * @returns {*}
-   */
-  // From: https://code.google.com/p/rangy/source/browse/trunk/test/intersectsnode.html
-  $.Editable.prototype.nodeInRange = function (range, node) {
-    var nodeRange;
-    if (range.intersectsNode) {
-      return range.intersectsNode(node);
-    } else {
-      nodeRange = node.ownerthis.document.createRange();
-      try {
-        nodeRange.selectNode(node);
-      } catch (e) {
-        nodeRange.selectNodeContents(node);
       }
 
-      return range.compareBoundaryPoints(Range.END_TO_START, nodeRange) == -1 &&
-        range.compareBoundaryPoints(Range.START_TO_END, nodeRange) == 1;
-    }
-  };
-
-
-  /**
-   * Get the valid element of DOM node.
-   *
-   * @param node - DOM node.
-   * @returns {*}
-   */
-  $.Editable.prototype.getElementFromNode = function (node) {
-    if (node.nodeType != 1) {
-      node = node.parentNode;
-    }
-
-    while (node !== null && this.valid_nodes.indexOf(node.tagName) < 0) {
-      node = node.parentNode;
-    }
-
-    if (node != null && node.tagName == 'LI' && $(node).find(this.valid_nodes.join(',')).not('li').length > 0) {
       return null;
     }
 
-    if ($.makeArray($(node).parents()).indexOf(this.$element.get(0)) >= 0) {
-      return node;
-    } else {
-      return null;
-    }
-  };
+    /**
+     * Get deepest parent till the element.
+     */
+    function deepestParent (node, until, simple_enter) {
+      if (typeof until == 'undefined') until = [];
+      if (typeof simple_enter == 'undefined') simple_enter = true;
+      until.push(editor.$el.get(0));
 
-  /**
-   * Find next node as a child or as a sibling.
-   *
-   * @param node - Current node.
-   * @returns {DOM Object}
-   */
-  $.Editable.prototype.nextNode = function (node, endNode) {
-    if (node.hasChildNodes()) {
-      return node.firstChild;
-    } else {
-      while (node && !node.nextSibling && node != endNode) {
-        node = node.parentNode;
-      }
-      if (!node || node == endNode) {
+      if (until.indexOf(node.parentNode) >= 0 || (node.parentNode && $(node.parentNode).hasClass('fr-inner')) || (node.parentNode && $.FroalaEditor.SIMPLE_ENTER_TAGS.indexOf(node.parentNode.tagName) >= 0 && simple_enter)) {
         return null;
       }
 
-      return node.nextSibling;
+      // 1. Before until.
+      // 2. Parent node doesn't has class fr-inner.
+      // 3. Parent node is not a simple enter tag or quote.
+      // 4. Parent node is not a block tag
+      while (until.indexOf(node.parentNode) < 0 && node.parentNode && !$(node.parentNode).hasClass('fr-inner') && ($.FroalaEditor.SIMPLE_ENTER_TAGS.indexOf(node.parentNode.tagName) < 0 || !simple_enter) && (!(isBlock(node) && isBlock(node.parentNode)) || !simple_enter)) {
+        node = node.parentNode;
+      }
+
+      return node;
+    }
+
+    function rawAttributes (node) {
+      var attrs = {};
+
+      var atts = node.attributes;
+      if (atts) {
+        for (var i = 0; i < atts.length; i++) {
+          var att = atts[i];
+          attrs[att.nodeName] = att.value;
+        }
+      }
+
+      return attrs;
+    }
+
+    /**
+     * Get attributes for a node as a string.
+     */
+    function attributes (node) {
+      var str = '';
+      var atts = node.attributes;
+      for (var i = 0; i < atts.length; i++) {
+        var att = atts[i];
+
+        // Make sure we don't break any HTML.
+        if (att.value.indexOf('"') < 0) {
+          str += ' ' + att.nodeName + '="' + att.value + '"';
+        }
+        else {
+          str += ' ' + att.nodeName + '=\'' + att.value + '\'';
+        }
+      }
+
+      return str;
+    }
+
+    function clearAttributes (node) {
+      var atts = node.attributes;
+      for (var i = 0; i < atts.length; i++) {
+        var att = atts[i];
+        node.removeAttribute(att.nodeName);
+      }
+    }
+
+    /**
+     * Open string for a node.
+     */
+    function openTagString (node) {
+      return '<' + node.tagName.toLowerCase() + attributes(node) + '>';
+    }
+
+    /**
+     * Close string for a node.
+     */
+    function closeTagString (node) {
+      return '</' + node.tagName.toLowerCase() + '>';
+    }
+
+    /**
+     * Determine if the node has any left sibling.
+     */
+    function isFirstSibling (node, ignore_markers) {
+      if (typeof ignore_markers == 'undefined') ignore_markers = true;
+      var sibling = node.previousSibling;
+
+      while (sibling && ignore_markers && $(sibling).hasClass('fr-marker')) {
+        sibling = sibling.previousSibling;
+      }
+
+      if (!sibling) return true;
+      if (sibling.nodeType == Node.TEXT_NODE && sibling.textContent === '') return isFirstSibling(sibling);
+      return false;
+    }
+
+    function isVoid(node) {
+      return node && $.FroalaEditor.VOID_ELEMENTS.indexOf((node.tagName || '').toLowerCase()) >= 0
+    }
+
+    /**
+     * Check if the node is a list.
+     */
+    function isList (node) {
+      if (!node) return false;
+      return ['UL', 'OL'].indexOf(node.tagName) >= 0;
+    }
+
+    /**
+     * Check if the node is the editable element.
+     */
+    function isElement (node) {
+      return node === editor.$el.get(0);
+    }
+
+    /**
+     * Check if the node has focus.
+     */
+    function hasFocus (node) {
+      return node === editor.document.activeElement && (!editor.document.hasFocus || editor.document.hasFocus()) && !!(isElement(node) || node.type || node.href || ~node.tabIndex);;
+    }
+
+    function isEditable (node) {
+      return !node.getAttribute || node.getAttribute('contenteditable') != 'false';
+    }
+
+    return {
+      isBlock: isBlock,
+      isEmpty: isEmpty,
+      blockParent: blockParent,
+      deepestParent: deepestParent,
+      rawAttributes: rawAttributes,
+      attributes: attributes,
+      clearAttributes: clearAttributes,
+      openTagString: openTagString,
+      closeTagString: closeTagString,
+      isFirstSibling: isFirstSibling,
+      isList: isList,
+      isElement: isElement,
+      contents: getContents,
+      isVoid: isVoid,
+      hasFocus: hasFocus,
+      isEditable: isEditable
     }
   };
 
-  /**
-   * Find the nodes within the range passed as parameter.
-   *
-   * @param range - A range object.
-   * @returns {Array}
-   */
-  $.Editable.prototype.getRangeSelectedNodes = function (range) {
-    // Iterate nodes until we hit the end container
-    var rangeNodes = [];
 
-    var node = range.startContainer;
-    var endNode = range.endContainer;
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    // Tags that describe head from HEAD http://www.w3schools.com/html/html_head.asp.
+    htmlAllowedTags: ['a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base', 'bdi', 'bdo', 'blockquote', 'br', 'button', 'canvas', 'caption', 'cite', 'code', 'col', 'colgroup', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'div', 'dl', 'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend', 'li', 'link', 'main', 'map', 'mark', 'menu', 'menuitem', 'meter', 'nav', 'noscript', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'pre', 'progress', 'queue', 'rp', 'rt', 'ruby', 's', 'samp', 'script', 'style', 'section', 'select', 'small', 'source', 'span', 'strike', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'u', 'ul', 'var', 'video', 'wbr'],
+    htmlRemoveTags: ['script', 'style'],
+    htmlAllowedAttrs: ['accept', 'accept-charset', 'accesskey', 'action', 'align', 'allowfullscreen', 'allowtransparency', 'alt', 'async', 'autocomplete', 'autofocus', 'autoplay', 'autosave', 'background', 'bgcolor', 'border', 'charset', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'color', 'cols', 'colspan', 'content', 'contenteditable', 'contextmenu', 'controls', 'coords', 'data', 'data-.*', 'datetime', 'default', 'defer', 'dir', 'dirname', 'disabled', 'download', 'draggable', 'dropzone', 'enctype', 'for', 'form', 'formaction', 'fr-.*', 'frameborder', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'http-equiv', 'icon', 'id', 'ismap', 'itemprop', 'keytype', 'kind', 'label', 'lang', 'language', 'list', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'mozallowfullscreen', 'multiple', 'name', 'novalidate', 'open', 'optimum', 'pattern', 'ping', 'placeholder', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'reversed', 'rows', 'rowspan', 'sandbox', 'scope', 'scoped', 'scrolling', 'seamless', 'selected', 'shape', 'size', 'sizes', 'span', 'src', 'srcdoc', 'srclang', 'srcset', 'start', 'step', 'summary', 'spellcheck', 'style', 'tabindex', 'target', 'title', 'type', 'translate', 'usemap', 'value', 'valign', 'webkitallowfullscreen', 'width', 'wrap'],
+    htmlAllowComments: true,
+    fullPage: false // Will also turn iframe on.
+  });
 
-    // Special case for a range that is contained within a single node
-    if (node == endNode && node.tagName != 'TR') {
-      if (!node.hasChildNodes() || node.children.length === 0) {
-        return [node];
+  $.FroalaEditor.HTML5Map = {
+    'B': 'STRONG',
+    'I': 'EM',
+    'STRIKE': 'S'
+  },
+
+  $.FroalaEditor.MODULES.clean = function (editor) {
+    var $iframe, body;
+    var allowedTagsRE, removeTagsRE, allowedAttrsRE;
+
+    function _removeInvisible (node) {
+      if (node.className && node.className.indexOf('fr-marker') >= 0) return false;
+
+      var contents = editor.node.contents(node);
+      var markers = [];
+      var i;
+
+      // Get markers.
+      for (i = 0; i < contents.length; i++) {
+        if (contents[i].className && contents[i].className.indexOf('fr-marker') >= 0) {
+          markers.push(contents[i]);
+        }
+      }
+
+      // Reasess contents.
+      if (contents.length - markers.length == 1 && node.textContent.replace(/\u200b/g, '').length === 0) {
+        for (i = 0; i < markers.length; i++) {
+          node.parentNode.insertBefore(markers[i].cloneNode(true), node);
+        }
+        node.parentNode.removeChild(node);
+        return false;
+      }
+
+      for (i = 0; i < contents.length; i++) {
+        if (contents[i].nodeType == Node.ELEMENT_NODE) {
+          if (contents[i].textContent.replace(/\u200b/g, '').length != contents[i].textContent.length) {
+            _removeInvisible(contents[i]);
+          }
+        }
+        else if (contents[i].nodeType == Node.TEXT_NODE) {
+          contents[i].textContent = contents[i].textContent.replace(/\u200b/g, '');
+        }
+      }
+    }
+
+    function invisibleSpaces (dirty_html) {
+      if (dirty_html.replace(/\u200b/g, '').length == dirty_html.length) return dirty_html;
+
+      dirty_html = _encode(dirty_html);
+
+      if (!editor.opts.fullPage) dirty_html = '<html><head></head><body>' + dirty_html + '</body></html>';
+
+      $iframe = $('<iframe style="width:0; height:0; position: absolute; left: -2000px; display: none;">');
+      $('body').append($iframe);
+      $iframe.get(0).contentWindow.document.open();
+      $iframe.get(0).contentWindow.document.write(dirty_html);
+      $iframe.get(0).contentWindow.document.close();
+
+      if (editor.opts.fullPage) {
+        html = $iframe.contents().find('html').get(0);
+
+        // Run the cleaning process.
+        _removeInvisible(html);
+
+        var doctype = editor.html.getDoctype($iframe.get(0).contentWindow.document);
+
+        dirty_html = doctype +
+                '<html' + editor.node.attributes(html) + '>' +
+                html.innerHTML +
+                '</html>';
+
+        $iframe.remove();
+
+        return _decode(dirty_html);
       }
       else {
-        var childs = node.children;
-        for (var i = range.startOffset; i < range.endOffset; i++) {
-          if (childs[i]) {
-            rangeNodes.push(childs[i]);
+        body = $iframe.get(0).contentDocument.getElementsByTagName('body')[0];
+
+        // Run the cleaning process.
+        _removeInvisible(body);
+
+        // Get clean html.
+        dirty_html = body.innerHTML;
+
+        $iframe.remove();
+
+        return _decode(dirty_html);
+      }
+    }
+
+    function _encode (dirty_html) {
+      // Replace script tag with comments.
+      scripts = [];
+      dirty_html = dirty_html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, function (str) {
+        scripts.push(str);
+        return '<!--[FROALA.EDITOR.SCRIPT ' + (scripts.length - 1) + ']-->';
+      });
+
+      dirty_html = dirty_html.replace(/<img((?:[\w\W]*?)) src="/g, '<img$1 data-src="');
+
+      return dirty_html;
+    }
+
+    function _decode (dirty_html) {
+      // Replace script comments with the original script.
+      dirty_html = dirty_html.replace(/<!--\[FROALA\.EDITOR\.SCRIPT ([\d]*)]-->/gi, function (str, a1) {
+        return scripts[parseInt(a1, 10)];
+      });
+
+      if (editor.opts.htmlRemoveTags.indexOf('script') >= 0) {
+        dirty_html = dirty_html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      }
+
+      dirty_html = dirty_html.replace(/<img((?:[\w\W]*?)) data-src="/g, '<img$1 src="');
+
+      return dirty_html;
+    }
+
+    function toHTML5 () {
+      var $els = editor.$el.find(Object.keys($.FroalaEditor.HTML5Map).join(',')).filter(function () {
+        return editor.node.attributes(this) === '';
+      })
+
+      if ($els.length) {
+        editor.selection.save();
+        $els.each (function () {
+          $(this).replaceWith('<' + $.FroalaEditor.HTML5Map[this.tagName] + '>' + $(this).html() + '</' + $.FroalaEditor.HTML5Map[this.tagName] + '>');
+        })
+        editor.selection.restore();
+      }
+    }
+
+    function _node (node) {
+      if (node.tagName == 'PRE') _cleanPre(node);
+
+      if (node.nodeType == Node.TEXT_NODE) {
+  //        node.textContent = node.textContent.replace(/^ {2,}/, '').replace(/ {2,}$/, '');
+      }
+      else if (node.nodeType == Node.ELEMENT_NODE) {
+        if (node.getAttribute('data-src')) node.setAttribute('data-src', editor.helpers.sanitizeURL(node.getAttribute('data-src')));
+        if (node.getAttribute('href')) node.setAttribute('href', editor.helpers.sanitizeURL(node.getAttribute('href')));
+
+        if (['TABLE', 'TBODY', 'TFOOT', 'TR'].indexOf(node.tagName) >= 0) {
+          node.innerHTML = node.innerHTML.trim();
+        }
+      }
+
+      // Remove local images if option they are not allowed.
+      if (!editor.opts.pasteAllowLocalImages && node.nodeType == Node.ELEMENT_NODE && node.tagName == 'IMG' && node.getAttribute('data-src') && node.getAttribute('data-src').indexOf('file://') == 0) {
+        node.parentNode.removeChild(node);
+        return false;
+      }
+
+      if (node.nodeType == Node.ELEMENT_NODE && $.FroalaEditor.HTML5Map[node.tagName] && editor.node.attributes(node) === '') {
+        var tg = $.FroalaEditor.HTML5Map[node.tagName];
+        var new_node = '<' + tg + '>' + node.innerHTML + '</' + tg + '>';
+        node.insertAdjacentHTML('beforebegin', new_node);
+        node = node.previousSibling;
+        node.parentNode.removeChild(node.nextSibling);
+      }
+
+      if (!editor.opts.htmlAllowComments && node.nodeType == Node.COMMENT_NODE) {
+        // Do not remove FROALA.EDITOR comments.
+        if (node.data.indexOf('[FROALA.EDITOR') !== 0) {
+          node.parentNode.removeChild(node);
+        }
+      }
+
+      // Remove completely tags in denied tags.
+      else if (node.tagName && node.tagName.match(removeTagsRE)) {
+        node.parentNode.removeChild(node);
+      }
+
+      // Unwrap tags not in allowed tags.
+      else if (node.tagName && !node.tagName.match(allowedTagsRE)) {
+        node.outerHTML = node.innerHTML;
+      }
+
+      // Check denied attributes.
+      else {
+        var attrs = node.attributes;
+        if (attrs) {
+          for (var i = attrs.length - 1; i >= 0; i--) {
+            var attr = attrs[i];
+            if (!attr.nodeName.match(allowedAttrsRE)) {
+              node.removeAttribute(attr.nodeName);
+            }
+          }
+        }
+      }
+    }
+
+    function _run (node) {
+      var contents = editor.node.contents(node);
+      for (var i = 0; i < contents.length; i++) {
+        if (contents[i].nodeType != Node.TEXT_NODE) {
+          _run(contents[i]);
+        }
+        else {
+          _node(contents[i]);
+        }
+      }
+
+      if (node.tagName != 'BODY' || editor.opts.fullPage) _node(node);
+    }
+
+    /**
+     * Clean pre.
+     */
+    function _cleanPre (pre) {
+      var content = pre.innerHTML;
+      if (content.indexOf('\n') >= 0) {
+        pre.innerHTML = content.replace(/\n/g, '<br>');
+      }
+    }
+
+    /**
+     * Clean the html input.
+     */
+    var scripts = [];
+    function html (dirty_html, denied_tags, denied_attrs, full_page) {
+      if (typeof denied_tags == 'undefined') denied_tags = [];
+      if (typeof denied_attrs == 'undefined') denied_attrs = [];
+      if (typeof full_page == 'undefined') full_page = false;
+
+      // Strip tabs.
+      dirty_html = dirty_html.replace(/\u0009/g, '');
+
+      var allowed_tags = $.merge([], editor.opts.htmlAllowedTags);
+      var i;
+      for (i = 0; i < denied_tags.length; i++) {
+        if (allowed_tags.indexOf(denied_tags[i]) >= 0) {
+          allowed_tags.splice(allowed_tags.indexOf(denied_tags[i]), 1);
+        }
+      }
+
+      var allowed_attrs = $.merge([], editor.opts.htmlAllowedAttrs);
+      for (i = 0; i < denied_attrs.length; i++) {
+        if (allowed_attrs.indexOf(denied_attrs[i]) >= 0) {
+          allowed_attrs.splice(allowed_attrs.indexOf(denied_attrs[i]), 1);
+        }
+      }
+
+      // Generate cleaning RegEx.
+      allowedTagsRE = new RegExp('^' + allowed_tags.join('$|^') + '$', 'gi');
+      allowedAttrsRE = new RegExp('^' + allowed_attrs.join('$|^') + '$', 'gi');
+      removeTagsRE = new RegExp('^' + editor.opts.htmlRemoveTags.join('$|^') + '$', 'gi');
+
+      dirty_html = _encode(dirty_html);
+
+      if (!editor.opts.fullPage) dirty_html = '<html><head></head><body>' + dirty_html + '</body></html>';
+
+      $iframe = $('<iframe style="width:0; height:0; position: absolute; left: -2000px; display: none;">');
+      $('body').append($iframe);
+      $iframe.get(0).contentWindow.document.open();
+      $iframe.get(0).contentWindow.document.write(dirty_html);
+      $iframe.get(0).contentWindow.document.close();
+
+      if (editor.opts.fullPage && full_page) {
+        var html_el = $iframe.contents().find('html').get(0);
+
+        // Run the cleaning process.
+        _run(html_el);
+
+        var doctype = editor.html.getDoctype($iframe.get(0).contentWindow.document);
+
+        dirty_html = doctype +
+                '<html' + editor.node.attributes(html_el) + '>' +
+                html_el.innerHTML +
+                '</html>';
+
+        $iframe.remove();
+
+        return _decode(dirty_html);
+      }
+      else {
+        body = $iframe.get(0).contentDocument.getElementsByTagName('body')[0];
+
+        // Run the cleaning process.
+        _run(body);
+
+        // Get clean html.
+        dirty_html = body.innerHTML;
+
+        $iframe.remove();
+
+        return _decode(dirty_html);
+      }
+    }
+
+    /**
+     * Clean quotes.
+     */
+    function quotes () {
+      // Join quotes.
+      var sibling_quotes = editor.$el.find('blockquote + blockquote');
+      for (var k = 0; k < sibling_quotes.length; k++) {
+        var $quote = $(sibling_quotes[k]);
+        if (editor.node.attributes(sibling_quotes[k]) == editor.node.attributes($quote.prev().get(0))) {
+          $quote.prev().append($quote.html());
+          $quote.remove();
+        }
+      }
+    }
+
+    /**
+     * Clean tables.
+     */
+    function tables () {
+      var trs = editor.$el.find('tr').filter(function () {
+        return $(this).find('th').length > 0;
+      })
+
+      for (var i = 0; i < trs.length; i++) {
+        var $thead = $(trs[i]).closest('table').find('thead');
+        if ($thead.length === 0) {
+          $thead = $('<thead>');
+          $(trs[i]).closest('table').prepend($thead);
+        }
+
+        $thead.append(trs[i]);
+      }
+
+      // Make sure we have a br before tables.
+      editor.$el.find('table').filter(function () {
+        var prev_node = this.previousSibling;
+        if (prev_node && !editor.node.isBlock(prev_node) && prev_node.tagName != 'BR') {
+          return true;
+        }
+        else {
+          return false;
+        }
+      }).before('<br>');
+
+      // Remove P from TH and TH.
+      var default_tag = editor.html.defaultTag();
+      if (default_tag) {
+        editor.$el.find('td > ' + default_tag + ', th > ' + default_tag).each (function () {
+          if (editor.node.attributes(this) === '') {
+            $(this).replaceWith(this.innerHTML + '<br>');
+          }
+        });
+      }
+    }
+
+    /**
+     * Clean lists.
+     */
+    function lists () {
+      // Join lists.
+      var sibling_lists = editor.$el.find('ol + ol, ul + ul');
+      for (var k = 0; k < sibling_lists.length; k++) {
+        var $list = $(sibling_lists[k]);
+        if (editor.node.attributes(sibling_lists[k]) == editor.node.attributes($list.prev().get(0))) {
+          $list.prev().append($list.html());
+          $list.remove();
+        }
+      }
+
+      // Find missplaced list items.
+      var $lis = [];
+      var filterListItem = function () {
+        return !editor.node.isList(this.parentNode);
+      };
+
+      do {
+        if ($lis.length) {
+          var li = $lis.get(0);
+          var $ul = $('<ul></ul>').insertBefore($(li));
+          do {
+            var tmp = li;
+            li = li.nextSibling;
+            $ul.append($(tmp));
+          } while (li && li.tagName == 'LI');
+        }
+
+        $lis = editor.$el.find('li').filter(filterListItem);
+      } while ($lis.length > 0);
+
+      var do_remove;
+      var removeEmptyList = function (index, lst) {
+        var $lst = $(lst);
+        if ($lst.find('LI').length === 0) {
+          do_remove = true;
+          $lst.remove();
+        }
+      };
+
+      do {
+        do_remove = false;
+
+        // Remove empty li.
+        editor.$el.find('li:empty').remove();
+
+        // Remove empty ul and ol.
+        editor.$el.find('ul, ol').each (removeEmptyList);
+      } while (do_remove === true);
+
+      // Do not allow list directly inside another list.
+      var direct_lists = editor.$el.find('ol, ul').find('> ul, > ol');
+      for (var i = 0; i < direct_lists.length; i++) {
+        var list = direct_lists[i];
+        var prev_li = list.previousSibling;
+        if (prev_li) {
+          if (prev_li.tagName == 'LI') {
+            $(prev_li).append(list);
+          }
+          else {
+            $(list).wrap('<li></li>');
+          }
+        }
+      }
+
+      // Check if nested lists don't have HTML after them.
+      editor.$el.find('li > ul, li > ol').each (function (idx, lst) {
+        if (lst.nextSibling) {
+          var node = lst.nextSibling;
+          var $new_li = $('<li>');
+          $(lst.parentNode).after($new_li);
+          do {
+            var tmp = node;
+            node = node.nextSibling;
+            $new_li.append(tmp);
+          } while (node);
+        }
+      });
+
+      // Make sure we can type in nested list.
+      editor.$el.find('li > ul, li > ol').each (function (idx, lst) {
+        // List is the first in the LI.
+        if (editor.node.isFirstSibling(lst)) {
+          $(lst).before('<br/>');
+        }
+
+        // Make sure we don't leave BR before list.
+        else if (lst.previousSibling && lst.previousSibling.tagName == 'BR') {
+          var prev_node = lst.previousSibling.previousSibling;
+
+          // Skip markers.
+          while (prev_node && $(prev_node).hasClass('fr-marker')) {
+            prev_node = prev_node.previousSibling;
+          }
+
+          // Remove BR only if there is something else than BR.
+          if (prev_node && prev_node.tagName != 'BR') {
+            $(lst.previousSibling).remove();
+          }
+        }
+      });
+
+      // Remove empty li.
+      editor.$el.find('li:empty').remove();
+    }
+
+    /**
+     * Initialize
+     */
+    function _init () {
+      // If fullPage is on allow head and title.
+      if (editor.opts.fullPage) {
+        $.merge(editor.opts.htmlAllowedTags, ['head', 'title', 'style', 'link', 'base', 'body', 'html']);
+      }
+    }
+
+    return {
+      _init: _init,
+      html: html,
+      toHTML5: toHTML5,
+      tables: tables,
+      lists: lists,
+      quotes: quotes,
+      invisibleSpaces: invisibleSpaces
+    }
+  };
+
+
+  $.FroalaEditor.XS = 0;
+  $.FroalaEditor.SM = 1;
+  $.FroalaEditor.MD = 2;
+  $.FroalaEditor.LG = 3;
+
+  $.FroalaEditor.MODULES.helpers = function (editor) {
+    /**
+     * Get the IE version.
+     */
+    function _ieVersion () {
+      /*global navigator */
+      var rv = -1;
+      var ua;
+      var re;
+
+      if (navigator.appName == 'Microsoft Internet Explorer') {
+        ua = navigator.userAgent;
+        re = new RegExp('MSIE ([0-9]{1,}[\\.0-9]{0,})');
+        if (re.exec(ua) !== null)
+          rv = parseFloat(RegExp.$1);
+      } else if (navigator.appName == 'Netscape') {
+        ua = navigator.userAgent;
+        re = new RegExp('Trident/.*rv:([0-9]{1,}[\\.0-9]{0,})');
+        if (re.exec(ua) !== null)
+          rv = parseFloat(RegExp.$1);
+      }
+      return rv;
+    }
+
+    /**
+     * Determine the browser.
+     */
+    function _browser () {
+      var browser = {};
+
+      if (_ieVersion() > 0) {
+        browser.msie = true;
+      } else {
+        var ua = navigator.userAgent.toLowerCase();
+
+        var match =
+          /(edge)[ \/]([\w.]+)/.exec(ua) ||
+          /(chrome)[ \/]([\w.]+)/.exec(ua) ||
+          /(webkit)[ \/]([\w.]+)/.exec(ua) ||
+          /(opera)(?:.*version|)[ \/]([\w.]+)/.exec(ua) ||
+          /(msie) ([\w.]+)/.exec(ua) ||
+          ua.indexOf('compatible') < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec(ua) ||
+          [];
+
+        var matched = {
+          browser: match[1] || '',
+          version: match[2] || '0'
+        };
+
+        if (match[1]) browser[matched.browser] = true;
+        if (parseInt(matched.version, 10) < 9 && browser.msie) browser.oldMsie = true;
+
+        // Chrome is Webkit, but Webkit is also Safari.
+        if (browser.chrome) {
+          browser.webkit = true;
+        } else if (browser.webkit) {
+          browser.safari = true;
+        }
+      }
+
+      return browser;
+    }
+
+    function isIOS () {
+      return /(iPad|iPhone|iPod)/g.test(navigator.userAgent) && !isWindowsPhone();
+    }
+
+    function isAndroid () {
+      return /(Android)/g.test(navigator.userAgent) && !isWindowsPhone();
+    }
+
+    function isBlackberry () {
+      return /(Blackberry)/g.test(navigator.userAgent);
+    }
+
+    function isWindowsPhone () {
+      return /(Windows Phone)/gi.test(navigator.userAgent);
+    }
+
+    function isMobile () {
+      return isAndroid() || isIOS() || isBlackberry();
+    }
+
+    function requestAnimationFrame () {
+      return window.requestAnimationFrame ||
+              window.webkitRequestAnimationFrame ||
+              window.mozRequestAnimationFrame    ||
+              function (callback) {
+                window.setTimeout(callback, 1000 / 60);
+              };
+    }
+
+    function getPX (val) {
+      return parseInt(val, 10) || 0;
+    }
+
+    function screenSize () {
+      var $test = $('<div class="fr-visibility-helper"></div>').appendTo('body');
+      var size = getPX($test.css('margin-left'));
+      $test.remove();
+      return size;
+    }
+
+    function isTouch () {
+      return ('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch;
+    }
+
+    function isURL (url) {
+      if (!/^(https?:|ftps?:|)\/\//.test(url)) return false;
+
+      url = String(url)
+              .replace(/</g, '%3C')
+              .replace(/>/g, '%3E')
+              .replace(/"/g, '%22')
+              .replace(/ /g, '%20');
+
+
+      var test_reg = /\(?(?:(https?:|ftps?:|)\/\/)?(?:((?:[^\W\s]|\.|-|[:]{1})+)@{1})?((?:www.)?(?:[^\W\s]|\.|-)+[\.][^\W\s]{2,4}|(?:www.)?(?:[^\W\s]|\.|-)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::(\d*))?([\/]?[^\s\?]*[\/]{1})*(?:\/?([^\s\n\?\[\]\{\}\#]*(?:(?=\.)){1}|[^\s\n\?\[\]\{\}\.\#]*)?([\.]{1}[^\s\?\#]*)?)?(?:\?{1}([^\s\n\#\[\]]*))?([\#][^\s\n]*)?\)?/gi;
+
+      return test_reg.test(url);
+    }
+
+    // Sanitize URL.
+    function sanitizeURL (url) {
+      if (/^(https?:|ftps?:|)\/\//.test(url)) {
+        if (!isURL(url)) {
+          return '';
+        }
+      }
+      else {
+        url = encodeURIComponent(url)
+                  .replace(/%23/g, '#')
+                  .replace(/%2F/g, '/')
+                  .replace(/%25/g, '%')
+                  .replace(/mailto%3A/g, 'mailto:')
+                  .replace(/file%3A/g, 'file:')
+                  .replace(/sms%3A/g, 'sms:')
+                  .replace(/tel%3A/g, 'tel:')
+                  .replace(/data%3Aimage/g, 'data:image')
+                  .replace(/webkit-fake-url%3A/g, 'webkit-fake-url:')
+                  .replace(/%3F/g, '?')
+                  .replace(/%3D/g, '=')
+                  .replace(/%26/g, '&')
+                  .replace(/&amp;/g, '&')
+                  .replace(/%2C/g, ',')
+                  .replace(/%3B/g, ';')
+                  .replace(/%2B/g, '+')
+                  .replace(/%40/g, '@');
+      }
+
+      return url;
+    }
+
+    function isArray (obj) {
+      return obj && !(obj.propertyIsEnumerable('length')) &&
+              typeof obj === 'object' && typeof obj.length === 'number';
+    }
+
+    /*
+     * Transform RGB color to hex value.
+     */
+    function RGBToHex (rgb) {
+      function hex(x) {
+        return ('0' + parseInt(x, 10).toString(16)).slice(-2);
+      }
+
+      try {
+        if (!rgb || rgb === 'transparent') return '';
+
+        if (/^#[0-9A-F]{6}$/i.test(rgb)) return rgb;
+
+        rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+
+        return ('#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3])).toUpperCase();
+      }
+      catch (ex) {
+        return null;
+      }
+    }
+
+    function HEXtoRGB (hex) {
+      // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+      var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+      hex = hex.replace(shorthandRegex, function (m, r, g, b) {
+        return r + r + g + g + b + b;
+      });
+
+      var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? 'rgb(' + parseInt(result[1], 16) + ', ' + parseInt(result[2], 16) + ', ' + parseInt(result[3], 16) + ')' : '';
+    }
+
+    /*
+     * Get block alignment.
+     */
+    function getAlignment ($block) {
+      var alignment = $block.css('text-align').replace(/-(.*)-/g, '');
+
+      // Detect rtl.
+      if (['left', 'right', 'justify', 'center'].indexOf(alignment) < 0) {
+        var $div = $('<div dir="auto" style="text-align: initial; position: fixed; left: -3000px;"><span id="s1">.</span><span id="s2">.</span></div>');
+        $('body').append($div);
+
+        var l1 = $div.find('#s1').get(0).getBoundingClientRect().left;
+        var l2 = $div.find('#s2').get(0).getBoundingClientRect().left;
+
+        $div.remove();
+
+        alignment = l1 < l2 ? 'left' : 'right';
+      }
+
+      return alignment;
+    }
+
+    /**
+     * Tear up.
+     */
+    function _init () {
+      editor.browser = _browser();
+      editor.ie_version = _ieVersion();
+    }
+
+    return {
+      _init: _init,
+      isIOS: isIOS,
+      isAndroid: isAndroid,
+      isBlackberry: isBlackberry,
+      isWindowsPhone: isWindowsPhone,
+      isMobile: isMobile,
+      requestAnimationFrame: requestAnimationFrame,
+      getPX: getPX,
+      screenSize: screenSize,
+      isTouch: isTouch,
+      sanitizeURL: sanitizeURL,
+      isArray: isArray,
+      RGBToHex: RGBToHex,
+      HEXtoRGB: HEXtoRGB,
+      isURL: isURL,
+      getAlignment: getAlignment
+    }
+  }
+
+
+  $.FroalaEditor.MODULES.events = function (editor) {
+    var _events = {};
+    var _do_blur;
+
+    function _assignEvent($el, events, handler) {
+      $el.on(events.split(' ').join('.' + editor.id + ' ') + '.' + editor.id, handler);
+      on('destroy', function () {
+        $el.off(events.split(' ').join('.' + editor.id + ' ') + '.' + editor.id);
+      });
+    }
+
+    function _forPaste () {
+      _assignEvent(editor.$el, 'cut copy paste', function (e) {
+        trigger(e.type, [e]);
+      });
+    }
+
+    function _forElement() {
+      _assignEvent(editor.$el, 'click mouseup mousedown touchstart touchend dragenter dragover drop', function (e) {
+        trigger(e.type, [e]);
+      });
+    }
+
+    function _forKeys () {
+      // Map events.
+      _assignEvent(editor.$el, 'keydown keypress keyup input', function (e) {
+        trigger(e.type, [e]);
+      });
+    }
+
+    function _forWindow () {
+      _assignEvent(editor.$window, editor._mousedown, function (e) {
+        trigger('window.mousedown', [e]);
+        enableBlur();
+      });
+
+      _assignEvent(editor.$window, editor._mouseup, function (e) {
+        trigger('window.mouseup', [e]);
+      });
+
+      _assignEvent(editor.$window, 'keydown keyup touchmove', function (e) {
+        trigger('window.' + e.type, [e]);
+      });
+    }
+
+    function _forDocument() {
+      _assignEvent(editor.$document, 'drop', function (e) {
+        trigger('document.drop', [e]);
+      })
+    }
+
+    function focus (do_focus) {
+      if (typeof do_focus == 'undefined') do_focus = true;
+      if (!editor.$wp) return false;
+
+      // If there is no focus, then force focus.
+      if (!editor.core.hasFocus() && do_focus) {
+        editor.$el.focus();
+        return false;
+      }
+
+      // Don't go further if we haven't focused or there are markers.
+      if (!editor.core.hasFocus() || editor.$el.find('.fr-marker').length > 0) {
+        return false;
+      }
+
+      var info = editor.selection.info(editor.$el.get(0));
+
+      if (info.atStart && editor.selection.isCollapsed()) {
+        if (editor.html.defaultTag() != null) {
+          var marker = editor.markers.insert();
+          if (marker && !editor.node.blockParent(marker)) {
+            $(marker).remove();
+
+            var element = editor.$el.find(editor.html.blockTagsQuery()).get(0);
+            if (element) {
+              $(element).prepend($.FroalaEditor.MARKERS);
+              editor.selection.restore();
+            }
+          }
+          else if (marker) {
+            $(marker).remove();
+          }
+        }
+      }
+    }
+
+    var focused = false;
+
+    function _forFocus () {
+      _assignEvent(editor.$el, 'focus', function (e) {
+        if (blurActive()) {
+          focus(false);
+          if (focused === false) {
+            trigger(e.type, [e]);
+          }
+        }
+      });
+
+      _assignEvent(editor.$el, 'blur', function (e) {
+        if (blurActive() /* && document.activeElement != this */) {
+          if (focused === true) {
+            trigger(e.type, [e]);
+          }
+        }
+      });
+
+      on('focus', function () {
+        focused = true;
+      });
+
+      on('blur', function () {
+        focused = false;
+      });
+    }
+
+    function _forMouse () {
+      if (editor.helpers.isMobile()) {
+        editor._mousedown = 'touchstart';
+        editor._mouseup = 'touchend';
+        editor._move = 'touchmove';
+        editor._mousemove = 'touchmove';
+      }
+      else {
+        editor._mousedown = 'mousedown';
+        editor._mouseup = 'mouseup';
+        editor._move = '';
+        editor._mousemove = 'mousemove';
+      }
+    }
+
+    function _buttonMouseDown (e) {
+      var $btn = $(e.currentTarget);
+      if (editor.edit.isDisabled() || $btn.hasClass('fr-disabled')) {
+        e.preventDefault();
+        return false;
+      }
+
+      // Not click button.
+      if (e.type === 'mousedown' && e.which !== 1) return true;
+
+      // Scroll in list.
+      if (!editor.helpers.isMobile()) {
+        e.preventDefault();
+      }
+
+      if (editor.helpers.isAndroid() && $btn.parents('.fr-dropdown-menu').length === 0) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      // Simulate click.
+      $btn.addClass('fr-selected');
+
+      editor.events.trigger('commands.mousedown', [$btn]);
+    }
+
+    function _buttonMouseUp (e, handler) {
+      var $btn = $(e.currentTarget);
+
+      if (editor.edit.isDisabled() || $btn.hasClass('fr-disabled')) {
+        e.preventDefault();
+        return false;
+      }
+
+      if (e.type === 'mouseup' && e.which !== 1) return true;
+      if (!$btn.hasClass('fr-selected')) return true;
+
+      if (e.type != 'touchmove') {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
+
+        // Simulate click.
+        if (!$btn.hasClass('fr-selected')) {
+          $('.fr-selected').removeClass('fr-selected');
+          return false;
+        }
+        $('.fr-selected').removeClass('fr-selected');
+
+        if ($btn.data('dragging') || $btn.attr('disabled')) {
+          $btn.removeData('dragging');
+          return false;
+        }
+
+        var timeout = $btn.data('timeout');
+        if (timeout) {
+          clearTimeout(timeout);
+          $btn.removeData('timeout');
+        }
+
+        handler.apply(editor, [e]);
+      }
+      else {
+        if (!$btn.data('timeout')) {
+          $btn.data('timeout', setTimeout(function () {
+            $btn.data('dragging', true);
+          }, 100));
+        }
+      }
+    }
+
+    function enableBlur () {
+      _do_blur = true;
+    }
+
+    function disableBlur () {
+      _do_blur = false;
+    }
+
+    function blurActive () {
+      return _do_blur;
+    }
+
+    /**
+     * Bind click on an element.
+     */
+    function bindClick ($element, selector, handler) {
+      $element.on(editor._mousedown, selector, function (e) {
+        _buttonMouseDown(e);
+      });
+
+      $element.on(editor._mouseup + ' ' + editor._move, selector, function (e) {
+        _buttonMouseUp(e, handler);
+      });
+
+      $element.on('mousedown click mouseup', selector, function (e) {
+        e.stopPropagation();
+      });
+
+      on('window.mouseup', function () {
+        $element.find(selector).removeClass('fr-selected');
+        enableBlur();
+      });
+
+      on('destroy', function () {
+        $element.off(editor._mousedown, selector);
+        $element.off(editor._mouseup + ' ' + editor._move);
+      })
+    }
+
+    /**
+     * Add event.
+     */
+    function on (name, callback, first) {
+      if (typeof first == 'undefined') first = false;
+
+      var callbacks = (_events[name] = _events[name] || []);
+
+      if (first) {
+        callbacks.unshift(callback);
+      }
+      else {
+        callbacks.push(callback);
+      }
+    }
+
+    /**
+     * Trigger an event.
+     */
+    function trigger (name, args, force) {
+      if (!editor.edit.isDisabled() || force) {
+        var callbacks = _events[name];
+        var val;
+
+        if (callbacks) {
+          for (var i = 0; i < callbacks.length; i++) {
+            val = callbacks[i].apply(editor, args);
+            if (val === false) return false;
           }
         }
 
-        if (rangeNodes.length === 0) rangeNodes.push(node);
+        // Trigger event outside.
+        val = editor.$original_element.triggerHandler('froalaEditor.' + name, $.merge([editor], (args || [])));
+        if (val === false) return false;
 
-        return rangeNodes;
+        return val;
       }
     }
 
-    if (node == endNode && node.tagName == 'TR') {
-      var child_nodes = node.childNodes;
-      var start_offset = range.startOffset;
+    function chainTrigger (name, param, force) {
+      if (!editor.edit.isDisabled() || force) {
+        var callbacks = _events[name];
 
-      if (child_nodes.length > start_offset && start_offset >= 0) {
-        var td = child_nodes[start_offset];
-        if (td.tagName == 'TD' || td.tagName == 'TH') {
-          return [td];
-        }
-      }
-    }
+        var resp;
 
-    while (node && node != endNode) {
-      rangeNodes.push(node = this.nextNode(node, endNode));
-    }
+        if (callbacks) {
+          for (var i = 0; i < callbacks.length; i++) {
+            // Get the callback response.
+            resp = callbacks[i].apply(editor, [param]);
 
-    // Add partially selected nodes at the start of the range
-    node = range.startContainer;
-    while (node && node != range.commonAncestorContainer) {
-      rangeNodes.unshift(node);
-      node = node.parentNode;
-    }
-
-    return rangeNodes;
-  };
-
-  /**
-   * Get the nodes that are in the current selection.
-   *
-   * @returns {Array}
-   */
-  // Addapted from http://stackoverflow.com/questions/7781963/js-get-array-of-all-selected-nodes-in-contenteditable-div
-  $.Editable.prototype.getSelectedNodes = function () {
-    // IE gt 9. Other browsers.
-    if (this.window.getSelection) {
-      var sel = this.window.getSelection();
-      if (!sel.isCollapsed) {
-        var ranges = this.getRanges();
-        var nodes = [];
-        for (var i = 0; i < ranges.length; i++) {
-          nodes = $.merge(nodes, this.getRangeSelectedNodes(ranges[i]));
+            // If callback response is defined then assign it to param.
+            if (typeof resp !== 'undefined') param = resp;
+          }
         }
 
-        return nodes;
-      } else if (this.selectionInEditor()) {
-        var container = sel.getRangeAt(0).startContainer;
-        if (container.nodeType == 3)
-          return [container.parentNode];
-        else
-          return [container];
+        // Trigger event outside.
+        resp = editor.$original_element.triggerHandler('froalaEditor.' + name, $.merge([editor], [param]));
+
+        // If callback response is defined then assign it to param.
+        if (typeof resp !== 'undefined') param = resp;
+
+        return param;
       }
     }
 
-    return [];
-  };
-
-
-  /**
-   * Get the elements that are selected.
-   *
-   * @returns {Array}
-   */
-  $.Editable.prototype.getSelectionElements = function () {
-    var actualNodes = this.getSelectedNodes();
-    var nodes = [];
-
-    $.each(actualNodes, $.proxy(function (index, node) {
-      if (node !== null) {
-        var element = this.getElementFromNode(node);
-        if (nodes.indexOf(element) < 0 && element != this.$element.get(0) && element !== null) {
-          nodes.push(element);
-        }
-      }
-    }, this));
-
-    if (nodes.length === 0) {
-      nodes.push(this.$element.get(0));
-    }
-
-    return nodes;
-  };
-
-  /**
-   * Get the URL from selection.
-   *
-   * @returns {string}
-   */
-  $.Editable.prototype.getSelectionLink = function () {
-    var links = this.getSelectionLinks();
-
-    if (links.length > 0) {
-      return $(links[0]).attr('href');
-    }
-
-    return null;
-  };
-
-  /**
-   * Save current selection.
-   */
-  // From: http://stackoverflow.com/questions/5605401/insert-link-in-contenteditable-element
-  $.Editable.prototype.saveSelection = function () {
-    if (!this.selectionDisabled) {
-      this.savedRanges = [];
-      var selection_ranges = this.getRanges();
-
-      for (var i = 0; i < selection_ranges.length; i++) {
-        this.savedRanges.push(selection_ranges[i].cloneRange())
+    /**
+     * Destroy
+     */
+    function _destroy () {
+      // Clear the events list.
+      for (var k in _events) {
+        delete _events[k];
       }
     }
-  };
 
-  /**
-   * Restore if there is any selection saved.
-   */
-  $.Editable.prototype.restoreSelection = function () {
-    if (!this.selectionDisabled) {
-      var i;
-      var len;
-      var sel = this.getSelection();
+    /**
+     * Tear up.
+     */
+    function _init () {
+      _forMouse();
 
-      if (this.savedRanges && this.savedRanges.length) {
-        sel.removeAllRanges();
-        for (i = 0, len = this.savedRanges.length; i < len; i += 1) {
-          sel.addRange(this.savedRanges[i]);
-        }
-      }
+      _forElement();
+      _forWindow();
+      _forDocument();
+      _forKeys();
 
-      this.savedRanges = null;
+      _forFocus();
+      enableBlur();
+
+      _forPaste();
+
+      on('destroy', _destroy);
+    }
+
+    return {
+      _init: _init,
+      on: on,
+      trigger: trigger,
+      bindClick: bindClick,
+      disableBlur: disableBlur,
+      enableBlur: enableBlur,
+      blurActive: blurActive,
+      focus: focus,
+      chainTrigger: chainTrigger
     }
   };
 
-  // https://developer.mozilla.org/en-US/docs/Web/API/this.document.caretPositionFromPoint
-  // http://stackoverflow.com/questions/11191136/set-a-selection-range-from-a-to-b-in-absolute-position
-  $.Editable.prototype.insertMarkersAtPoint = function (e) {
-    var x = e.clientX;
-    var y = e.clientY;
 
-    // Clear markers.
-    this.removeMarkers();
+  $.FroalaEditor.INVISIBLE_SPACE = '&#8203;';
+  $.FroalaEditor.START_MARKER = '<span class="fr-marker" data-id="0" data-type="true" style="display: none; line-height: 0;">' + $.FroalaEditor.INVISIBLE_SPACE + '</span>';
+  $.FroalaEditor.END_MARKER = '<span class="fr-marker" data-id="0" data-type="false" style="display: none; line-height: 0;">'  + $.FroalaEditor.INVISIBLE_SPACE + '</span>';
+  $.FroalaEditor.MARKERS = $.FroalaEditor.START_MARKER + $.FroalaEditor.END_MARKER;
 
-    var start;
-    var range = null;
-
-    // Default.
-    if (typeof this.document.caretPositionFromPoint != 'undefined') {
-      start = this.document.caretPositionFromPoint(x, y);
-      range = this.document.createRange();
-
-      range.setStart(start.offsetNode, start.offset);
-      range.setEnd(start.offsetNode, start.offset);
+  $.FroalaEditor.MODULES.markers = function (editor) {
+    /**
+     * Build marker element.
+     */
+    function _build (marker, id) {
+      return $('<span class="fr-marker" data-id="' + id + '" data-type="' + marker + '" style="display: none; line-height: 0;">' + $.FroalaEditor.INVISIBLE_SPACE + '</span>', editor.document)[0];
     }
 
-    // Webkit.
-    else if (typeof this.document.caretRangeFromPoint != 'undefined') {
-      start = this.document.caretRangeFromPoint(x, y);
-      range = this.document.createRange();
-
-      range.setStart(start.startContainer, start.startOffset);
-      range.setEnd(start.startContainer, start.startOffset);
-    }
-
-    // Set ranges.
-    if (range !== null && typeof this.window.getSelection != 'undefined') {
-      var sel = this.window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-
-    // MSIE.
-    else if (typeof this.document.body.createTextRange != 'undefined') {
+    /**
+     * Place marker.
+     */
+    function place (range, marker, id) {
       try {
-        range = this.document.body.createTextRange();
-        range.moveToPoint(x, y);
-        var end_range = range.duplicate();
-        end_range.moveToPoint(x, y);
-        range.setEndPoint('EndToEnd', end_range);
-        range.select();
+        var boundary = range.cloneRange();
+        boundary.collapse(marker);
+
+        boundary.insertNode(_build(marker, id));
+
+        if (marker === true && range.collapsed) {
+          var sibling = editor.$el.find('span.fr-marker[data-type="true"][data-id="' + id + '"]').get(0).nextSibling;
+          while (sibling && sibling.nodeType === Node.TEXT_NODE && sibling.textContent.length === 0) {
+            $(sibling).remove();
+            sibling = editor.$el.find('span.fr-marker[data-type="true"][data-id="' + id + '"]').get(0).nextSibling;
+          }
+        }
+
+        if (marker === true && !range.collapsed) {
+          var marker = editor.$el.find('span.fr-marker[data-type="true"][data-id="' + id + '"]').get(0);
+          var sibling = marker.nextSibling;
+          if (sibling && sibling.nodeType === Node.ELEMENT_NODE && editor.node.isBlock(sibling)) {
+            // Place the marker deep inside the block tags.
+            var contents = [sibling];
+            do {
+              sibling = contents[0];
+              contents = editor.node.contents(sibling);
+            } while (contents[0] && editor.node.isBlock(contents[0]));
+
+            $(sibling).prepend($(marker));
+          }
+        }
+
+        if (marker === false && !range.collapsed) {
+          var marker = editor.$el.find('span.fr-marker[data-type="false"][data-id="' + id + '"]').get(0);
+          var sibling = marker.previousSibling;
+          if (sibling && sibling.nodeType === Node.ELEMENT_NODE && editor.node.isBlock(sibling)) {
+            // Place the marker deep inside the block tags.
+            var contents = [sibling];
+            do {
+              sibling = contents[contents.length - 1];
+              contents = editor.node.contents(sibling);
+            } while (contents[contents.length - 1] && editor.node.isBlock(contents[contents.length - 1]));
+
+            $(sibling).append($(marker));
+          }
+
+          // https://github.com/froala/wysiwyg-editor/issues/705
+          if (marker.parentNode && ['TD', 'TH'].indexOf(marker.parentNode.tagName) >= 0) {
+            if (marker.parentNode.previousSibling && !marker.previousSibling) {
+              $(marker.parentNode.previousSibling).append(marker);
+            }
+          }
+        }
+
+        return marker;
+      }
+      catch (ex) {
+        return nil;
+      }
+    }
+
+    /**
+     * Insert a single marker.
+     */
+    function insert () {
+      if (!editor.$wp) return null;
+
+      try {
+        var range = editor.selection.ranges(0);
+        var containter = range.commonAncestorContainer;
+
+        // Check if selection is inside editor.
+        if (containter != editor.$el.get(0) && editor.$el.find(containter).length == 0) return null;
+
+        var boundary = range.cloneRange();
+        boundary.collapse(true);
+
+        var mk = $('<span class="fr-marker" style="display: inline; line-height: 0;">' + $.FroalaEditor.INVISIBLE_SPACE + '</span>', editor.document)[0];
+
+        boundary.insertNode(mk);
+
+        mk = editor.$el.find('span.fr-marker').get(0);
+
+        if (mk) {
+          var sibling = mk.nextSibling;
+          while (sibling && sibling.nodeType === Node.TEXT_NODE && sibling.textContent.length === 0) {
+            $(sibling).remove();
+            sibling = editor.$el.find('span.fr-marker').get(0).nextSibling;
+          }
+
+          return mk;
+        }
+        else {
+          return null;
+        }
+      }
+      catch (ex) {
+        console.warn ('MARKER', ex)
+      }
+    }
+
+    /**
+     * Insert marker at point from event.
+     *
+     * http://stackoverflow.com/questions/11191136/set-a-selection-range-from-a-to-b-in-absolute-position
+     * https://developer.mozilla.org/en-US/docs/Web/API/this.document.caretPositionFromPoint
+     */
+    function insertAtPoint (e) {
+      var x = e.clientX;
+      var y = e.clientY;
+
+      // Clear markers.
+      remove();
+
+      var start;
+      var range = null;
+
+      // Default.
+      if (typeof editor.document.caretPositionFromPoint != 'undefined') {
+        start = editor.document.caretPositionFromPoint(x, y);
+        range = editor.document.createRange();
+
+        range.setStart(start.offsetNode, start.offset);
+        range.setEnd(start.offsetNode, start.offset);
+      }
+
+      // Webkit.
+      else if (typeof editor.document.caretRangeFromPoint != 'undefined') {
+        start = editor.document.caretRangeFromPoint(x, y);
+        range = editor.document.createRange();
+
+        range.setStart(start.startContainer, start.startOffset);
+        range.setEnd(start.startContainer, start.startOffset);
+      }
+
+      // Set ranges.
+      if (range !== null && typeof editor.window.getSelection != 'undefined') {
+        var sel = editor.window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+
+      // MSIE.
+      else if (typeof editor.document.body.createTextRange != 'undefined') {
+        try {
+          range = editor.document.body.createTextRange();
+          range.moveToPoint(x, y);
+          var end_range = range.duplicate();
+          end_range.moveToPoint(x, y);
+          range.setEndPoint('EndToEnd', end_range);
+          range.select();
+        }
+        catch (ex) {
+        }
+      }
+
+      insert();
+    }
+
+    /**
+     * Remove markers.
+     */
+    function remove () {
+      editor.$el.find('.fr-marker').remove();
+    }
+
+    return {
+      place: place,
+      insert: insert,
+      insertAtPoint: insertAtPoint,
+      remove: remove
+    }
+  };
+
+
+  $.FroalaEditor.MODULES.selection = function (editor) {
+    /**
+     * Get selection text.
+     */
+    function text () {
+      var text = '';
+
+      if (editor.window.getSelection) {
+        text = editor.window.getSelection();
+      } else if (editor.document.getSelection) {
+        text = editor.document.getSelection();
+      } else if (editor.document.selection) {
+        text = editor.document.selection.createRange().text;
+      }
+
+      return text.toString();
+    }
+
+    /**
+     * Get the selection object.
+     */
+    function get () {
+      var selection = '';
+      if (editor.window.getSelection) {
+        selection = editor.window.getSelection();
+      } else if (editor.document.getSelection) {
+        selection = editor.document.getSelection();
+      } else {
+        selection = editor.document.selection.createRange();
+      }
+
+      return selection;
+    }
+
+    /**
+     * Get the selection ranges or a single range at a specified index.
+    */
+    function ranges (index) {
+      var sel = get();
+      var ranges = [];
+
+      // Get ranges.
+      if (sel && sel.getRangeAt && sel.rangeCount) {
+        var ranges = [];
+        for (var i = 0; i < sel.rangeCount; i++) {
+          ranges.push(sel.getRangeAt(i));
+        }
+      }
+      else {
+        if (editor.document.createRange) {
+          ranges = [editor.document.createRange()];
+        } else {
+          ranges = [];
+        }
+      }
+
+      return (typeof index != 'undefined' ? ranges[index] : ranges);
+    }
+
+    /**
+     * Clear selection.
+     */
+    function clear () {
+      var sel = get();
+
+      try {
+        if (sel.removeAllRanges) {
+          sel.removeAllRanges();
+        } else if (sel.empty) {  // IE?
+          sel.empty();
+        } else if (sel.clear) {
+          sel.clear();
+        }
+      }
+      catch (ex) {}
+    }
+
+    /**
+     * Selection element.
+    */
+    function element () {
+      var sel = get();
+
+      try {
+        if (sel.rangeCount) {
+          var range = ranges(0);
+          var node = range.startContainer;
+
+          // Get parrent if node type is not DOM.
+          if (node.nodeType == Node.ELEMENT_NODE) {
+            var node_found = false;
+
+            // Search for node deeper.
+            if (node.childNodes.length > 0 && node.childNodes[range.startOffset]) {
+              var child = node.childNodes[range.startOffset];
+              while (child && child.nodeType == Node.TEXT_NODE && child.textContent.length == 0) {
+                child = child.nextSibling;
+              }
+
+              if (child && child.textContent.replace(/\u200B/g, '') === text().replace(/\u200B/g, '')) {
+                node = child;
+                node_found = true;
+              }
+            }
+            // Selection starts just at the end of the node.
+            else if (!range.collapsed && node.nextSibling && node.nextSibling.nodeType == Node.ELEMENT_NODE) {
+              var child = node.nextSibling;
+
+              if (child && child.textContent.replace(/\u200B/g, '') === text().replace(/\u200B/g, '')) {
+                node = child;
+                node_found = true;
+              }
+            }
+
+            if (!node_found && node.childNodes.length > 0 && $(node.childNodes[0]).text().replace(/\u200B/g, '') === text().replace(/\u200B/g, '') && ['BR', 'IMG', 'HR'].indexOf(node.childNodes[0].tagName) < 0) {
+              node = node.childNodes[0];
+            }
+          }
+
+          while (node.nodeType != Node.ELEMENT_NODE && node.parentNode) {
+            node = node.parentNode;
+          }
+
+          // Make sure the node is in editor.
+          var p = node;
+          while (p && p.tagName != 'HTML') {
+            if (p == editor.$el.get(0)) {
+              return node;
+            }
+
+            p = $(p).parent()[0];
+          }
+        }
       }
       catch (ex) {
 
       }
+
+      return editor.$el.get(0);
     }
 
-    // Place markers.
-    this.placeMarker(range, true, 0);
-    this.placeMarker(range, false, 0);
-  }
+    /**
+     * Selection element.
+    */
+    function endElement () {
+      var sel = get();
 
-  /**
-   * Save selection using markers.
-   */
-  $.Editable.prototype.saveSelectionByMarkers = function () {
-    if (!this.selectionDisabled) {
-      if (!this.selectionInEditor()) this.focus();
+      try {
+        if (sel.rangeCount) {
+          var range = ranges(0);
+          var node = range.endContainer;
 
-      this.removeMarkers();
+          // Get parrent if node type is not DOM.
+          if (node.nodeType == Node.ELEMENT_NODE) {
+            var node_found = false;
 
-      var ranges = this.getRanges();
+            // Search for node deeper.
+            if (node.childNodes.length > 0 && node.childNodes[range.endOffset] && $(node.childNodes[range.endOffset]).text() === text()) {
+              node = node.childNodes[range.endOffset];
+              node_found = true;
+            }
+            // Selection starts just at the end of the node.
+            else if (!range.collapsed && node.previousSibling && node.previousSibling.nodeType == Node.ELEMENT_NODE) {
+              var child = node.previousSibling;
 
-      for (var i = 0; i < ranges.length; i++) {
-        if (ranges[i].startContainer !== this.document) {
-          var range = ranges[i];
-          this.placeMarker(range, true, i); // Start.
-          this.placeMarker(range, false, i); // End.
+              if (child && child.textContent.replace(/\u200B/g, '') === text().replace(/\u200B/g, '')) {
+                node = child;
+                node_found = true;
+              }
+            }
+
+            if (!node_found && node.childNodes.length > 0 && $(node.childNodes[node.childNodes.length - 1]).text() === text() && ['BR', 'IMG', 'HR'].indexOf(node.childNodes[node.childNodes.length - 1].tagName) < 0) {
+              node = node.childNodes[node.childNodes.length - 1];
+            }
+          }
+
+          if (node.nodeType == Node.TEXT_NODE && range.endOffset == 0 && node.previousSibling && node.previousSibling.nodeType == Node.ELEMENT_NODE) {
+            node = node.previousSibling;
+          }
+
+          while (node.nodeType != Node.ELEMENT_NODE && node.parentNode) {
+            node = node.parentNode;
+          }
+
+          // Make sure the node is in editor.
+          var p = node;
+          while (p && p.tagName != 'HTML') {
+            if (p == editor.$el.get(0)) {
+              return node;
+            }
+
+            p = $(p).parent()[0];
+          }
+        }
+      }
+      catch (ex) {
+
+      }
+
+      return editor.$el.get(0);
+    }
+
+    /**
+     * Get the ELEMENTS node where the selection starts.
+     * By default TEXT node might be selected.
+     */
+    function rangeElement(rangeContainer, offset) {
+      var node = rangeContainer;
+      if (node.nodeType == Node.ELEMENT_NODE) {
+        // Search for node deeper.
+        if (node.childNodes.length > 0 && node.childNodes[offset]) {
+          node = node.childNodes[offset];
+        }
+      }
+
+      if (node.nodeType == Node.TEXT_NODE) {
+        node = node.parentNode;
+      }
+
+      return node;
+    }
+
+    /**
+     * Search for the current selected blocks.
+     */
+    function blocks () {
+      var blks = [];
+
+      var sel = get();
+
+      // Selection must be inside editor.
+      if (inEditor() && sel.rangeCount) {
+
+        // Loop through ranges.
+        var rngs = ranges();
+        for (var i = 0; i < rngs.length; i++) {
+          var range = rngs[i];
+
+          // Get start node and end node for range.
+          var start_node = rangeElement(range.startContainer, range.startOffset);
+          var end_node  = rangeElement(range.endContainer, range.endOffset);
+
+          // Add the start node.
+          if (editor.node.isBlock(start_node) && blks.indexOf(start_node) < 0) blks.push(start_node);
+
+          // Check for the parent node of the start node.
+          var block_parent = editor.node.blockParent(start_node);
+          if (block_parent && blks.indexOf(block_parent) < 0) {
+            blks.push(block_parent);
+          }
+
+          // Do not add nodes where we've been once.
+          var was_into = [];
+
+          // Loop until we reach end.
+          var next_node = start_node;
+          while (next_node !== end_node && next_node !== editor.$el.get(0)) {
+            // Get deeper into the current node.
+            if (was_into.indexOf(next_node) < 0 && next_node.children && next_node.children.length) {
+              was_into.push(next_node);
+              next_node = next_node.children[0];
+            }
+
+            // Get next sibling.
+            else if (next_node.nextSibling) {
+              next_node = next_node.nextSibling;
+            }
+
+            // Get parent node.
+            else if (next_node.parentNode) {
+              next_node = next_node.parentNode;
+              was_into.push(next_node);
+            }
+
+            // Add node to the list.
+            if (editor.node.isBlock(next_node) && was_into.indexOf(next_node) < 0 && blks.indexOf(next_node) < 0) blks.push(next_node);
+          }
+
+          // Add the end node.
+          if (editor.node.isBlock(end_node) && blks.indexOf(end_node) < 0) blks.push(end_node);
+
+          // Check for the parent node of the end node.
+          var block_parent = editor.node.blockParent(end_node);
+          if (block_parent && blks.indexOf(block_parent) < 0) {
+            blks.push(block_parent);
+          }
+        }
+      }
+
+      // Remove blocks that we don't need.
+      for (var i = blks.length - 1; i > 0; i--) {
+        // Nodes that contain another node. Don't do it for LI.
+        if ($(blks[i]).find(blks).length && blks[i].tagName != 'LI') blks.splice(i, 1);
+      }
+
+      return blks;
+    }
+
+    /**
+     * Save selection.
+     */
+    function save () {
+      if (editor.$wp) {
+        editor.markers.remove();
+
+        var rgs = ranges();
+        var new_ranges = [];
+
+        for (var i = 0; i < rgs.length; i++) {
+          if (rgs[i].startContainer !== editor.document) {
+            var range = rgs[i];
+            var collapsed = range.collapsed;
+            var start_m = editor.markers.place(range, true, i); // Start.
+            var end_m = editor.markers.place(range, false, i); // End.
+
+            if (editor.browser.safari && !collapsed) {
+              var range = editor.document.createRange();
+              range.setStartAfter(start_m);
+              range.setEndBefore(end_m);
+              new_ranges.push(range);
+            }
+          }
+        }
+
+        if (editor.browser.safari && new_ranges.length) {
+          editor.selection.clear();
+          for (var i = 0; i < new_ranges.length; i++) {
+            editor.selection.get().addRange(new_ranges[i]);
+          }
         }
       }
     }
-  };
 
-  /**
-   * Check if there is any selection stored.
-   */
-  $.Editable.prototype.hasSelectionByMarkers = function () {
-    // Get markers.
-    var markers = this.$element.find('.f-marker[data-type="true"]');
-
-    if (markers.length > 0) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Restore selection using markers.
-   */
-  $.Editable.prototype.restoreSelectionByMarkers = function (clear_ranges) {
-    if (clear_ranges === undefined) clear_ranges = true;
-
-    if (!this.selectionDisabled) {
+    /**
+     * Restore selection.
+     */
+    function restore () {
       // Get markers.
-      var markers = this.$element.find('.f-marker[data-type="true"]');
+      var markers = editor.$el.find('.fr-marker[data-type="true"]');
+
+      if (!editor.$wp) {
+        markers.remove();
+        return false;
+      }
 
       // No markers.
       if (markers.length === 0) {
         return false;
       }
 
-      // Focus before restoring selection.
-      if (!this.$element.is(':focus') && !this.browser.msie) {
-        this.$element.focus();
+      var scroll_top = $(editor.original_window).scrollTop();
+
+      // Focus.
+      if (!editor.core.hasFocus() || !editor.browser.msie) {
+        editor.$el.focus();
       }
 
-      var sel = this.getSelection();
+      clear();
+      var sel = get();
 
-      if (clear_ranges || (this.getRange() && !this.getRange().collapsed) || !$(markers[0]).attr('data-collapsed')) {
-        if (!(this.browser.msie && $.Editable.getIEversion() < 9)) {
-          this.clearSelection();
-          clear_ranges = true;
-        }
-      }
+      var parents = [];
 
       // Add ranges.
       for (var i = 0; i < markers.length; i++) {
         var id = $(markers[i]).data('id');
         var start_marker = markers[i];
-        var end_marker = this.$element.find('.f-marker[data-type="false"][data-id="' + id + '"]');
-
-        // IE 8 workaround.
-        if (this.browser.msie && $.Editable.getIEversion() < 9) {
-          this.setSelection(start_marker, 0, end_marker, 0);
-
-          // Remove used markers.
-          this.removeMarkers();
-
-          return false;
-        }
-
-        var range;
-
-        if (clear_ranges) {
-          range = this.document.createRange();
-        } else {
-          // Get ranges.
-          range = this.getRange();
-        }
+        var range = editor.document.createRange();
+        var end_marker = editor.$el.find('.fr-marker[data-type="false"][data-id="' + id + '"]');
 
         // Make sure there is an start marker.
         if (end_marker.length > 0) {
           end_marker = end_marker[0];
 
           try {
-            range.setStartAfter(start_marker);
-            range.setEndBefore(end_marker);
+            // If we have markers one next to each other inside text, then we should normalize text by joining it.
+            var special_case = false;
+
+            // Clear empty text nodes.
+            var s_node = start_marker.nextSibling;
+            while (s_node && s_node.nodeType == Node.TEXT_NODE && s_node.textContent.length == 0) {
+              var tmp = s_node;
+              s_node = s_node.nextSibling;
+              $(tmp).remove();
+            }
+
+            var e_node = end_marker.nextSibling;
+            while (e_node && e_node.nodeType == Node.TEXT_NODE && e_node.textContent.length == 0) {
+              var tmp = e_node;
+              e_node = e_node.nextSibling;
+              $(tmp).remove();
+            }
+
+            if (start_marker.nextSibling == end_marker || end_marker.nextSibling == start_marker) {
+              // Decide which is first and which is last between markers.
+              var first_node = (start_marker.nextSibling == end_marker) ? start_marker : end_marker;
+              var last_node = (first_node == start_marker) ? end_marker : start_marker;
+
+              // Previous node.
+              var prev_node = first_node.previousSibling;
+              while (prev_node && prev_node.nodeType == Node.TEXT_NODE && prev_node.length == 0) {
+                var tmp = prev_node;
+                prev_node = prev_node.previousSibling;
+                $(tmp).remove();
+              }
+
+              // Normalize text before.
+              if (prev_node && prev_node.nodeType == Node.TEXT_NODE) {
+                while (prev_node && prev_node.previousSibling && prev_node.previousSibling.nodeType == Node.TEXT_NODE) {
+                  prev_node.previousSibling.textContent = prev_node.previousSibling.textContent + prev_node.textContent;
+                  prev_node = prev_node.previousSibling;
+                  $(prev_node.nextSibling).remove();
+                }
+              }
+
+              // Next node.
+              var next_node = last_node.nextSibling;
+              while (next_node && next_node.nodeType == Node.TEXT_NODE && next_node.length == 0) {
+                var tmp = next_node;
+                next_node = next_node.nextSibling;
+                $(tmp).remove();
+              }
+
+              // Normalize text after.
+              if (next_node && next_node.nodeType == Node.TEXT_NODE) {
+                while (next_node && next_node.nextSibling && next_node.nextSibling.nodeType == Node.TEXT_NODE) {
+                  next_node.nextSibling.textContent =  next_node.textContent + next_node.nextSibling.textContent;
+                  next_node = next_node.nextSibling;
+                  $(next_node.previousSibling).remove();
+                }
+              }
+
+              if (prev_node && editor.node.isVoid(prev_node)) prev_node = null;
+              if (next_node && editor.node.isVoid(next_node)) next_node = null;
+
+              // Previous node and next node are both text.
+              if (prev_node && next_node && prev_node.nodeType == Node.TEXT_NODE && next_node.nodeType == Node.TEXT_NODE) {
+                // Remove markers.
+                $(start_marker).remove();
+                $(end_marker).remove();
+
+                // Save cursor position.
+                var len = prev_node.textContent.length;
+                prev_node.textContent = prev_node.textContent + next_node.textContent;
+                $(next_node).remove();
+
+                // Normalize spaces.
+                editor.html.normalizeSpaces(prev_node);
+
+                // Restore position.
+                range.setStart(prev_node, len);
+                range.setEnd(prev_node, len);
+
+                special_case = true;
+              }
+              else if (!prev_node && next_node && next_node.nodeType == Node.TEXT_NODE) {
+                // Remove markers.
+                $(start_marker).remove();
+                $(end_marker).remove();
+
+                // Normalize spaces.
+                editor.html.normalizeSpaces(next_node);
+
+                // Restore position.
+                range.setStart(next_node, 0);
+                range.setEnd(next_node, 0);
+
+                special_case = true;
+              }
+              else if (!next_node && prev_node && prev_node.nodeType == Node.TEXT_NODE) {
+                // Remove markers.
+                $(start_marker).remove();
+                $(end_marker).remove();
+
+                // Normalize spaces.
+                editor.html.normalizeSpaces(prev_node);
+
+                // Restore position.
+                range.setStart(prev_node, prev_node.textContent.length);
+                range.setEnd(prev_node, prev_node.textContent.length);
+
+                special_case = true;
+              }
+            }
+
+            if (!special_case) {
+              var x, y;
+              // DO NOT TOUCH THIS OR IT WILL BREAK!!!
+              if (editor.browser.chrome && start_marker.nextSibling == end_marker) {
+                x = _normalizedMarker(end_marker, range, true) || range.setStartAfter(end_marker);
+                y = _normalizedMarker(start_marker, range, false) || range.setEndBefore(start_marker);
+              }
+              else {
+                x = _normalizedMarker(start_marker, range, true) || range.setStartBefore(start_marker);
+                y = _normalizedMarker(end_marker, range, false) || range.setEndAfter(end_marker);
+              }
+
+              if (typeof x == 'function') x();
+              if (typeof y == 'function') y();
+            }
           } catch (ex) {
+            console.warn ('RESTORE RANGE', ex);
           }
         }
 
-        if (clear_ranges) {
-          sel.addRange(range);
-        }
+        sel.addRange(range);
       }
 
       // Remove used markers.
-      this.removeMarkers();
-    }
-  };
+      editor.markers.remove();
 
-  /**
-   * Set selection start.
-   *
-   * @param sn - Start node.
-   * @param fn - Final node.
-   */
-  $.Editable.prototype.setSelection = function (sn, so, fn, fo) {
-    // Check if there is any selection first.
-    var sel = this.getSelection();
-    if (!sel) return;
-
-    // Clean other ranges.
-    this.clearSelection();
-
-    // Sometimes this throws an error.
-    try {
-      // Start selection.
-      if (!fn) fn = sn;
-      if (so === undefined) so = 0;
-      if (fo === undefined) fo = so;
-
-      // Set ranges (https://developer.mozilla.org/en-US/docs/Web/API/range.setStart)
-      var range = this.getRange();
-      range.setStart(sn, so);
-      range.setEnd(fn, fo);
-
-      // Add range to current selection.
-      sel.addRange(range);
-    } catch (e) { }
-  };
-
-  $.Editable.prototype.buildMarker = function (marker, id, collapsed) {
-    if (collapsed === undefined) collapsed = '';
-
-    return $('<span class="f-marker"' + collapsed + ' style="display:none; line-height: 0;" data-fr-verified="true" data-id="' + id + '" data-type="' + marker + '">', this.document)[0];
-  };
-
-  /**
-   * Insert marker at start/end of range.
-   *
-   * @param range
-   * @param marker - true/false for begin/end.
-   */
-  $.Editable.prototype.placeMarker = function (range, marker, id) {
-    var collapsed = '';
-    if (range.collapsed) {
-      collapsed = ' data-collapsed="true"';
+      $(editor.original_window).scrollTop(scroll_top);
     }
 
-    try {
-      var boundary = range.cloneRange();
-      boundary.collapse(marker);
+    /**
+     * Normalize marker when restoring selection.
+     */
+    function _normalizedMarker(marker, range, start) {
+      var prev_node = marker.previousSibling;
+      var next_node = marker.nextSibling;
 
-      boundary.insertNode(this.buildMarker(marker, id, collapsed));
-      if (marker === true && collapsed) {
-        var sibling = this.$element.find('span.f-marker[data-type="true"][data-id="' + id + '"]').get(0).nextSibling;
-        while (sibling.nodeType === 3 && sibling.data.length === 0) {
-          $(sibling).remove();
-          sibling = this.$element.find('span.f-marker[data-type="true"][data-id="' + id + '"]').get(0).nextSibling;
-        }
-      }
-    }
-    catch (ex) {
-    }
-  };
+      if (prev_node && next_node && prev_node.nodeType == Node.TEXT_NODE && next_node.nodeType == Node.TEXT_NODE) {
+        var len = prev_node.textContent.length;
 
-  /**
-   * Remove markers.
-   */
-  $.Editable.prototype.removeMarkers = function () {
-    this.$element.find('.f-marker').remove();
-  };
+        if (start) {
+         next_node.textContent = prev_node.textContent + next_node.textContent;
+         $(prev_node).remove();
+         $(marker).remove();
 
-  // From: http://www.coderexception.com/0B1B33z1NyQxUQSJ/contenteditable-div-how-can-i-determine-if-the-cursor-is-at-the-start-or-end-of-the-content
-  $.Editable.prototype.getSelectionTextInfo = function (el) {
-    var atStart = false;
-    var atEnd = false;
-    var selRange;
-    var testRange;
+         editor.html.normalizeSpaces(next_node);
 
-    if (this.window.getSelection) {
-      var sel = this.window.getSelection();
-      if (sel.rangeCount) {
-        selRange = sel.getRangeAt(0);
-        testRange = selRange.cloneRange();
-
-        testRange.selectNodeContents(el);
-        testRange.setEnd(selRange.startContainer, selRange.startOffset);
-        atStart = (testRange.toString() === '');
-
-        testRange.selectNodeContents(el);
-        testRange.setStart(selRange.endContainer, selRange.endOffset);
-        atEnd = (testRange.toString() === '');
-      }
-    } else if (this.document.selection && this.document.selection.type != 'Control') {
-      selRange = this.document.selection.createRange();
-      testRange = selRange.duplicate();
-
-      testRange.moveToElementText(el);
-      testRange.setEndPoint('EndToStart', selRange);
-      atStart = (testRange.text === '');
-
-      testRange.moveToElementText(el);
-      testRange.setEndPoint('StartToEnd', selRange);
-      atEnd = (testRange.text === '');
-    }
-
-    return { atStart: atStart, atEnd: atEnd };
-  };
-
-  /**
-   * Check if selection is at the end of block.
-   */
-  $.Editable.prototype.endsWith = function (string, suffix) {
-    return string.indexOf(suffix, string.length - suffix.length) !== -1;
-  }
-})(jQuery);
-
-(function ($) {
-  /**
-   * Transform a hex value to an RGB array.
-   *
-   * @param hex - HEX string.
-   * @returns {Array}
-   */
-  $.Editable.hexToRGB = function (hex) {
-    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
-    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
-      return r + r + g + g + b + b;
-    });
-
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
-  };
-
-  /**
-   * Transform a hex string to an RGB string.
-   *
-   * @param val - HEX string.
-   * @returns {string}
-   */
-  $.Editable.hexToRGBString = function (val) {
-    var rgb = this.hexToRGB(val);
-    if (rgb) {
-      return 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
-    }
-    else {
-      return '';
-    }
-  };
-
-  $.Editable.RGBToHex = function (rgb) {
-    function hex(x) {
-      return ('0' + parseInt(x, 10).toString(16)).slice(-2);
-    }
-
-    try {
-      if (!rgb || rgb === 'transparent') return '';
-
-      if (/^#[0-9A-F]{6}$/i.test(rgb)) return rgb;
-
-      rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-
-      return ('#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3])).toUpperCase();
-    }
-    catch (ex) {
-      return null;
-    }
-  }
-
-  /**
-   * Find the IE version.
-   *
-   * @returns {integer}
-   */
-  $.Editable.getIEversion = function () {
-    /*global navigator */
-    var rv = -1;
-    var ua;
-    var re;
-
-    if (navigator.appName == 'Microsoft Internet Explorer') {
-      ua = navigator.userAgent;
-      re = new RegExp('MSIE ([0-9]{1,}[\\.0-9]{0,})');
-      if (re.exec(ua) !== null)
-        rv = parseFloat(RegExp.$1);
-    } else if (navigator.appName == 'Netscape') {
-      ua = navigator.userAgent;
-      re = new RegExp('Trident/.*rv:([0-9]{1,}[\\.0-9]{0,})');
-      if (re.exec(ua) !== null)
-        rv = parseFloat(RegExp.$1);
-    }
-    return rv;
-  };
-
-  /**
-   * Find current browser.
-   *
-   * @returns {Object}
-   */
-  $.Editable.browser = function () {
-    var browser = {};
-
-    if (this.getIEversion() > 0) {
-      browser.msie = true;
-    } else {
-      var ua = navigator.userAgent.toLowerCase();
-
-      var match = /(chrome)[ \/]([\w.]+)/.exec(ua) ||
-        /(webkit)[ \/]([\w.]+)/.exec(ua) ||
-        /(opera)(?:.*version|)[ \/]([\w.]+)/.exec(ua) ||
-        /(msie) ([\w.]+)/.exec(ua) ||
-        ua.indexOf('compatible') < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec(ua) ||
-        [];
-
-      var matched = {
-        browser: match[1] || '',
-        version: match[2] || '0'
-      };
-
-      if (match[1]) browser[matched.browser] = true;
-      if (parseInt(matched.version, 10) < 9 && browser.msie) browser.oldMsie = true;
-
-      // Chrome is Webkit, but Webkit is also Safari.
-      if (browser.chrome) {
-        browser.webkit = true;
-      } else if (browser.webkit) {
-        browser.safari = true;
-      }
-    }
-
-    return browser;
-  };
-
-  $.Editable.isArray = function (obj) {
-    return obj && !(obj.propertyIsEnumerable('length')) &&
-            typeof obj === 'object' && typeof obj.length === 'number';
-  }
-
-  $.Editable.uniq = function (array) {
-    return $.grep(array, function (el, index) {
-      return index == $.inArray(el, array);
-    });
-  }
-
-  $.Editable.cleanWhitespace = function ($node) {
-    $node
-      .contents()
-      .filter(function () {
-        if (this.nodeType == 1) $.Editable.cleanWhitespace($(this));
-        return (this.nodeType == 3 && !/\S/.test(this.nodeValue));
-      })
-      .remove();
-  }
-
-})(jQuery);
-
-(function ($) {
-  /**
-   * Show editor
-   */
-  $.Editable.prototype.show = function (e) {
-    this.hideDropdowns();
-    if (e === undefined) return;
-
-    if (this.options.inlineMode || this.options.editInPopup) {
-      if (e !== null && e.type !== 'touchend') {
-        if (this.options.showNextToCursor) {
-          var x = e.pageX;
-          var y = e.pageY;
-
-          // Fix releasing cursor outside.
-          if (x < this.$element.offset().left) {
-            x = this.$element.offset().left;
-          }
-
-          if (x > this.$element.offset().left + this.$element.width()) {
-            x = this.$element.offset().left + this.$element.width();
-          }
-
-          if (y < this.$element.offset.top) {
-            y = this.$element.offset().top;
-          }
-
-          if (y > this.$element.offset().top + this.$element.height()) {
-            y = this.$element.offset().top + this.$element.height();
-          }
-
-          // Make coordinates decent.
-          if (x < 20) x = 20;
-          if (y < 0) y = 0;
-
-          // Show by coordinates.
-          this.showByCoordinates(x, y);
+         return function () {
+           range.setStart(next_node, len);
+         }
         }
         else {
-          this.repositionEditor();
-        }
+          prev_node.textContent = prev_node.textContent + next_node.textContent;
+          $(next_node).remove();
+          $(marker).remove();
 
-        // Hide other editors.
-        $('.froala-editor:not(.f-basic)').hide();
+          editor.html.normalizeSpaces(prev_node);
 
-        // Show editor.
-        this.$editor.show();
-
-        if (this.options.buttons.length === 0 && !this.options.editInPopup) {
-          this.$editor.hide();
+          return function () {
+            range.setEnd(prev_node, len);
+          }
         }
       }
-      else {
-        $('.froala-editor:not(.f-basic)').hide();
-        this.$editor.show();
-        this.repositionEditor();
-      }
-    }
 
-    this.hidePopups();
-    if (!this.options.editInPopup) {
-      this.showEditPopupWrapper();
-    }
-
-    this.$bttn_wrapper.show();
-    this.refreshButtons();
-
-    this.imageMode = false;
-  };
-
-  $.Editable.prototype.hideDropdowns = function () {
-    this.$bttn_wrapper.find('.fr-dropdown .fr-trigger').removeClass('active');
-    this.$bttn_wrapper.find('.fr-dropdown .fr-trigger');
-  };
-
-  /**
-   * Hide inline editor.
-   */
-  $.Editable.prototype.hide = function (propagateable) {
-
-    if (!this.initialized) {
       return false;
     }
 
-    if (propagateable === undefined) {
-      propagateable = true;
+    /**
+     * Determine if we can do delete.
+     */
+    function _canDelete () {
+      return true;
     }
 
-    // Hide other editors.
-    if (propagateable) {
-      this.hideOtherEditors();
+    /**
+     * Check if selection is collapsed.
+     */
+    function isCollapsed () {
+      var rgs = ranges();
+      for (var i = 0; i < rgs.length; i++) {
+        if (!rgs[i].collapsed) return false;
+      }
+
+      return true;
     }
 
-    // Command to hide from another editor.
-    else {
-      this.closeImageMode();
-      this.imageMode = false;
+    // From: http://www.coderexception.com/0B1B33z1NyQxUQSJ/contenteditable-div-how-can-i-determine-if-the-cursor-is-at-the-start-or-end-of-the-content
+    function info (el) {
+      var atStart = false;
+      var atEnd = false;
+      var selRange;
+      var testRange;
+
+      if (editor.window.getSelection) {
+        var sel = editor.window.getSelection();
+        if (sel.rangeCount) {
+          selRange = sel.getRangeAt(0);
+          testRange = selRange.cloneRange();
+
+          testRange.selectNodeContents(el);
+          testRange.setEnd(selRange.startContainer, selRange.startOffset);
+          atStart = (testRange.toString() === '');
+
+          testRange.selectNodeContents(el);
+          testRange.setStart(selRange.endContainer, selRange.endOffset);
+          atEnd = (testRange.toString() === '');
+        }
+      } else if (editor.document.selection && editor.document.selection.type != 'Control') {
+        selRange = editor.document.selection.createRange();
+        testRange = selRange.duplicate();
+
+        testRange.moveToElementText(el);
+        testRange.setEndPoint('EndToStart', selRange);
+        atStart = (testRange.text === '');
+
+        testRange.moveToElementText(el);
+        testRange.setEndPoint('StartToEnd', selRange);
+        atEnd = (testRange.text === '');
+      }
+
+      return { atStart: atStart, atEnd: atEnd };
     }
 
-    this.$popup_editor.hide();
-    this.hidePopups(false);
-    this.link = false;
-  };
+    /**
+     * Check if everything is selected inside the editor.
+     */
+    function isFull () {
+      if (isCollapsed()) return false;
 
-  /**
-   * Hide other editors from page.
-   */
-  $.Editable.prototype.hideOtherEditors = function () {
-    for (var i = 1; i <= $.Editable.count; i++) {
-      if (i != this._id) {
-        this.$window.trigger('hide.' + i);
+      // https://github.com/froala/wysiwyg-editor/issues/710
+      editor.$el.find('td').prepend('<span class="fr-mk">' + $.FroalaEditor.INVISIBLE_SPACE + '</span>');
+      editor.$el.find('img').append('<span class="fr-mk">' + $.FroalaEditor.INVISIBLE_SPACE + '</span>');
+
+      var full = false;
+      var inf = info(editor.$el.get(0));
+      if (inf.atStart && inf.atEnd) full = true;
+
+      // https://github.com/froala/wysiwyg-editor/issues/710
+      editor.$el.find('.fr-mk').remove();
+
+      return full;
+    }
+
+    /**
+     * Remove HTML from inner nodes when we deal with keepFormatOnDelete option.
+     */
+    function _emptyInnerNodes (node, first) {
+      if (typeof first == 'undefined') first = true;
+
+      // Remove invisible spaces.
+      var h = $(node).html();
+      if (h && h.replace(/\u200b/g, '').length != h.length) $(node).html(h.replace(/\u200b/g, ''));
+
+      // Loop contents.
+      var contents = editor.node.contents(node);
+      for (var j = 0; j < contents.length; j++) {
+        // Remove text nodes.
+        if (contents[j].nodeType != Node.ELEMENT_NODE) {
+          $(contents[j]).remove();
+        }
+
+        // Empty inner nodes further.
+        else {
+          // j == 0 determines if the node is the first one and we should keep format.
+          _emptyInnerNodes(contents[j], j == 0);
+
+          // There are inner nodes, ignore the current one.
+          if (j == 0) first = false;
+        }
+      }
+
+      // First node is a text node, so replace it with a span.
+      if (node.nodeType == Node.TEXT_NODE) {
+        $(node).replaceWith('<span data-first="true" data-text="true"></span>');
+      }
+
+      // Add the first node marker so that we add selection in it later on.
+      else if (first) {
+        $(node).attr('data-first', true);
       }
     }
+
+    /**
+     * Process deleting nodes.
+     */
+    function _processNodeDelete ($node, should_delete) {
+      var contents = editor.node.contents($node.get(0));
+
+      // Node is TD or TH.
+      if (['TD', 'TH'].indexOf($node.get(0).tagName) >= 0 && $node.find('.fr-marker').length == 1 && $(contents[0]).hasClass('fr-marker')) {
+        $node.attr('data-del-cell', true);
+      }
+
+      for (var i = 0; i < contents.length; i++) {
+        var node = contents[i];
+
+        // We found a marker.
+        if ($(node).hasClass('fr-marker')) {
+          should_delete = (should_delete + 1) % 2;
+        }
+        else if (should_delete) {
+          // Check if we have a marker inside it.
+          if ($(node).find('.fr-marker').length > 0) {
+            should_delete = _processNodeDelete($(node), should_delete);
+          }
+          else {
+            if (['TD', 'TH'].indexOf(node.tagName) < 0 && !$(node).hasClass('fr-inner')) {
+              if (!editor.opts.keepFormatOnDelete || should_delete > 1 || editor.$el.find('[data-first]').length > 0) {
+                $(node).remove();
+              }
+              else {
+                _emptyInnerNodes(node);
+              }
+            }
+            else if ($(node).hasClass('fr-inner')) {
+              if ($(node).find('.fr-inner').length == 0) {
+                $(node).html('<br>');
+              }
+              else {
+                $(node).find('.fr-inner').filter(function () {
+                  return $(this).find('fr-inner').length == 0;
+                }).html('<br>');
+              }
+            }
+            else {
+              $(node).empty();
+              $(node).attr('data-del-cell', true);
+            }
+          }
+        }
+        else {
+          if ($(node).find('.fr-marker').length > 0) {
+            should_delete = _processNodeDelete($(node), should_delete);
+          }
+        }
+      }
+
+      return should_delete;
+    }
+
+    /**
+     * Determine if selection is inside the editor.
+     */
+    function inEditor () {
+      try {
+        if (!editor.$wp) return false;
+
+        var range = ranges(0);
+        var container = range.commonAncestorContainer;
+
+        while (container && !editor.node.isElement(container)) {
+          container = container.parentNode;
+        }
+
+        if (editor.node.isElement(container)) return true;
+        return false;
+      }
+      catch (ex) {
+        return false;
+      }
+    }
+
+    /**
+     * Remove the current selection html.
+     */
+    function remove () {
+      save();
+
+      // Get the previous sibling normalized.
+      var _prevSibling = function (node) {
+        var prev_node = node.previousSibling;
+        while (prev_node && prev_node.nodeType == Node.TEXT_NODE && prev_node.textContent.length == 0) {
+          var tmp = prev_node;
+          var prev_node = prev_node.previousSibling;
+          $(tmp).remove();
+        }
+
+        return prev_node;
+      }
+
+      // Get the next sibling normalized.
+      var _nextSibling = function (node) {
+        var next_node = node.nextSibling;
+        while (next_node && next_node.nodeType == Node.TEXT_NODE && next_node.textContent.length == 0) {
+          var tmp = next_node;
+          var next_node = next_node.nextSibling;
+          $(tmp).remove();
+        }
+
+        return next_node;
+      }
+
+      // Normalize start markers.
+      var start_markers = editor.$el.find('.fr-marker[data-type="true"]');
+      for (var i = 0; i < start_markers.length; i++) {
+        var sm = start_markers[i];
+        while (!_prevSibling(sm) && !editor.node.isBlock(sm.parentNode)) {
+          $(sm.parentNode).before(sm);
+        }
+      }
+
+      // Normalize end markers.
+      var end_markers = editor.$el.find('.fr-marker[data-type="false"]');
+      for (var i = 0; i < end_markers.length; i++) {
+        var em = end_markers[i];
+        while (!_nextSibling(em) && !editor.node.isBlock(em.parentNode)) {
+          $(em.parentNode).after(em);
+        }
+      }
+
+      // Check if selection can be deleted.
+      if (_canDelete()) {
+        _processNodeDelete(editor.$el, 0);
+
+        // Look for selection marker.
+        var $first_node = editor.$el.find('[data-first="true"]');
+        if ($first_node.length) {
+          // Remove markers.
+          editor.$el.find('.fr-marker').remove();
+
+          // Add markers in the node that we marked as the first one.
+          $first_node
+            .append($.FroalaEditor.INVISIBLE_SPACE + $.FroalaEditor.MARKERS)
+            .removeAttr('data-first');
+
+          // Remove span with data-text if there is one.
+          if ($first_node.attr('data-text')) {
+            $first_node.replaceWith($first_node.html());
+          }
+        }
+        else {
+          // Remove tables.
+          editor.$el.find('table').filter(function () {
+            var ok = $(this).find('[data-del-cell]').length > 0 && $(this).find('[data-del-cell]').length == $(this).find('td, th').length;
+
+            return ok;
+          }).remove();
+          editor.$el.find('[data-del-cell]').removeAttr('data-del-cell');
+
+          // Merge contents between markers.
+          var start_markers = editor.$el.find('.fr-marker[data-type="true"]');
+          for (var i = 0; i < start_markers.length; i++) {
+            // Get start marker.
+            var start_marker = start_markers[i];
+
+            // Get the next node after start marker.
+            var next_node = start_marker.nextSibling;
+
+            // Get the end node.
+            var end_marker = editor.$el.find('.fr-marker[data-type="false"][data-id="' + $(start_marker).data('id') + '"]').get(0);
+
+            if (end_marker) {
+              // Markers are next to other.
+              if (next_node && next_node == end_marker) {
+                // Do nothing.
+              }
+              else if (start_marker) {
+                // Get the parents of the nodes.
+                var start_parent = editor.node.blockParent(start_marker);
+                var end_parent = editor.node.blockParent(end_marker);
+
+                // Move end marker next to start marker.
+                $(start_marker).after(end_marker);
+
+                // We're in the same parent. Moving marker is enough.
+                if (start_parent == end_parent) {
+                }
+
+                // The block parent of the start marker is the element itself.
+                else if (start_parent == null) {
+                  var deep_parent = editor.node.deepestParent(start_marker);
+
+                  // There is a parent for the marker. Move the end html to it.
+                  if (deep_parent) {
+                    $(deep_parent).after($(end_parent).html());
+                    $(end_parent).remove();
+                  }
+
+                  // There is no parent for the marker.
+                  else if ($(end_parent).parentsUntil(editor.$el, 'table').length == 0) {
+                    $(start_marker).next().after($(end_parent).html());
+                    $(end_parent).remove();
+                  }
+                }
+
+                // End marker is inside element. We don't merge in table.
+                else if (end_parent == null && $(start_parent).parentsUntil(editor.$el, 'table').length == 0) {
+                  // Get the node that has a next sibling.
+                  var next_node = start_parent;
+                  while (!next_node.nextSibling && next_node.parentNode != editor.$el.get(0)) {
+                    next_node = next_node.parentNode;
+                  }
+                  next_node = next_node.nextSibling;
+
+                  // Join HTML inside the start node.
+                  while (next_node && next_node.tagName != 'BR') {
+                    var tmp_node = next_node.nextSibling;
+                    $(start_parent).append(next_node);
+                    next_node = tmp_node;
+                  }
+                }
+
+                // Join end block with start block.
+                else if ($(start_parent).parentsUntil(editor.$el, 'table').length == 0 && $(end_parent).parentsUntil(editor.$el, 'table').length == 0) {
+                  $(start_parent).append($(end_parent).html());
+                  $(end_parent).remove();
+                }
+              }
+            }
+
+            else {
+              end_marker = $(start_marker).clone().attr('data-type', false);
+              $(start_marker).after(end_marker);
+            }
+          }
+        }
+      }
+
+      if (!editor.opts.keepFormatOnDelete) {
+        editor.html.fillEmptyBlocks(true);
+      }
+
+      editor.html.cleanEmptyTags(true);
+      editor.clean.lists();
+
+      editor.html.normalizeSpaces();
+      restore();
+    }
+
+    function setAtStart (node) {
+      if ($(node).find('.fr-marker').length > 0) return false;
+
+      var contents = editor.node.contents(node);
+      while (contents.length && editor.node.isBlock(contents[0])) {
+        node = contents[0];
+        contents = editor.node.contents(node);
+      }
+
+      $(node).prepend($.FroalaEditor.MARKERS);
+    }
+
+    function setAtEnd (node) {
+      if ($(node).find('.fr-marker').length > 0) return false;
+
+      var contents = editor.node.contents(node);
+      while (contents.length && editor.node.isBlock(contents[contents.length - 1])) {
+        node = contents[contents.length - 1];
+        contents = editor.node.contents(node);
+      }
+
+      $(node).append($.FroalaEditor.MARKERS);
+    }
+
+    function setBefore (node) {
+      var prev_node = node.previousSibling;
+      while (prev_node && prev_node.nodeType == Node.TEXT_NODE && prev_node.textContent.length == 0) {
+        prev_node = prev_node.previousSibling;
+      }
+
+      if (prev_node) {
+        if (editor.node.isBlock(prev_node)) {
+          setAtEnd(prev_node);
+        }
+        else if (prev_node.tagName == 'BR') {
+          $(prev_node).before($.FroalaEditor.MARKERS);
+        }
+        else {
+          $(prev_node).after($.FroalaEditor.MARKERS);
+        }
+
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+
+    function setAfter (node) {
+      var next_node = node.nextSibling;
+      while (next_node && next_node.nodeType == Node.TEXT_NODE && next_node.textContent.length == 0) {
+        next_node = next_node.nextSibling;
+      }
+
+      if (next_node) {
+        if (editor.node.isBlock(next_node)) {
+          setAtStart(next_node);
+        }
+        else {
+          $(next_node).before($.FroalaEditor.MARKERS);
+        }
+
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+
+    return {
+      text: text,
+      get: get,
+      ranges: ranges,
+      clear: clear,
+      element: element,
+      endElement: endElement,
+      save: save,
+      restore: restore,
+      isCollapsed: isCollapsed,
+      isFull: isFull,
+      inEditor: inEditor,
+      remove: remove,
+      blocks: blocks,
+      info: info,
+      setAtEnd: setAtEnd,
+      setAtStart: setAtStart,
+      setBefore: setBefore,
+      setAfter: setAfter,
+      rangeElement: rangeElement
+    }
+  };
+
+
+  $.FroalaEditor.UNICODE_NBSP = String.fromCharCode(160);
+
+  // Void Elements http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
+  $.FroalaEditor.VOID_ELEMENTS = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'];
+
+  $.FroalaEditor.BLOCK_TAGS = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'blockquote', 'ul', 'ol', 'li', 'table', 'td', 'th', 'thead', 'tfoot', 'tbody', 'tr', 'hr'];
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    htmlAllowedEmptyTags: ['textarea', 'a', 'iframe', 'object', 'video', 'style', 'script'],
+    htmlSimpleAmpersand: false
+  });
+
+  $.FroalaEditor.MODULES.html = function (editor) {
+    /**
+     * Determine the default block tag.
+     */
+    function defaultTag () {
+      if (editor.opts.enter == $.FroalaEditor.ENTER_P) return 'p';
+      if (editor.opts.enter == $.FroalaEditor.ENTER_DIV) return 'div';
+      if (editor.opts.enter == $.FroalaEditor.ENTER_BR) return null;
+    }
+
+    /**
+     * Get the empty blocs.
+     */
+    function emptyBlocks (with_text) {
+      if (typeof with_text == 'undefined') with_text = false;
+      var empty_blocks = [];
+      var els;
+      var i;
+
+      // Look for empty tags that don't have anything inside.
+      if (!with_text) {
+        els = editor.$el.find(emptyBlockTagsQuery());
+
+        // Make sure we don't add TABLE and TD at the same time for instance.
+        for (i = 0; i < els.length; i++) {
+          if ($(els[i]).find(blockTagsQuery()).length === 0) empty_blocks.push(els[i]);
+        }
+      }
+      else {
+        // Block tag elements.
+        els = editor.$el.find(blockTagsQuery());
+
+        // Check if there are empty block tags with markers.
+        for (i = 0; i < els.length; i++) {
+          var contents = editor.node.contents(els[i]);
+
+          var found = false;
+          for (var j = 0; j < contents.length; j++) {
+            if (contents[j].nodeType == Node.COMMENT_NODE) continue;
+
+            if (contents[j].nodeType == Node.ELEMENT_NODE && ($.FroalaEditor.VOID_ELEMENTS.indexOf(contents[j].tagName.toLowerCase()) >= 0) || (contents[j].textContent && contents[j].textContent.replace(/\u200B/g, '').length > 0)) {
+              found = true;
+              break;
+            }
+          }
+
+          // Make sure we don't add TABLE and TD at the same time for instance.
+          if (!found && $(els[i]).find(blockTagsQuery()).length === 0) empty_blocks.push(els[i]);
+        }
+      }
+
+      return $($.makeArray(empty_blocks));
+    }
+
+    /**
+     * Create jQuery query for empty block tags.
+     */
+    function emptyBlockTagsQuery () {
+      return $.FroalaEditor.BLOCK_TAGS.join(':empty, ') + ':empty';
+    }
+
+    /**
+     * Create jQuery query for selecting block tags.
+     */
+    function blockTagsQuery () {
+      return $.FroalaEditor.BLOCK_TAGS.join(', ');
+    }
+
+    /**
+     * Remove empty elements that are not VOID elements.
+     */
+    function cleanEmptyTags () {
+      var els = $.merge(['TD', 'TH'], $.FroalaEditor.VOID_ELEMENTS);
+      els = $.merge(els, editor.opts.htmlAllowedEmptyTags);
+
+      var elms;
+      var ok;
+      do {
+        ok = false;
+        elms = editor.$el.find('*:empty').not(els.join(', ') + ', .fr-marker');
+
+        // Remove those elements that have no attributes.
+        for (var i = 0; i < elms.length; i++) {
+          if (elms[i].attributes.length === 0 || typeof elms[i].getAttribute('href') !== 'undefined') {
+            $(elms[i]).remove();
+            ok = true;
+          }
+        }
+
+        elms = editor.$el.find('*:empty').not(els.join(', ') + ', .fr-marker');
+      } while (elms.length && ok);
+
+    }
+
+    /**
+     * Wrap the content inside the element passed as argument.
+     */
+    function _wrapElement($el, temp) {
+      var default_tag = defaultTag();
+      if (temp) default_tag = 'div class="fr-temp-div"';
+
+      if (default_tag) {
+        var contents = editor.node.contents($el.get(0));
+        var $anchor = null;
+
+        // Loop through contents.
+        for (var i = 0; i < contents.length; i++) {
+
+          // Current node.
+          var node = contents[i];
+
+          // Current node is a block node.
+          if (node.nodeType == Node.ELEMENT_NODE && editor.node.isBlock(node)) {
+            $anchor = null;
+          }
+
+          // Other node types than element and text.
+          else if (node.nodeType != Node.ELEMENT_NODE && node.nodeType != Node.TEXT_NODE) {
+            $anchor = null;
+          }
+
+          // Current node is BR.
+          else if (node.nodeType == Node.ELEMENT_NODE && node.tagName == 'BR') {
+            // There is no anchor.
+            if ($anchor == null) {
+              if (temp) {
+                $(node).replaceWith('<' + default_tag + ' data-empty="true"><br></div>');
+              }
+              else {
+                $(node).replaceWith('<' + default_tag + '><br></' + default_tag + '>');
+              }
+            }
+
+            // There is anchor. Just remove BR.
+            else {
+              $(node).remove();
+
+              // Check if in anchor we have something else than markers.
+              var cnts = editor.node.contents($anchor);
+              var found = false;
+              for (var j = 0; j < cnts.length; j++) {
+                if (!$(cnts[j]).hasClass('fr-marker') && !(cnts[j].nodeType == Node.TEXT_NODE && cnts[j].textContent.replace(/ /g, '').length === 0)) {
+                  found = true;
+                  break;
+                }
+              }
+
+              if (found === false) {
+                $anchor.append('<br>');
+                $anchor.data('empty', true);
+              }
+
+              $anchor = null;
+            }
+          }
+
+          // Text node or other node type.
+          else {
+            if ($anchor == null) {
+              $anchor = $('<' + default_tag + '>');
+              $(node).before($anchor);
+            }
+
+            if (node.nodeType == Node.TEXT_NODE && $(node).text().trim().length > 0) {
+              $anchor.append($(node).clone());
+              $(node).remove();
+            }
+            else {
+              $anchor.append($(node));
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * Wrap the direct content inside the default block tag.
+     */
+    function _wrap (temp, tables, blockquote) {
+      if (!editor.$wp) return false;
+
+      if (typeof temp == 'undefined') temp = false;
+      if (typeof tables == 'undefined') tables = false;
+      if (typeof blockquote == 'undefined') blockquote = false;
+
+      // Wrap element.
+      _wrapElement(editor.$el, temp);
+
+      editor.$el.find('.fr-inner').each (function () {
+        _wrapElement($(this), temp);
+      })
+
+      // Wrap table contents.
+      if (tables) {
+        editor.$el.find('td, th').each (function () {
+          _wrapElement($(this), temp);
+        })
+      }
+
+      // Wrap table contents.
+      if (blockquote) {
+        editor.$el.find('blockquote').each (function () {
+          _wrapElement($(this), temp);
+        })
+      }
+    }
+
+    /**
+     * Unwrap temporary divs.
+     */
+    function unwrap () {
+      editor.$el.find('div.fr-temp-div').each(function () {
+        if ($(this).data('empty') || this.parentNode.tagName == 'LI') {
+          $(this).replaceWith($(this).html());
+        }
+        else {
+          $(this).replaceWith($(this).html() + '<br>');
+        }
+      })
+    }
+
+    /**
+     * Add BR inside empty elements.
+     */
+    function fillEmptyBlocks (with_text) {
+      // editor.$el.get(0).normalize();
+      emptyBlocks(with_text).not('hr').append('<br/>');
+    }
+
+    /**
+     * Get the blocks inside the editable area.
+     */
+    function blocks () {
+      return editor.$el.find(blockTagsQuery());
+    }
+
+    /**
+     * Clean the blank spaces between the block tags.
+     */
+    function cleanBlankSpaces (node) {
+      if (typeof node == 'undefined') node = editor.$el.get(0);
+
+      var contents = editor.node.contents(node);
+
+      for (var i = contents.length - 1; i >= 0; i--) {
+        if (contents[i].nodeType == Node.TEXT_NODE && editor.node.isBlock(node)) {
+          var len = -1;
+
+          // Replace multiple middle spaces.
+          while (len != contents[i].textContent.length) {
+            len = contents[i].textContent.length;
+            contents[i].textContent = contents[i].textContent.replace(/(?!^)  (?!$)/g, ' ');
+          }
+
+          // Replace begin/end spaces.
+          contents[i].textContent = contents[i].textContent.replace(/^  /g, ' ');
+          contents[i].textContent = contents[i].textContent.replace(/  $/g, ' ');
+
+          if (editor.node.isBlock(node)) {
+            // No previous siblings.
+            if (!contents[i].previousSibling) {
+              contents[i].textContent = contents[i].textContent.replace(/^ */,'');
+            }
+
+            // No next siblings.
+            if (!contents[i].nextSibling) {
+              contents[i].textContent = contents[i].textContent.replace(/ *$/,'');
+            }
+          }
+        }
+        else {
+          cleanBlankSpaces(contents[i]);
+        }
+      }
+    }
+
+    function _isBlock (node) {
+      return node && (editor.node.isBlock(node) || ['STYLE', 'SCRIPT', 'HEAD', 'BR', 'HR'].indexOf(node.tagName) >= 0 || node.nodeType == Node.COMMENT_NODE);
+    }
+
+    /**
+     * Make sure spaces always render propely.
+     */
+    function normalizeSpaces (node) {
+      if (typeof node == 'undefined') node = editor.$el.get(0);
+
+      if (node.nodeType == Node.ELEMENT_NODE && ['STYLE', 'SCRIPT', 'HEAD'].indexOf(node.tagName) < 0) {
+        var contents = editor.node.contents(node);
+        for (var i = contents.length - 1; i >= 0 ; i--) {
+          if (!$(contents[i]).hasClass('fr-marker')) {
+            normalizeSpaces(contents[i]);
+          }
+        }
+      }
+      else if (node.nodeType == Node.TEXT_NODE && node.textContent.length > 0) {
+        var prev_node = node.previousSibling;
+        var next_node = node.nextSibling;
+
+        if (_isBlock(prev_node) && _isBlock(next_node) && node.textContent.trim().length === 0) {
+          $(node).remove();
+        }
+        else {
+          var txt = node.textContent;
+          txt = txt.replace(new RegExp($.FroalaEditor.UNICODE_NBSP, 'g'), ' ');
+
+          var new_text = ''
+          for (var t = 0; t < txt.length; t++) {
+            if (txt.charCodeAt(t) == 32 && (t === 0 || new_text.charCodeAt(t - 1) == 32)) {
+              new_text += $.FroalaEditor.UNICODE_NBSP;
+            }
+            else {
+              new_text += txt[t];
+            }
+          }
+
+          if (!node.nextSibling) new_text = new_text.replace(/ $/, $.FroalaEditor.UNICODE_NBSP);
+          if (node.previousSibling && !editor.node.isVoid(node.previousSibling)) new_text = new_text.replace(/^\u00A0([^ $])/, ' $1');
+
+          new_text = new_text.replace(/([^ \u00A0])\u00A0([^ \u00A0])/g, '$1 $2');
+
+          if (node.textContent != new_text) {
+            node.textContent = new_text;
+          }
+        }
+      }
+    }
+
+    /**
+     * Extract a specific match for a RegEx.
+     */
+    function _extractMatch (html, re, id) {
+      var reg_exp = new RegExp(re, 'gi');
+      var matches = reg_exp.exec(html);
+
+      if (matches) {
+        return matches[id];
+      }
+
+      return null;
+    }
+
+    /**
+     * Get raw attributes from a string.
+     */
+    function _extractAttrs (attrs) {
+      var $dv = $('<div ' + attrs + '>');
+      return editor.node.rawAttributes($dv.get(0));
+    }
+
+    /**
+     * Create new doctype.
+     */
+    function _newDoctype (string, doc) {
+      var matches = string.match(/<!DOCTYPE ?([^ ]*) ?([^ ]*) ?"?([^"]*)"? ?"?([^"]*)"?>/i);
+      if (matches) {
+        return doc.implementation.createDocumentType(
+          matches[1],
+          matches[3],
+          matches[4]
+        )
+      }
+      else {
+        return doc.implementation.createDocumentType('html');
+      }
+    }
+
+    /**
+     * Get string doctype of a document.
+     */
+    function getDoctype (doc) {
+      var node = doc.doctype;
+      var doctype = '<!DOCTYPE html>';
+      if (node) {
+        doctype = '<!DOCTYPE '
+                  + node.name
+                  + (node.publicId ? ' PUBLIC "' + node.publicId + '"' : '')
+                  + (!node.publicId && node.systemId ? ' SYSTEM' : '')
+                  + (node.systemId ? ' "' + node.systemId + '"' : '')
+                  + '>';
+      }
+
+      return doctype;
+    }
+
+    /**
+     * Normalize.
+     */
+    function _normalize () {
+      // Wrap possible text.
+      _wrap();
+
+      // Clean blank spaces.
+      cleanBlankSpaces();
+
+      // Remove empty tags.
+      cleanEmptyTags();
+
+      // Normalize spaces.
+      normalizeSpaces();
+
+      // Add BR tag where it is necessary.
+      fillEmptyBlocks(true);
+
+      // Clean quotes.
+      editor.clean.quotes();
+
+      // Clean lists.
+      editor.clean.lists();
+
+      // Clean tables.
+      editor.clean.tables();
+
+      // Convert to HTML5.
+      editor.clean.toHTML5();
+
+      // Clean quotes.
+      editor.clean.quotes();
+
+      // Refresh placeholder.
+      editor.placeholder.refresh();
+
+      // Restore selection.
+      editor.selection.restore();
+
+      // Check if editor is empty and add placeholder.
+      checkIfEmpty();
+    }
+
+    function checkIfEmpty () {
+      if (editor.core.isEmpty()) {
+        if (defaultTag() != null) {
+          if (editor.$el.find(blockTagsQuery()).length === 0) {
+            if (editor.core.hasFocus()) {
+              editor.$el.html('<' + defaultTag() + '>' + $.FroalaEditor.MARKERS + '<br/></' + defaultTag() + '>');
+              editor.selection.restore();
+            }
+            else {
+              editor.$el.html('<' + defaultTag() + '>' + '<br/></' + defaultTag() + '>');
+            }
+          }
+        }
+        else {
+          if (editor.core.hasFocus()) {
+            editor.$el.html($.FroalaEditor.MARKERS + '<br/>');
+            editor.selection.restore();
+          }
+          else {
+            editor.$el.html('<br/>');
+          }
+        }
+      }
+    }
+
+    /**
+     * Set HTML.
+     */
+    function set (html) {
+      var clean_html = editor.clean.html(html, [], [], editor.opts.fullPage);
+
+      clean_html = clean_html.replace(/\r|\n/g, '');
+
+      if (!editor.opts.fullPage) {
+        editor.$el.html(clean_html);
+      }
+      else {
+        // Get BODY data.
+        var body_html = (_extractMatch(clean_html, '<body[^>]*?>([\\w\\W]*)<\/body>', 1) || clean_html).replace(/\r|\n/g, '');
+        var body_attrs = _extractAttrs(_extractMatch(clean_html, '<body([^>]*?)>', 1) || '');
+
+        // Get HEAD data.
+        var head_html = _extractMatch(clean_html, '<head[^>]*?>([\\w\\W]*)<\/head>', 1) || '<head><title></title></head>';
+        var head_attrs = _extractAttrs(_extractMatch(clean_html, '<head([^>]*?)>', 1) || '');
+
+        // Get DOCTYPE.
+        var doctype = _extractMatch(clean_html, '<!DOCTYPE([^>]*?)>', 0) || '<!DOCTYPE html>';
+
+        // Get HTML attributes.
+        var html_attrs = _extractAttrs(_extractMatch(clean_html, '<html([^>]*?)>', 1) || '');
+
+        editor.$el.html(body_html);
+        editor.node.clearAttributes(editor.$el.get(0));
+        editor.$el.attr(body_attrs);
+
+        editor.$head.html(head_html);
+        editor.node.clearAttributes(editor.$head.get(0));
+        editor.$head.attr(head_attrs);
+
+        editor.node.clearAttributes(editor.$html.get(0));
+
+        editor.$html.attr(html_attrs);
+
+        editor.iframe_document.doctype.parentNode.replaceChild(
+          _newDoctype(doctype, editor.iframe_document),
+          editor.iframe_document.doctype
+        );
+      }
+
+      // Make sure the content is editable.
+      editor.edit.on();
+
+      editor.core.injectStyle(editor.opts.iframeStyle);
+
+      _normalize();
+
+      // Restore orignal attributes if present.
+      editor.$el.find('[fr-original-class]').each (function () {
+        this.setAttribute('class', this.getAttribute('fr-original-class'));
+        this.removeAttribute('fr-original-class');
+      });
+
+      editor.$el.find('[fr-original-style]').each (function () {
+        this.setAttribute('style', this.getAttribute('fr-original-style'));
+        this.removeAttribute('fr-original-style');
+      });
+
+      editor.events.trigger('html.set');
+    }
+
+    /**
+     * Get HTML.
+     */
+    function get (keep_markers, keep_classes) {
+      var html = '';
+
+      editor.events.trigger('html.beforeGet');
+
+      // Convert STYLE from CSS files to inline style.
+      var updated_elms = [];
+      var i;
+      if (!editor.opts.useClasses && !keep_classes) {
+        for (i = 0; i < editor.document.styleSheets.length; i++) {
+          var rules = editor.document.styleSheets[i].cssRules;
+          if (rules) {
+            for (var idx = 0, len = rules.length; idx < len; idx++) {
+              var class_selector = editor.opts.iframe ? 'body ' : '.fr-view ';
+
+              if (rules[idx].selectorText && rules[idx].selectorText.indexOf(class_selector) === 0) {
+                if (rules[idx].style.cssText.length > 0) {
+                  var selector = rules[idx].selectorText.replace(class_selector, '').replace(/::/g, ':');
+                  var elms = editor.$el.get(0).querySelectorAll(selector);
+
+                  for (var j = 0; j < elms.length; j++) {
+                    // Save original style.
+                    if (!elms[j].getAttribute('fr-original-style') && elms[j].getAttribute('style')) {
+                      elms[j].setAttribute('fr-original-style', elms[j].getAttribute('style'));
+                      updated_elms.push(elms[j]);
+                    }
+
+                    elms[j].style.cssText += rules[idx].style.cssText;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Save original class.
+        for (i = 0; i < updated_elms.length; i++) {
+          if (updated_elms[i].getAttribute('class')) {
+            updated_elms[i].setAttribute('fr-original-class', updated_elms[i].getAttribute('class'));
+            updated_elms[i].removeAttribute('class');
+          }
+        }
+      }
+
+      // If editor is not empty.
+      if (!editor.core.isEmpty()) {
+        if (typeof keep_markers == 'undefined') keep_markers = false;
+
+        if (!editor.opts.fullPage) {
+          html = editor.$el.html();
+        }
+        else {
+          html = getDoctype(editor.iframe_document);
+          html += '<html' + editor.node.attributes(editor.$html.get(0)) + '>' + editor.$html.html() + '</html>';
+        }
+      }
+
+      // Remove unwanted attributes.
+      if (!editor.opts.useClasses && !keep_classes) {
+        for (i = 0; i < updated_elms.length; i++) {
+          if (updated_elms[i].getAttribute('fr-original-class')) {
+            updated_elms[i].setAttribute('class', updated_elms[i].getAttribute('fr-original-class'));
+            updated_elms[i].removeAttribute('fr-original-class');
+          }
+
+          updated_elms[i].setAttribute('style', updated_elms[i].getAttribute('fr-original-style'));
+          updated_elms[i].removeAttribute('fr-original-style');
+        }
+      }
+
+      // Deal with pre.
+      html = html.replace(/<pre(?:[\w\W]*?)>(?:[\w\W]*?)<\/pre>/g, function (str) {
+        return str.replace(/<br>/g, '\n');
+      });
+
+      // Clean helpers.
+      if (editor.opts.fullPage) {
+        html = html.replace(/<style data-fr-style="true">(?:[\w\W]*?)<\/style>/g, '');
+        html = html.replace(/<style(?:[\w\W]*?)class="firebugResetStyles"(?:[\w\W]*?)>(?:[\w\W]*?)<\/style>/g, '');
+        html = html.replace(/<body((?:[\w\W]*?)) spellcheck="true"((?:[\w\W]*?))>((?:[\w\W]*?))<\/body>/g, '<body$1$2>$3</body>');
+        html = html.replace(/<body((?:[\w\W]*?)) contenteditable="(true|false)"((?:[\w\W]*?))>((?:[\w\W]*?))<\/body>/g, '<body$1$3>$4</body>');
+
+        html = html.replace(/<body((?:[\w\W]*?)) dir="([\w]*)"((?:[\w\W]*?))>((?:[\w\W]*?))<\/body>/g, '<body$1$3>$4</body>');
+        html = html.replace(/<body((?:[\w\W]*?))class="([\w\W]*?)(fr-rtl|fr-ltr)([\w\W]*?)"((?:[\w\W]*?))>((?:[\w\W]*?))<\/body>/g, '<body$1class="$2$4"$5>$6</body>');
+        html = html.replace(/<body((?:[\w\W]*?)) class=""((?:[\w\W]*?))>((?:[\w\W]*?))<\/body>/g, '<body$1$2>$3</body>');
+      }
+
+      // Ampersand fix.
+      if (editor.opts.htmlSimpleAmpersand) {
+        html = html.replace(/\&amp;/gi, '&');
+      }
+
+      editor.events.trigger('html.afterGet');
+
+      // Remove markers.
+      if (!keep_markers) {
+        html = html.replace(/<span[^>]*? class\s*=\s*["']?fr-marker["']?[^>]+>\u200b<\/span>/gi, '');
+      }
+
+      html = editor.clean.invisibleSpaces(html);
+
+      var new_html = editor.events.chainTrigger('html.get', html);
+      if (typeof new_html == 'string') {
+        html = new_html;
+      }
+
+      return html;
+    }
+
+    /**
+     * Get selected HTML.
+     */
+    function getSelected () {
+      var wrapSelection = function (container, node) {
+        while (node && (node.nodeType == Node.TEXT_NODE || !editor.node.isBlock(node))) {
+          if (node && node.nodeType != Node.TEXT_NODE) {
+            $(container).wrapInner(editor.node.openTagString(node) + editor.node.closeTagString(node));
+          }
+
+          node = node.parentNode;
+        }
+
+        if (node && container.innerHTML == node.innerHTML) {
+          container.innerHTML = node.outerHTML;
+        }
+      }
+
+      var selectionParent = function () {
+        var parent = null;
+        var sel;
+
+        if (editor.window.getSelection) {
+          sel = editor.window.getSelection();
+          if (sel && sel.rangeCount) {
+            parent = sel.getRangeAt(0).commonAncestorContainer;
+            if (parent.nodeType != Node.ELEMENT_NODE) {
+              parent = parent.parentNode;
+            }
+          }
+        } else if ((sel = editor.document.selection) && sel.type != 'Control') {
+          parent = sel.createRange().parentElement();
+        }
+
+        if (parent != null && ($.inArray(editor.$el.get(0), $(parent).parents()) >= 0 || parent == editor.$el.get(0))) {
+          return parent;
+        }
+        else {
+          return null;
+        }
+      }
+
+      var html = '';
+      if (typeof editor.window.getSelection != 'undefined') {
+
+        // Multiple ranges hack.
+        if (editor.browser.mozilla) {
+          editor.selection.save();
+          if (editor.$el.find('.fr-marker[data-type="false"]').length > 1) {
+            editor.$el.find('.fr-marker[data-type="false"][data-id="0"]').remove();
+            editor.$el.find('.fr-marker[data-type="false"]:last').attr('data-id', '0');
+            editor.$el.find('.fr-marker').not('[data-id="0"]').remove();
+          }
+          editor.selection.restore();
+        }
+
+        var ranges = editor.selection.ranges();
+        for (var i = 0; i < ranges.length; i++) {
+          var container = document.createElement('div');
+          container.appendChild(ranges[i].cloneContents());
+          wrapSelection(container, selectionParent());
+          html += container.innerHTML;
+        }
+      }
+
+      else if (typeof editor.document.selection != 'undefined') {
+        if (editor.document.selection.type == 'Text') {
+          html = editor.document.selection.createRange().htmlText;
+        }
+      }
+      return html;
+    }
+
+    function _hasBlockTags (html) {
+      var $tmp = $('<div>').html(html);
+      return $tmp.find(blockTagsQuery()).length > 0;
+    }
+
+    function _setCursorAtEnd (html) {
+      var tmp = editor.document.createElement('div');
+      tmp.innerHTML = html;
+
+      editor.selection.setAtEnd(tmp);
+
+      return tmp.innerHTML;
+    }
+
+    function escapeEntities (str) {
+      return str.replace(/</gi, '&lt;')
+                .replace(/>/gi, '&gt;')
+                .replace(/"/gi, '&quot;')
+                .replace(/'/gi, '&apos;')
+    }
+
+    /**
+     * Insert HTML.
+     */
+    function insert (dirty_html, clean) {
+      // There is no selection.
+      if (editor.selection.text() !== '') {
+        editor.selection.remove();
+      }
+
+      var clean_html;
+      if (!clean) {
+        clean_html = editor.clean.html(dirty_html);
+      }
+      else {
+        clean_html = dirty_html;
+      }
+
+      if (dirty_html.indexOf('class="fr-marker"') < 0) {
+        clean_html = _setCursorAtEnd(clean_html);
+      }
+
+      if (editor.core.isEmpty()) {
+        editor.$el.html(clean_html);
+      }
+      else {
+        // Insert a marker.
+        editor.markers.insert();
+        var marker = editor.$el.find('.fr-marker').get(0);
+
+        // Check if HTML contains block tags and if so then break the current HTML.
+        var deep_parent;
+        if (_hasBlockTags(clean_html) && (deep_parent = editor.node.deepestParent(marker))) {
+          if (editor.node.isBlock(deep_parent) && editor.node.isEmpty(deep_parent)) {
+            $(deep_parent).replaceWith(clean_html);
+          }
+          else {
+            var node = marker;
+            var close_str = '';
+            var open_str = '';
+            do {
+              node = node.parentNode;
+              close_str = close_str + editor.node.closeTagString(node);
+              open_str = editor.node.openTagString(node) + open_str;
+            } while (node != deep_parent);
+
+            $(marker).replaceWith('<span id="fr-break"></span>');
+            var h = editor.node.openTagString(deep_parent) + $(deep_parent).html() + editor.node.closeTagString(deep_parent);
+            h = h.replace(/<span id="fr-break"><\/span>/g, close_str + clean_html + open_str);
+
+            $(deep_parent).replaceWith(h);
+          }
+        }
+        else {
+          $(marker).replaceWith(clean_html);
+        }
+      }
+
+      _normalize();
+
+      editor.events.trigger('html.inserted');
+    }
+
+    /**
+     * Clean those tags that have an invisible space inside.
+     */
+    function cleanWhiteTags (ignore_selection) {
+      var $el = null;
+      if (typeof ignore_selection == 'undefined') {
+        $el = editor.selection.element();
+      }
+
+      var $possible_elements;
+      var removed;
+      do {
+        removed = false;
+        $possible_elements = editor.$el.find('*').not($el).not('.fr-marker');
+        for (var i = 0; i < $possible_elements.length; i++) {
+          var el = $possible_elements.get(i);
+          var text = el.textContent;
+          if ($(el).find('*').length === 0 && text.length === 1 && text.charCodeAt(0) == 8203) {
+            $(el).remove();
+            removed = true;
+          }
+        }
+      } while (removed);
+    }
+
+    /**
+     * Initialization.
+     */
+    function _init () {
+      var cleanTags = function () {
+        cleanWhiteTags();
+
+        if (editor.placeholder) editor.placeholder.refresh();
+      }
+
+      editor.events.on('mouseup', cleanTags);
+      editor.events.on('keydown', cleanTags);
+      editor.events.on('contentChanged', checkIfEmpty);
+    }
+
+    return {
+      defaultTag: defaultTag,
+      emptyBlocks: emptyBlocks,
+      emptyBlockTagsQuery: emptyBlockTagsQuery,
+      blockTagsQuery: blockTagsQuery,
+      fillEmptyBlocks: fillEmptyBlocks,
+      cleanEmptyTags: cleanEmptyTags,
+      cleanWhiteTags: cleanWhiteTags,
+      normalizeSpaces: normalizeSpaces,
+      cleanBlankSpaces: cleanBlankSpaces,
+      blocks: blocks,
+      getDoctype: getDoctype,
+      set: set,
+      get: get,
+      getSelected: getSelected,
+      insert: insert,
+      wrap: _wrap,
+      unwrap: unwrap,
+      escapeEntities: escapeEntities,
+      checkIfEmpty: checkIfEmpty,
+      _init: _init
+    }
   }
 
-  $.Editable.prototype.hideBttnWrapper = function () {
-    if (this.options.inlineMode) {
-      this.$bttn_wrapper.hide();
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    height: null,
+    heightMax: null,
+    heightMin: null,
+    width: null
+  });
+
+  $.FroalaEditor.MODULES.size = function (editor) {
+    function syncIframe () {
+      if (editor.opts.height) {
+        editor.$el.css('minHeight', editor.opts.height - editor.helpers.getPX(editor.$el.css('padding-top')) - editor.helpers.getPX(editor.$el.css('padding-bottom')));
+      }
+
+      editor.$iframe.height(editor.$el.outerHeight(true));
+    }
+
+    function refresh () {
+      // Set height.
+      if (editor.opts.height) {
+        editor.$wp.height(editor.opts.height);
+        editor.$el.css('minHeight', editor.opts.height - editor.helpers.getPX(editor.$el.css('padding-top')) - editor.helpers.getPX(editor.$el.css('padding-bottom')));
+      }
+
+      if (editor.opts.heightMin) editor.$el.css('minHeight', editor.opts.heightMin);
+      if (editor.opts.heightMax) editor.$wp.css('maxHeight', editor.opts.heightMax);
+      if (editor.opts.width) editor.$box.width(editor.opts.width);
+    }
+
+    function _init () {
+      if (!editor.$wp) return false;
+
+      refresh();
+
+      // Sync iframe height.
+      if (editor.opts.iframe) {
+        editor.events.on('keyup', syncIframe);
+        editor.events.on('commands.after', syncIframe);
+        editor.events.on('html.set', syncIframe);
+        editor.events.on('init', syncIframe);
+        editor.events.on('initialized', syncIframe);
+      }
+    }
+
+    return {
+      _init: _init,
+      syncIframe: syncIframe,
+      refresh: refresh
     }
   };
 
-  $.Editable.prototype.showBttnWrapper = function () {
-    if (this.options.inlineMode) {
-      this.$bttn_wrapper.show();
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    language: null
+  });
+
+  $.FroalaEditor.LANGUAGE = {};
+
+  $.FroalaEditor.MODULES.language = function (editor) {
+    var lang;
+
+    /**
+     * Translate.
+     */
+    function translate (str) {
+      if (lang && lang.translation[str]) {
+        return lang.translation[str];
+      }
+      else {
+        return str;
+      }
+    }
+
+    /* Initialize */
+    function _init () {
+      // Load lang.
+      if ($.FroalaEditor.LANGUAGE) {
+        lang = $.FroalaEditor.LANGUAGE[editor.opts.language];
+      }
+
+      // Set direction.
+      if (lang && lang.direction) {
+        editor.opts.direction = lang.direction;
+      }
+    }
+
+    return {
+      _init: _init,
+      translate: translate
     }
   };
 
-  $.Editable.prototype.showEditPopupWrapper = function () {
-    if (this.$edit_popup_wrapper) {
-      this.$edit_popup_wrapper.show();
 
-      setTimeout($.proxy(function () {
-        this.$edit_popup_wrapper.find('input').val(this.$element.text()).focus().select()
-      }, this), 1);
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    placeholderText: 'Type something',
+    placeholderFontFamily: 'Arial, Helvetica, sans-serif'
+  });
+
+  $.FroalaEditor.MODULES.placeholder = function (editor) {
+    /* Show placeholder. */
+    function show () {
+      // Determine the placeholder position based on the first element inside editor.
+      var margin_top = 0;
+      var contents = editor.node.contents(editor.$el.get(0));
+      if (contents.length && contents[0].nodeType == Node.ELEMENT_NODE) {
+        margin_top = editor.helpers.getPX($(contents[0]).css('margin-top'));
+        editor.$placeholder.css('font-size', $(contents[0]).css('font-size'));
+        editor.$placeholder.css('line-height', $(contents[0]).css('line-height'));
+      }
+      else {
+        editor.$placeholder.css('font-size', editor.$el.css('font-size'));
+        editor.$placeholder.css('line-height', editor.$el.css('line-height'));
+      }
+
+      editor.$wp.addClass('show-placeholder');
+      editor.$placeholder
+        .css('margin-top', margin_top)
+        .text(editor.language.translate(editor.opts.placeholderText || editor.$original_element.attr('placeholder') || ''));
+    }
+
+    /* Hide placeholder. */
+    function hide () {
+      editor.$wp.removeClass('show-placeholder');
+    }
+
+    /* Check if placeholder is visible */
+    function isVisible () {
+      return editor.$wp.hasClass('show-placeholder');
+    }
+
+    /* Refresh placeholder. */
+    function refresh () {
+      if (!editor.$wp) return false;
+
+      if (editor.core.isEmpty()) {
+        show();
+      }
+      else {
+        hide();
+      }
+    }
+
+    /* Initialize. */
+    function _init () {
+      if (!editor.$wp) return false;
+
+      editor.$placeholder = $('<span class="fr-placeholder"></span>');
+      editor.$wp.append(editor.$placeholder);
+
+      editor.events.on('init', refresh);
+      editor.events.on('input', refresh);
+      editor.events.on('keydown', refresh);
+      editor.events.on('keyup', refresh);
+      editor.events.on('contentChanged', refresh);
+    }
+
+    return {
+      _init: _init,
+      show: show,
+      hide: hide,
+      refresh: refresh,
+      isVisible: isVisible
     }
   };
 
-  $.Editable.prototype.hidePopups = function (hide_btn_wrapper) {
-    if (hide_btn_wrapper === undefined) hide_btn_wrapper = true;
 
-    if (hide_btn_wrapper) {
-      this.hideBttnWrapper();
+  $.FroalaEditor.MODULES.edit = function (editor) {
+    /**
+     * Disable editing design.
+     */
+    function disableDesign () {
+      if (editor.browser.mozilla) {
+        editor.document.execCommand('enableObjectResizing', false, 'false');
+        editor.document.execCommand('enableInlineTableEditing', false, 'false');
+      }
     }
 
-    this.raiseEvent('hidePopups');
+    var disabled = false;
+
+    /**
+     * Add contneteditable attribute.
+     */
+    function on () {
+      if (editor.$wp) {
+        editor.$el.attr('contenteditable', true);
+        editor.$el.removeClass('fr-disabled');
+        if (editor.$tb) editor.$tb.removeClass('fr-disabled');
+        disableDesign();
+      }
+
+      disabled = false;
+    }
+
+    /**
+     * Remove contenteditable attribute.
+     */
+    function off () {
+      if (editor.$wp) {
+        editor.$el.attr('contenteditable', false);
+        editor.$el.addClass('fr-disabled');
+        editor.$tb.addClass('fr-disabled');
+      }
+
+      disabled = true;
+    }
+
+    function isDisabled () {
+      return disabled;
+    }
+
+    return {
+      on: on,
+      off: off,
+      disableDesign: disableDesign,
+      isDisabled: isDisabled
+    }
+  };
+
+
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    editorClass: null,
+    typingTimer: 500,
+    iframe: false,
+    requestWithCORS: true,
+    requestHeaders: {},
+    useClasses: true,
+    spellcheck: true,
+    iframeStyle: 'html{margin: 0px;}body{padding:10px;background:transparent;color:#000000;position:relative;z-index: 2;-webkit-user-select:auto;margin:0px}body:after{content:"";clear:both;display:block}',
+    direction: 'auto',
+    zIndex: 1,
+    disableRightClick: false,
+    scrollableContainer: 'body',
+    keepFormatOnDelete: false
+  })
+
+  $.FroalaEditor.MODULES.core = function(editor) {
+    function injectStyle(style) {
+      if (editor.opts.iframe) {
+        editor.$head.append('<style data-fr-style="true">' + style + '</style>');
+      }
+    }
+
+    function _initElementStyle() {
+      if (!editor.opts.iframe) {
+        editor.$el.addClass('fr-element fr-view');
+      }
+    }
+
+    /**
+     * Init the editor style.
+     */
+
+    function _initStyle() {
+      editor.$box.addClass('fr-box' + (editor.opts.editorClass ? ' ' + editor.opts.editorClass : ''));
+      editor.$wp.addClass('fr-wrapper');
+
+      _initElementStyle();
+
+      if (editor.opts.iframe) {
+        editor.$iframe.addClass('fr-iframe');
+
+        for (var i = 0; i < editor.original_document.styleSheets.length; i++) {
+          var rules = editor.original_document.styleSheets[i].cssRules;
+          if (rules) {
+            for (var idx = 0, len = rules.length; idx < len; idx++) {
+              if (rules[idx].selectorText && rules[idx].selectorText.indexOf('.fr-view') === 0) {
+                if (rules[idx].style.cssText.length > 0) {
+                  editor.opts.iframeStyle += rules[idx].selectorText.replace(/\.fr-view/g, 'body') + '{' + rules[idx].style.cssText + '}';
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (editor.opts.direction != 'auto') {
+        editor.$box.removeClass('fr-ltr fr-rtl').addClass('fr-' + editor.opts.direction);
+      }
+      editor.$el.attr('dir', editor.opts.direction);
+      editor.$wp.attr('dir', editor.opts.direction);
+
+      if (editor.opts.zIndex > 1) {
+        editor.$box.css('z-index', editor.opts.zIndex);
+      }
+
+      if (editor.$box && editor.opts.theme) {
+        editor.$box.addClass(editor.opts.theme + '-theme');
+      }
+    }
+
+    /**
+     * Determine if the editor is empty.
+     */
+
+    function isEmpty() {
+      return editor.node.isEmpty(editor.$el.get(0));
+    }
+
+    /**
+     * Check if the browser allows drag and init it.
+     */
+
+    function _initDrag() {
+      // Drag and drop support.
+      editor.drag_support = {
+        filereader: typeof FileReader != 'undefined',
+        formdata: !! editor.window.FormData,
+        progress: 'upload' in new XMLHttpRequest()
+      };
+    }
+
+    /**
+     * Return an XHR object.
+     */
+
+    function getXHR(url, method) {
+      var xhr = new XMLHttpRequest();
+
+      // Make it async.
+      xhr.open(method, url, true);
+
+      // Set with credentials.
+      if (editor.opts.requestWithCORS) {
+        xhr.withCredentials = true;
+      }
+
+      // Set headers.
+      for (var header in editor.opts.requestHeaders) {
+        xhr.setRequestHeader(header, editor.opts.requestHeaders[header]);
+      }
+
+      return xhr;
+    }
+
+    function _destroy() {
+      if (editor.$original_element.get(0).tagName == 'TEXTAREA') {
+        editor.$original_element.val(editor.html.get());
+      }
+
+      if (editor.$wp) {
+        if (editor.$original_element.get(0).tagName == 'TEXTAREA') {
+          editor.$box.replaceWith(editor.$original_element);
+          editor.$original_element.show();
+        } else {
+          editor.$el.off('contextmenu.rightClick');
+          editor.$wp.replaceWith(editor.html.get());
+          editor.$box.removeClass('fr-view fr-ltr fr-box ' + (editor.opts.editorClass || ''));
+
+          if (editor.opts.theme) {
+            editor.$box.addClass(editor.opts.theme + '-theme');
+          }
+        }
+      }
+    }
+
+    function hasFocus() {
+      return editor.node.hasFocus(editor.$el.get(0));
+    }
+
+    /**
+     * Tear up.
+     */
+
+    function _init() {
+      $.FroalaEditor.INSTANCES.push(editor);
+
+      _initDrag();
+
+      // Call initialization methods.
+      if (editor.$wp) {
+        _initStyle();
+        editor.html.set(editor._original_html);
+
+        // Set spellcheck.
+        editor.$el.attr('spellcheck', editor.opts.spellcheck);
+
+        // Disable autocomplete.
+        if (editor.helpers.isMobile()) {
+          editor.$el.attr('autocomplete', editor.opts.spellcheck ? 'on' : 'off');
+          editor.$el.attr('autocorrect', editor.opts.spellcheck ? 'on' : 'off');
+          editor.$el.attr('autocapitalize', editor.opts.spellcheck ? 'on' : 'off');
+        }
+
+        // Disable right click.
+        if (editor.opts.disableRightClick) {
+          editor.$el.on('contextmenu.rightClick', function(e) {
+            if (e.button == 2) {
+              return false;
+            }
+          });
+        }
+
+        try {
+          editor.document.execCommand('styleWithCSS', false, false);
+        } catch (ex) {
+
+        }
+      }
+
+      // Options.
+      editor.events.trigger('init');
+      editor.events.on('destroy', _destroy);
+
+      if (editor.$original_element.get(0).tagName == 'TEXTAREA') {
+        // Sync on contentChanged.
+        editor.events.on('contentChanged', function() {
+          editor.$original_element.val(editor.html.get());
+        });
+
+        // Set HTML on form submit.
+        editor.events.on('form.submit', function() {
+          editor.$original_element.val(editor.html.get());
+        });
+
+        editor.$original_element.val(editor.html.get());
+      }
+    }
+
+    return {
+      _init: _init,
+      isEmpty: isEmpty,
+      getXHR: getXHR,
+      injectStyle: injectStyle,
+      hasFocus: hasFocus
+    }
   }
 
-  $.Editable.prototype.showEditPopup = function () {
-    this.showEditPopupWrapper();
+
+
+  $.FroalaEditor.COMMANDS = {
+    bold: {
+      title: 'Bold'
+    },
+    italic: {
+      title: 'Italic'
+    },
+    underline: {
+      title: 'Underline'
+    },
+    strikeThrough: {
+      title: 'Strikethrough'
+    },
+    subscript: {
+      title: 'Subscript'
+    },
+    superscript: {
+      title: 'Superscript'
+    },
+    outdent: {
+      title: 'Decrease Indent'
+    },
+    indent: {
+      title: 'Increase Indent'
+    },
+    undo: {
+      title: 'Undo',
+      undo: false,
+      forcedRefresh: true
+    },
+    redo: {
+      title: 'Redo',
+      undo: false,
+      forcedRefresh: true
+    },
+    insertHR: {
+      title: 'Insert Horizontal Line'
+    },
+    clearFormatting: {
+      title: 'Clear Formatting'
+    },
+    selectAll: {
+      title: 'Select All',
+      undo: false
+    }
   };
-})(jQuery);
 
-(function ($) {
-  /**
-   * Get bounding rect around selection.
-   *
-   * @returns {Object}
-   */
-  $.Editable.prototype.getBoundingRect = function () {
-    var boundingRect;
+  $.FroalaEditor.RegisterCommand = function (name, info) {
+    $.FroalaEditor.COMMANDS[name] = info;
+  }
 
-    if (!this.isLink) {
-      if (this.getRange() && this.getRange().collapsed) {
-        var $element = $(this.getSelectionElement());
-        this.saveSelectionByMarkers();
-        var $marker = this.$element.find('.f-marker:first');
+  $.FroalaEditor.MODULES.commands = function (editor) {
+    var mapping = {
+      bold: function () {
+        _execCommand('bold', 'strong');
+      },
+
+      subscript: function () {
+        _execCommand('subscript', 'sub');
+      },
+
+      superscript: function () {
+        _execCommand('superscript', 'sup');
+      },
+
+      italic: function () {
+        _execCommand('italic', 'em');
+      },
+
+      strikeThrough: function () {
+        _execCommand('strikeThrough', 's');
+      },
+
+      underline: function () {
+        _execCommand('underline', 'u');
+      },
+
+      undo: function () {
+        editor.undo.run();
+      },
+
+      redo: function () {
+        editor.undo.redo();
+      },
+
+      indent: function () {
+        _processIndent(1);
+      },
+
+      outdent: function () {
+        _processIndent(-1);
+      },
+
+      show: function () {
+        if (editor.opts.toolbarInline) {
+          editor.toolbar.showInline(null, true);
+        }
+      },
+
+      insertHR: function () {
+        editor.selection.remove();
+
+        editor.html.insert('<hr id="fr-just">');
+
+        var $hr = editor.$el.find('hr#fr-just');
+        $hr.removeAttr('id');
+
+        editor.selection.setAfter($hr.get(0)) || editor.selection.setBefore($hr.get(0));
+
+        editor.selection.restore();
+      },
+
+      clearFormatting: function () {
+        editor.document.execCommand('removeFormat', false, false);
+        editor.document.execCommand('unlink', false, false);
+      },
+
+      selectAll: function () {
+        editor.document.execCommand('selectAll', false, false);
+      }
+    }
+
+    /**
+     * Exec command.
+     */
+    function exec (cmd, params) {
+      // Trigger before command to see if to execute the default callback.
+      if (editor.events.trigger('commands.before', $.merge([cmd], params || [])) !== false) {
+        // Get the callback.
+        var callback = ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].callback) || mapping[cmd];
+
+        var focus = true;
+        if ($.FroalaEditor.COMMANDS[cmd] && typeof $.FroalaEditor.COMMANDS[cmd].focus != 'undefined') {
+          focus = $.FroalaEditor.COMMANDS[cmd].focus;
+        }
+
+        // Make sure we have focus.
+        if (!editor.core.hasFocus() && focus && !editor.popups.areVisible()) {
+          // Focus in the editor at any position.
+          editor.events.focus(true);
+        }
+
+        // Callback.
+        // Save undo step.
+        if ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].undo !== false) {
+          editor.undo.saveStep();
+        }
+
+        if (callback) {
+          callback.apply(editor, $.merge([cmd], params || []));
+        }
+
+        // Trigger after command.
+        editor.events.trigger('commands.after', $.merge([cmd], params || []));
+
+        // Save undo step again.
+        if ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].undo !== false) editor.undo.saveStep();
+      }
+    }
+
+    /**
+     * Exex default.
+     */
+    function _execCommand(cmd, tag) {
+      // Selection is collapsed and state is not active.
+      if (editor.selection.isCollapsed() && editor.document.queryCommandState(cmd) === false) {
+        editor.markers.insert();
+        var $marker = editor.$el.find('.fr-marker');
+        $marker.replaceWith('<' + tag + '>' + $.FroalaEditor.INVISIBLE_SPACE + $.FroalaEditor.MARKERS + '</' + tag + '>')
+        editor.selection.restore();
+      }
+      else {
+        var el = editor.selection.element();
+
+        // Selection is collapsed.
+        // State is active.
+        // Current tag is empty.
+        if (editor.selection.isCollapsed() && editor.document.queryCommandState(cmd) === true && el.tagName == tag.toUpperCase() && (el.textContent || '').replace(/\u200B/g, '').length === 0) {
+          $(el).replaceWith($.FroalaEditor.MARKERS);
+          editor.selection.restore();
+        }
+        else {
+          var spans = editor.$el.find('span');
+
+          var selection_saved = false;
+          if (editor.document.queryCommandState(cmd) === false) {
+            editor.selection.save();
+            selection_saved = true;
+          }
+          editor.document.execCommand(cmd, false, false);
+
+          if (selection_saved) editor.selection.restore();
+
+          var new_spans = editor.$el.find('span[style]').not(spans).filter(function () {
+            return $(this).attr('style').indexOf('font-weight: normal') >= 0;
+          });
+
+          if (new_spans.length) {
+            editor.selection.save();
+            new_spans.each(function () {
+              $(this).replaceWith($(this).html());
+            });
+            editor.selection.restore();
+          }
+
+          editor.clean.toHTML5();
+        }
+      }
+    }
+
+    function _processIndent(indent) {
+      editor.selection.save();
+      editor.html.wrap(true, true);
+      editor.selection.restore();
+
+      var blocks = editor.selection.blocks();
+
+      var prop = editor.opts.direction == 'rtl' ? 'margin-right' : 'margin-left'
+
+      for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].tagName != 'LI' && blocks[i].parentNode.tagName != 'LI') {
+          var $block = $(blocks[i]);
+          var margin_left = editor.helpers.getPX($block.css(prop));
+
+          $block.css(prop, Math.max(margin_left + indent * 20, 0) || '');
+          $block.removeClass('fr-temp-div');
+        }
+      }
+
+      editor.selection.save();
+      editor.html.unwrap();
+      editor.selection.restore();
+    }
+
+    /**
+     * Preserve font size.
+     */
+    function _saveFontSize() {
+      // Check if the el has font size.
+      var hasFontSizeSet = function ($el) {
+        return $el.attr('style').indexOf('font-size') >= 0;
+      }
+
+      editor.$el.find('[style]').each (function () {
+        var $el = $(this);
+
+        if (hasFontSizeSet($el)) {
+          $el.attr('data-font-size', $el.css('font-size'));
+          $el.css('font-size', '');
+        }
+      })
+    }
+
+    /**
+     * Restore font size.
+     */
+    function _restoreFontSize() {
+      editor.$el.find('[data-font-size]').each (function () {
+        var $el = $(this);
+
+        $el.css('font-size', $el.attr('data-font-size'));
+        $el.removeAttr('data-font-size');
+      })
+    }
+
+    function _clearBlankSpans () {
+      // Remove spans with no style.
+      editor.$el.find('span').each(function () {
+        if (editor.node.attributes(this) === '') {
+          $(this).replaceWith($(this).html());
+        }
+      })
+    }
+
+    function applyProperty (prop, val) {
+      if (editor.selection.isCollapsed()) {
+        editor.markers.insert();
+        var $marker = editor.$el.find('.fr-marker');
+        $marker.replaceWith('<span style="' + prop + ': ' + val + ';">' + $.FroalaEditor.INVISIBLE_SPACE + $.FroalaEditor.MARKERS + '</span>')
+        editor.selection.restore();
+      }
+      else {
+        _saveFontSize();
+
+        // Apply format.
+        editor.document.execCommand('fontSize', false, 4);
+
+        editor.selection.save();
+
+        _restoreFontSize();
+
+        // Clean font.
+        var clean_format = function (elem) {
+          var $elem = $(elem);
+          $elem.css(prop, '');
+
+          if ($elem.attr('style') === '') {
+            $elem.replaceWith($elem.html());
+          }
+        }
+
+        var filter_spans = function () {
+          return $(this).attr('style').indexOf(prop + ':') === 0 || $(this).attr('style').indexOf(';' + prop + ':') >= 0 || $(this).attr('style').indexOf('; ' + prop + ':') >= 0;
+        };
+
+        var i;
+
+        // Replace font with spans.
+        while (editor.$el.find('font').length > 0) {
+          var $font = editor.$el.find('font:first');
+          var $span = $('<span class="fr-just" style="' + prop + ': ' + val + ';">' + $font.html() + '</span>');
+          $font.replaceWith($span);
+
+          // Replace in reverse order to take care of the inner spans first.
+          var inner_spans = $span.find('span');
+          for (i = inner_spans.length - 1; i >= 0; i--) {
+            clean_format(inner_spans[i]);
+          }
+
+          // Look at parents with the same property.
+          var $outer_span = $span.parentsUntil(editor.$el, 'span:first').filter(filter_spans);
+          if ($outer_span.length) {
+            var c_str = '';
+            var o_str = '';
+            var ic_str = '';
+            var io_str = '';
+            var c_node = $span.get(0);
+            do {
+              c_node = c_node.parentNode;
+              c_str = c_str + editor.node.closeTagString(c_node);
+              o_str = editor.node.openTagString(c_node) + o_str;
+
+              // Inner close and open.
+              if ($outer_span.get(0) != c_node) {
+                ic_str = ic_str + editor.node.closeTagString(c_node);
+                io_str = editor.node.openTagString(c_node) + io_str;
+              }
+            } while ($outer_span.get(0) != c_node);
+
+            // Build breaking string.
+            var str = c_str + '<span class="fr-just" style="' + prop + ': ' + val + ';">' + io_str + $span.html() + ic_str + '</span>' + o_str;
+            $span.replaceWith('<span id="fr-break"></span>');
+            var html = $outer_span.get(0).outerHTML;
+
+            // Replace the outer node.
+            $outer_span.replaceWith(html.replace(/<span id="fr-break"><\/span>/g, str));
+          }
+        }
+
+        editor.html.cleanEmptyTags();
+        _clearBlankSpans();
+
+        // Join current spans together if they are one next to each other.
+        var just_spans = editor.$el.find('.fr-just + .fr-just');
+        for (i = 0; i < just_spans.length; i++) {
+          var $s = $(just_spans[i]);
+          $s.prepend($s.prev().html());
+          $s.prev().remove();
+        }
+
+        editor.$el.find('.fr-marker + .fr-just').each(function () {
+          $(this).prepend($(this).prev());
+        })
+
+        editor.$el.find('.fr-just + .fr-marker').each(function () {
+          $(this).append($(this).next());
+        })
+
+        editor.$el.find('.fr-just').removeAttr('class');
+
+        editor.selection.restore();
+      }
+    }
+
+    function callExec (k) {
+      return function () {
+        exec(k);
+      }
+    }
+
+    var resp = {};
+    for (var k in mapping) {
+      resp[k] = callExec(k);
+    }
+
+    return $.extend(resp, {
+      exec: exec,
+      applyProperty: applyProperty
+    });
+  };
+
+
+  $.FroalaEditor.MODULES.cursorLists = function (editor) {
+    /**
+     * Find the first li parent.
+     */
+    function _firstParentLI (node) {
+      var p_node = node;
+      while (p_node.tagName != 'LI') {
+        p_node = p_node.parentNode;
+      }
+
+      return p_node;
+    }
+
+    /**
+     * Find the first list parent.
+     */
+    function _firstParentList (node) {
+      var p_node = node;
+      while (!editor.node.isList(p_node)) {
+        p_node = p_node.parentNode;
+      }
+
+      return p_node;
+    }
+
+
+    /**
+     * Do enter at the beginning of a list item.
+     */
+    function _startEnter (marker) {
+      var li = _firstParentLI(marker);
+
+      // Get previous and next siblings.
+      var next_li = li.nextSibling;
+      var prev_li = li.previousSibling;
+      var default_tag = editor.html.defaultTag();
+
+      var ul;
+
+      // We are in a list item at the middle of the list or an list item that is not empty.
+      if (editor.node.isEmpty(li, true) && next_li) {
+        var o_str = '';
+        var c_str = ''
+        var p_node = marker.parentNode;
+
+        // Create open / close string.
+        while (!editor.node.isList(p_node) && p_node.parentNode && p_node.parentNode.tagName !== 'LI') {
+          o_str = editor.node.openTagString(p_node) + o_str;
+          c_str = c_str + editor.node.closeTagString(p_node);
+          p_node = p_node.parentNode;
+        }
+
+        o_str = editor.node.openTagString(p_node) + o_str;
+        c_str = c_str + editor.node.closeTagString(p_node);
+
+        var str = ''
+        if (p_node.parentNode && p_node.parentNode.tagName == 'LI') {
+          str = c_str + '<li>' + $.FroalaEditor.MARKERS + '<br>' + o_str;
+        }
+        else {
+          if (default_tag) {
+            str = c_str + '<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br>' + '</' + default_tag + '>' + o_str;
+          }
+          else {
+            str = c_str + $.FroalaEditor.MARKERS + '<br>' + o_str;
+          }
+        }
+
+        $(li).html('<span id="fr-break"></span>');
+
+        while (['UL', 'OL'].indexOf(p_node.tagName) < 0 || (p_node.parentNode && p_node.parentNode.tagName === 'LI')) {
+          p_node = p_node.parentNode;
+        }
+        var html = editor.node.openTagString(p_node) + $(p_node).html() + editor.node.closeTagString(p_node);
+        html = html.replace(/<span id="fr-break"><\/span>/g, str);
+
+        $(p_node).replaceWith(html);
+
+        editor.$el.find('li:empty').remove();
+      }
+      else if ((prev_li && next_li) || !editor.node.isEmpty(li, true)) {
+        $(li).before('<li><br></li>');
+        $(marker).remove();
+      }
+
+      // There is no previous list item so transform the current list item to an empty line.
+      else if (!prev_li) {
+        ul = _firstParentList(li);
+
+        // We are in a nested list so add a new li before it.
+        if (ul.parentNode && ul.parentNode.tagName == 'LI') {
+          $(ul.parentNode).before('<li>' + $.FroalaEditor.MARKERS + '<br></li>');
+        }
+
+        // We are in a normal list. Add a new line before.
+        else {
+          if (default_tag) {
+            $(ul).before('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br></' + default_tag + '>');
+          }
+          else {
+            $(ul).before($.FroalaEditor.MARKERS  + '<br>');
+          }
+        }
+
+        // Remove the current li.
+        $(li).remove();
+      }
+
+      // There is no next_li item so transform the current list item to an empty line.
+      else {
+        ul = _firstParentList(li);
+
+        // We are in a nested lists so add a new li after it.
+        if (ul.parentNode && ul.parentNode.tagName == 'LI') {
+          $(ul.parentNode).after('<li>' + $.FroalaEditor.MARKERS + '<br></li>');
+        }
+
+        // We are in a normal list. Add a new line after.
+        else {
+          if (default_tag) {
+            $(ul).after('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br></' + default_tag + '>');
+          }
+          else {
+            $(ul).after($.FroalaEditor.MARKERS  + '<br>');
+          }
+        }
+
+        // Remove the current li.
+        $(li).remove();
+      }
+    }
+
+    /**
+     * Enter at the middle of a list.
+     */
+    function _middleEnter (marker) {
+      var li = _firstParentLI(marker);
+
+      // Build the closing / opening list item string.
+      var str = '';
+      var node = marker;
+      var o_str = '';
+      var c_str = '';
+      while (node != li) {
+        node = node.parentNode;
+
+        var cls = (node.tagName == 'A' && editor.cursor.isAtEnd(marker, node)) ? 'fr-to-remove' : '';
+
+        o_str = editor.node.openTagString($(node).clone().addClass(cls).get(0)) + o_str;
+        c_str = editor.node.closeTagString(node) + c_str;
+      }
+
+      // Add markers.
+      str = c_str + str + o_str + $.FroalaEditor.MARKERS;
+
+      // Build HTML.
+      $(marker).replaceWith('<span id="fr-break"></span>');
+      var html = editor.node.openTagString(li) + $(li).html() + editor.node.closeTagString(li);
+      html = html.replace(/<span id="fr-break"><\/span>/g, str);
+
+      // Replace the current list item.
+      $(li).replaceWith(html);
+    }
+
+    /**
+     * Enter at the end of a list item.
+     */
+    function _endEnter (marker) {
+      var li = _firstParentLI(marker);
+
+      var str = $.FroalaEditor.MARKERS;
+      var node = marker;
+      while (node != li) {
+        node = node.parentNode;
+
+        var cls = (node.tagName == 'A' && editor.cursor.isAtEnd(marker, node)) ? 'fr-to-remove' : '';
+
+        str = editor.node.openTagString($(node).clone().addClass(cls).get(0)) + str + editor.node.closeTagString(node);
+      }
+
+      $(marker).remove();
+      $(li).after(str);
+    }
+
+    /**
+     * Do backspace on a list item. This method is called only when wer are at the beginning of a LI.
+     */
+    function _backspace (marker) {
+      var li = _firstParentLI(marker);
+
+      // Get previous sibling.
+      var prev_li = li.previousSibling;
+
+      // There is a previous li.
+      if (prev_li) {
+        // Get the li inside a nested list or inner block tags.
+        prev_li = $(prev_li).find(editor.html.blockTagsQuery()).get(-1) || prev_li;
+
+        // Add markers.
+        $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+        // Remove possible BR at the end of the previous list.
+        var contents = editor.node.contents(prev_li);
+        if (contents.length && contents[contents.length - 1].tagName == 'BR') {
+          $(contents[contents.length - 1]).remove();
+        }
+
+        // Remove any nodes that might be wrapped.
+        $(li).find(editor.html.blockTagsQuery()).not('ol, ul, table').each (function () {
+          if (this.parentNode == li) {
+            $(this).replaceWith($(this).html() + (editor.node.isEmpty(this) ? '' : '<br>'));
+          }
+        })
+
+        // Append the current list item content to the previous one.
+        var node = editor.node.contents(li)[0];
+        var tmp;
+        while (node && !editor.node.isList(node)) {
+          tmp = node.nextSibling;
+          $(prev_li).append(node);
+          node = tmp;
+        }
+
+        prev_li = li.previousSibling;
+        while (node) {
+          tmp = node.nextSibling;
+          $(prev_li).append(node);
+          node = tmp;
+        }
+
+        // Remove the current LI.
+        $(li).remove();
+      }
+
+      // No previous li.
+      else {
+        var ul = _firstParentList(li);
+
+        // Add markers.
+        $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+        // Nested lists.
+        if (ul.parentNode && ul.parentNode.tagName == 'LI') {
+          var prev_node = ul.previousSibling;
+
+          // Previous node is block.
+          if (editor.node.isBlock(prev_node)) {
+            // Remove any nodes that might be wrapped.
+            $(li).find(editor.html.blockTagsQuery()).not('ol, ul, table').each (function () {
+              if (this.parentNode == li) {
+                $(this).replaceWith($(this).html() + (editor.node.isEmpty(this) ? '' : '<br>'));
+              }
+            });
+
+            $(prev_node).append($(li).html());
+          }
+
+          // Text right in li.
+          else {
+            $(ul).before($(li).html());
+          }
+        }
+
+        // Normal lists. Add an empty li instead.
+        else {
+          var default_tag = editor.html.defaultTag();
+          if (default_tag && $(li).find(editor.html.blockTagsQuery()).length === 0) {
+            $(ul).before('<' + default_tag + '>' + $(li).html() + '</' + default_tag + '>');
+          }
+          else {
+            $(ul).before($(li).html());
+          }
+        }
+
+        // Remove the current li.
+        $(li).remove();
+
+        // Remove the ul if it is empty.
+        if ($(ul).find('li').length === 0) $(ul).remove();
+      }
+    }
+
+    /**
+     * Delete at the end of list item.
+     */
+    function _del (marker) {
+      var li = _firstParentLI(marker);
+      var next_li = li.nextSibling;
+      var contents;
+
+      // There is a next li.
+      if (next_li) {
+        // Remove possible BR at the beginning of the next LI.
+        contents = editor.node.contents(next_li);
+        if (contents.length && contents[0].tagName == 'BR') {
+          $(contents[0]).remove();
+        }
+
+        // Unwrap content from the next node.
+        $(next_li).find(editor.html.blockTagsQuery()).not('ol, ul, table').each (function () {
+          if (this.parentNode == next_li) {
+            $(this).replaceWith($(this).html() + (editor.node.isEmpty(this) ? '' : '<br>'));
+          }
+        });
+
+        // Append the next LI to the current LI.
+        var last_node = marker;
+        var node = editor.node.contents(next_li)[0];
+        var tmp;
+        while (node && !editor.node.isList(node)) {
+          tmp = node.nextSibling;
+          $(last_node).after(node);
+          last_node = node;
+          node = tmp;
+        }
+
+        // Append nested lists.
+        while (node) {
+          tmp = node.nextSibling;
+          $(li).append(node);
+          node = tmp;
+        }
+
+        // Replace marker with markers.
+        $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+        // Remove next li.
+        $(next_li).remove();
+      }
+
+      // No next li.
+      else {
+        // Search the next sibling in parents.
+        var next_node = li;
+        while (!next_node.nextSibling && next_node != editor.$el.get(0)) {
+          next_node = next_node.parentNode;
+        }
+
+        // We're right at the end.
+        if (next_node == editor.$el.get(0)) return false;
+
+        // Get the next sibling.
+        next_node = next_node.nextSibling;
+
+        // Next sibling is a block tag.
+        if (editor.node.isBlock(next_node)) {
+          // Check if we can do delete in it.
+          if ($.FroalaEditor.NO_DELETE_TAGS.indexOf(next_node.tagName) < 0) {
+
+            // Add markers.
+            $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+            // Remove any possible BR at the end of the LI.
+            contents = editor.node.contents(li);
+            if (contents.length && contents[contents.length - 1].tagName == 'BR') {
+              $(contents[contents.length - 1]).remove();
+            }
+
+            // Append next node.
+            $(li).append($(next_node).html());
+
+            // Remove the next node.
+            $(next_node).remove();
+          }
+        }
+
+        // Append everything till the next block tag or BR.
+        else {
+          // Remove any possible BR at the end of the LI.
+          contents = editor.node.contents(li);
+          if (contents.length && contents[contents.length - 1].tagName == 'BR') {
+            $(contents[contents.length - 1]).remove();
+          }
+
+          // var next_node = next_li;
+          $(marker).replaceWith($.FroalaEditor.MARKERS);
+          while (next_node && !editor.node.isBlock(next_node) && next_node.tagName != 'BR') {
+            $(li).append($(next_node));
+            next_node = next_node.nextSibling;
+          }
+        }
+      }
+    }
+
+    return {
+      _startEnter: _startEnter,
+      _middleEnter: _middleEnter,
+      _endEnter: _endEnter,
+      _backspace: _backspace,
+      _del: _del
+    }
+  };
+
+
+  // Do not merge with the previous one.
+  $.FroalaEditor.NO_DELETE_TAGS = ['TH', 'TD', 'TABLE'];
+
+  // Do simple enter.
+  $.FroalaEditor.SIMPLE_ENTER_TAGS = ['TH', 'TD', 'LI'];
+
+  $.FroalaEditor.MODULES.cursor = function (editor) {
+    /**
+     * Check if node is at the end of a block tag.
+     */
+    function _atEnd (node) {
+      if (editor.node.isBlock(node)) return true;
+      if (node.nextSibling) return false;
+
+      return _atEnd(node.parentNode);
+    }
+
+    /**
+     * Check if node is at the start of a block tag.
+     */
+    function _atStart (node) {
+      if (editor.node.isBlock(node)) return true;
+      if (node.previousSibling) return false;
+
+      return _atStart(node.parentNode);
+    }
+
+    /**
+     * Check if node is a the start of the container.
+     */
+    function _isAtStart (node, container) {
+      if (!node) return false;
+      if (node == editor.$wp.get(0)) return false;
+      if (node.previousSibling) return false;
+      if (node.parentNode == container) return true;
+
+      return _isAtStart(node.parentNode, container);
+    }
+
+    /**
+     * Check if node is a the start of the container.
+     */
+    function _isAtEnd (node, container) {
+      if (!node) return false;
+      if (node == editor.$wp.get(0)) return false;
+      if (node.nextSibling) return false;
+      if (node.parentNode == container) return true;
+
+      return _isAtEnd(node.parentNode, container);
+    }
+
+    /**
+     * Check if the node is inside a LI.
+     */
+    function _inLi (node) {
+      return $(node).parentsUntil(editor.$el, 'LI').length > 0 && $(node).parentsUntil('LI', 'TABLE').length === 0;
+    }
+
+    /**
+     * Do backspace at the start of a block tag.
+     */
+    function _startBackspace (marker) {
+      var quote = $(marker).parentsUntil(editor.$el, 'BLOCKQUOTE').length > 0;
+      var deep_parent = editor.node.deepestParent(marker, [], !quote);
+
+      if (deep_parent && deep_parent.tagName == 'BLOCKQUOTE') {
+        var m_parent = editor.node.deepestParent(marker, [$(marker).parentsUntil(editor.$el, 'BLOCKQUOTE').get(0)]);
+        if (m_parent && m_parent.previousSibling) {
+          deep_parent = m_parent;
+        }
+      }
+
+      // Deepest parent is not the main element.
+      if (deep_parent !== null) {
+        var prev_node = deep_parent.previousSibling;
+        var contents;
+
+        // We are inside a block tag.
+        if (editor.node.isBlock(deep_parent) && editor.node.isEditable(deep_parent)) {
+          // There is a previous node.
+          if (prev_node && $.FroalaEditor.NO_DELETE_TAGS.indexOf(prev_node.tagName) < 0) {
+            // Previous node is a block tag.
+            if (editor.node.isEditable(prev_node)) {
+              if (editor.node.isBlock(prev_node)) {
+                if (editor.node.isEmpty(prev_node) && !editor.node.isList(prev_node)) {
+                  $(prev_node).remove();
+                }
+                else {
+                  if (editor.node.isList(prev_node)) {
+                    prev_node = $(prev_node).find('li:last').get(0);
+                  }
+
+                  // Remove last BR.
+                  contents = editor.node.contents(prev_node);
+                  if (contents.length && contents[contents.length - 1].tagName == 'BR') {
+                    $(contents[contents.length - 1]).remove();
+                  }
+
+                  // Prev node is blockquote but the current one isn't.
+                  if (prev_node.tagName == 'BLOCKQUOTE' && deep_parent.tagName != 'BLOCKQUOTE') {
+                    contents = editor.node.contents(prev_node);
+                    while (contents.length && editor.node.isBlock(contents[contents.length - 1])) {
+                      prev_node = contents[contents.length - 1];
+                      contents = editor.node.contents(prev_node);
+                    }
+                  }
+                  // Prev node is not blockquote, but the current one is.
+                  else if (prev_node.tagName != 'BLOCKQUOTE' && deep_parent.tagName == 'BLOCKQUOTE') {
+                    contents = editor.node.contents(deep_parent);
+                    while (contents.length && editor.node.isBlock(contents[0])) {
+                      deep_parent = contents[0];
+                      contents = editor.node.contents(deep_parent);
+                    }
+                  }
+
+                  $(marker).replaceWith($.FroalaEditor.MARKERS);
+                  $(prev_node).append(deep_parent.innerHTML);
+                  $(deep_parent).remove();
+                }
+              }
+              else {
+                $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+                if (deep_parent.tagName == 'BLOCKQUOTE' && prev_node.nodeType == Node.ELEMENT_NODE) {
+                  $(prev_node).remove();
+                }
+                else {
+                  $(prev_node).after(editor.node.isEmpty(deep_parent) ? '' : $(deep_parent).html());
+                  $(deep_parent).remove();
+                  if (prev_node.tagName == 'BR') $(prev_node).remove();
+                }
+              }
+            }
+          }
+        }
+
+        // No block tag.
+        /* jshint ignore:start */
+        /* jscs:disable */
+        else {
+          // This should never happen.
+        }
+        /* jshint ignore:end */
+        /* jscs:enable */
+      }
+    }
+
+    /**
+     * Do backspace at the middle of a block tag.
+     */
+    function _middleBackspace (marker) {
+      var prev_node = marker;
+
+      // Get the parent node that has a prev sibling.
+      while (!prev_node.previousSibling) {
+        prev_node = prev_node.parentNode;
+      }
+      prev_node = prev_node.previousSibling;
+
+      // Not block tag.
+      var contents;
+      if (!editor.node.isBlock(prev_node)) {
+        contents = editor.node.contents(prev_node);
+
+        // Previous node is text.
+        while (prev_node.nodeType != Node.TEXT_NODE && contents.length && !$(prev_node).is('[contenteditable=\'false\']')) {
+          prev_node = contents[contents.length - 1];
+          contents = editor.node.contents(prev_node);
+        }
+
+        if (prev_node.nodeType == Node.TEXT_NODE) {
+          if (editor.helpers.isIOS()) return true;
+
+          $(prev_node).after($.FroalaEditor.MARKERS);
+
+          var txt = prev_node.textContent;
+          var len = txt.length - 1;
+
+          // Tab UNDO.
+          if (editor.opts.tabSpaces && txt.length >= editor.opts.tabSpaces) {
+            var tab_str = txt.substr(txt.length - editor.opts.tabSpaces, txt.length - 1);
+            if (tab_str.replace(/ /g, '').replace(new RegExp($.FroalaEditor.UNICODE_NBSP, 'g'), '').length == 0) {
+              len = txt.length - editor.opts.tabSpaces;
+            }
+          }
+
+          prev_node.textContent = txt.substring(0, len);
+          if (prev_node.textContent.length && prev_node.textContent.charCodeAt(prev_node.textContent.length - 1) == 55357) {
+            prev_node.textContent = prev_node.textContent.substr(0, prev_node.textContent.length - 1);
+          }
+        }
+        else {
+          if (editor.events.trigger('node.remove', [$(prev_node)]) !== false) {
+            $(prev_node).after($.FroalaEditor.MARKERS);
+            $(prev_node).remove();
+          }
+        }
+      }
+
+      // Block tag but we are allowed to delete it.
+      else if ($.FroalaEditor.NO_DELETE_TAGS.indexOf(prev_node.tagName) < 0) {
+        if (editor.node.isEmpty(prev_node) && !editor.node.isList(prev_node)) {
+          $(prev_node).remove();
+          $(marker).replaceWith($.FroalaEditor.MARKERS);
+        }
+        else {
+          // List correction.
+          if (editor.node.isList(prev_node)) prev_node = $(prev_node).find('li:last').get(0);
+
+          contents = editor.node.contents(prev_node);
+          if (contents && contents[contents.length - 1].tagName == 'BR') {
+            $(contents[contents.length - 1]).remove();
+          }
+
+          contents = editor.node.contents(prev_node);
+          while (contents && editor.node.isBlock(contents[contents.length - 1])) {
+            prev_node = contents[contents.length - 1];
+            contents = editor.node.contents(prev_node);
+          }
+
+          $(prev_node).append($.FroalaEditor.MARKERS);
+
+          var next_node = marker;
+          while (!next_node.previousSibling) {
+            next_node = next_node.parentNode;
+          }
+
+          while (next_node && next_node.tagName !== 'BR' && !editor.node.isBlock(next_node)) {
+            var copy_node = next_node;
+            next_node = next_node.nextSibling;
+            $(prev_node).append(copy_node);
+          }
+
+          // Remove BR.
+          if (next_node && next_node.tagName == 'BR') $(next_node).remove();
+
+          $(marker).remove();
+        }
+      }
+    }
+
+    /**
+     * Do backspace.
+     */
+    function backspace () {
+      var do_default = false;
+
+      // Add a marker in HTML.
+      var marker = editor.markers.insert();
+
+      if (!marker) return false;
+
+      editor.$el.get(0).normalize();
+
+      // We should remove invisible space first of all.
+      var prev_node = marker.previousSibling;
+      if (prev_node) {
+        var txt = prev_node.textContent;
+        if (txt && txt.length && txt.charCodeAt(txt.length - 1) == 8203) {
+          if (txt.length == 1) {
+            $(prev_node).remove()
+          }
+          else {
+            prev_node.textContent = prev_node.textContent.substr(0, txt.length - 1);
+            if (prev_node.textContent.length && prev_node.textContent.charCodeAt(prev_node.textContent.length - 1) == 55357) {
+              prev_node.textContent = prev_node.textContent.substr(0, prev_node.textContent.length - 1);
+            }
+          }
+        }
+      }
+
+      // Delete at end.
+      if (_atEnd(marker)) {
+        do_default = _middleBackspace(marker);
+      }
+
+      // Delete at start.
+      else if (_atStart(marker)) {
+        if (_inLi(marker) && _isAtStart(marker, $(marker).parents('li:first').get(0))) {
+          editor.cursorLists._backspace(marker);
+        }
+        else {
+          _startBackspace(marker);
+        }
+      }
+
+      // Delete at middle.
+      else {
+        do_default = _middleBackspace(marker);
+      }
+
+      $(marker).remove();
+
+      editor.$el.find('blockquote:empty').remove();
+      editor.html.fillEmptyBlocks(true);
+      editor.html.cleanEmptyTags(true);
+      editor.clean.quotes();
+      editor.clean.lists();
+      editor.html.normalizeSpaces();
+      editor.selection.restore();
+
+      return do_default;
+    }
+
+    /**
+     * Delete at the end of a block tag.
+     */
+    function _endDel (marker) {
+      var quote = $(marker).parentsUntil(editor.$el, 'BLOCKQUOTE').length > 0;
+      var deep_parent = editor.node.deepestParent(marker, [], !quote);
+
+      if (deep_parent && deep_parent.tagName == 'BLOCKQUOTE') {
+        var m_parent = editor.node.deepestParent(marker, [$(marker).parentsUntil(editor.$el, 'BLOCKQUOTE').get(0)]);
+        if (m_parent && m_parent.nextSibling) {
+          deep_parent = m_parent;
+        }
+      }
+
+      // Deepest parent is not the main element.
+      if (deep_parent !== null) {
+        var next_node = deep_parent.nextSibling;
+        var contents;
+
+        // We are inside a block tag.
+        if (editor.node.isBlock(deep_parent) && editor.node.isEditable(deep_parent)) {
+          // There is a next node.
+          if (next_node && $.FroalaEditor.NO_DELETE_TAGS.indexOf(next_node.tagName) < 0) {
+            // Next node is a block tag.
+            if (editor.node.isBlock(next_node) && editor.node.isEditable(next_node)) {
+              // Next node is a list.
+              if (editor.node.isList(next_node)) {
+                // Current block tag is empty.
+                if (editor.node.isEmpty(deep_parent, true)) {
+                  $(deep_parent).remove();
+
+                  $(next_node).find('li:first').prepend($.FroalaEditor.MARKERS);
+                }
+                else {
+                  var $li = $(next_node).find('li:first');
+
+                  if (deep_parent.tagName == 'BLOCKQUOTE') {
+                    contents = editor.node.contents(deep_parent);
+                    if (contents.length && editor.node.isBlock(contents[contents.length - 1])) {
+                      deep_parent = contents[contents.length - 1];
+                    }
+                  }
+
+                  // There are no nested lists.
+                  if ($li.find('ul, ol').length === 0) {
+                    $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+                    // Remove any nodes that might be wrapped.
+                    $li.find(editor.html.blockTagsQuery()).not('ol, ul, table').each (function () {
+                      if (this.parentNode == $li.get(0)) {
+                        $(this).replaceWith($(this).html() + (editor.node.isEmpty(this) ? '' : '<br>'));
+                      }
+                    });
+
+                    $(deep_parent).append(editor.node.contents($li.get(0)));
+                    $li.remove();
+
+                    if ($(next_node).find('li').length === 0) $(next_node).remove();
+                  }
+                }
+              }
+              else {
+                // Remove last BR.
+                contents = editor.node.contents(next_node);
+                if (contents.length && contents[0].tagName == 'BR') {
+                  $(contents[0]).remove();
+                }
+
+                if (next_node.tagName != 'BLOCKQUOTE' && deep_parent.tagName == 'BLOCKQUOTE') {
+                  contents = editor.node.contents(deep_parent);
+                  while (contents.length && editor.node.isBlock(contents[contents.length - 1])) {
+                    deep_parent = contents[contents.length - 1];
+                    contents = editor.node.contents(deep_parent);
+                  }
+                }
+                else if (next_node.tagName == 'BLOCKQUOTE' && deep_parent.tagName != 'BLOCKQUOTE') {
+                  contents = editor.node.contents(next_node);
+                  while (contents.length && editor.node.isBlock(contents[0])) {
+                    next_node = contents[0];
+                    contents = editor.node.contents(next_node);
+                  }
+                }
+
+                $(marker).replaceWith($.FroalaEditor.MARKERS);
+                $(deep_parent).append(next_node.innerHTML);
+                $(next_node).remove();
+              }
+            }
+            else {
+              $(marker).replaceWith($.FroalaEditor.MARKERS);
+
+              // var next_node = next_node.nextSibling;
+              while (next_node && next_node.tagName !== 'BR' && !editor.node.isBlock(next_node) && editor.node.isEditable(next_node)) {
+                var copy_node = next_node;
+                next_node = next_node.nextSibling;
+                $(deep_parent).append(copy_node);
+              }
+
+              if (next_node && next_node.tagName == 'BR' && editor.node.isEditable(next_node)) {
+                $(next_node).remove();
+              }
+            }
+          }
+        }
+
+        // No block tag.
+        /* jshint ignore:start */
+        /* jscs:disable */
+        else {
+          // This should never happen.
+        }
+        /* jshint ignore:end */
+        /* jscs:enable */
+      }
+    }
+
+    /**
+     * Delete at the middle of a block tag.
+     */
+    function _middleDel (marker) {
+      var next_node = marker;
+
+      // Get the parent node that has a next sibling.
+      while (!next_node.nextSibling) {
+        next_node = next_node.parentNode;
+      }
+      next_node = next_node.nextSibling;
+
+      // Handle the case when the next node is a BR.
+      if (next_node.tagName == 'BR' && editor.node.isEditable(next_node)) {
+        // There is a next sibling.
+        if (next_node.nextSibling) {
+          if (editor.node.isBlock(next_node.nextSibling) && editor.node.isEditable(next_node.nextSibling)) {
+            if ($.FroalaEditor.NO_DELETE_TAGS.indexOf(next_node.nextSibling.tagName) < 0) {
+              next_node = next_node.nextSibling;
+              $(next_node.previousSibling).remove();
+            }
+            else {
+              return;
+            }
+          }
+        }
+
+        // No next sibling. We should check if BR is at the end.
+        else if (_atEnd(next_node)) {
+          if (_inLi(marker)) {
+            editor.cursorLists._del(marker);
+          }
+          else {
+            var deep_parent = editor.node.deepestParent(next_node);
+            if (deep_parent) {
+              $(next_node).remove();
+              _endDel(marker);
+            }
+          }
+
+          return;
+        }
+      }
+
+      // Not block tag.
+      var contents;
+      if (!editor.node.isBlock(next_node) && editor.node.isEditable(next_node)) {
+        contents = editor.node.contents(next_node);
+
+        // Next node is text.
+        while (next_node.nodeType != Node.TEXT_NODE && contents.length && editor.node.isEditable(next_node)) {
+          next_node = contents[0];
+          contents = editor.node.contents(next_node);
+        }
+
+        if (next_node.nodeType == Node.TEXT_NODE) {
+          $(next_node).before($.FroalaEditor.MARKERS);
+
+          if (next_node.textContent.length && next_node.textContent.charCodeAt(0) == 55357) {
+            next_node.textContent = next_node.textContent.substring(2, next_node.textContent.length);
+          }
+          else {
+            next_node.textContent = next_node.textContent.substring(1, next_node.textContent.length);
+          }
+        }
+        else {
+          if (editor.events.trigger('node.remove', [$(next_node)]) !== false) {
+            $(next_node).before($.FroalaEditor.MARKERS);
+            $(next_node).remove();
+          }
+        }
+
+        $(marker).remove();
+      }
+
+      // Block tag.
+      else if ($.FroalaEditor.NO_DELETE_TAGS.indexOf(next_node.tagName) < 0) {
+        if (editor.node.isList(next_node)) {
+          // There is a previous sibling.
+          if (marker.previousSibling) {
+            $(next_node).find('li:first').prepend(marker);
+            editor.cursorLists._backspace(marker);
+          }
+
+          // No previous sibling.
+          else {
+            $(next_node).find('li:first').prepend($.FroalaEditor.MARKERS);
+            $(marker).remove()
+          }
+        }
+        else {
+          contents = editor.node.contents(next_node);
+          if (contents && contents[0].tagName == 'BR') {
+            $(contents[0]).remove();
+          }
+
+          // Deal with blockquote.
+          if (contents && next_node.tagName == 'BLOCKQUOTE') {
+            var node = contents[0];
+            $(marker).before($.FroalaEditor.MARKERS);
+            while (node && node.tagName != 'BR') {
+              var tmp = node;
+              node = node.nextSibling;
+              $(marker).before(tmp);
+            }
+
+            if (node && node.tagName == 'BR') {
+              $(node).remove();
+            }
+          }
+          else {
+            $(marker)
+              .after($(next_node).html())
+              .after($.FroalaEditor.MARKERS);
+
+            $(next_node).remove();
+          }
+        }
+      }
+    }
+
+    /**
+     * Delete.
+     */
+    function del () {
+      var marker = editor.markers.insert();
+
+      if (!marker) return false;
+
+      editor.$el.get(0).normalize();
+
+      // Delete at end.
+      if (_atEnd(marker)) {
+        if (_inLi(marker)) {
+          if ($(marker).parents('li:first').find('ul, ol').length === 0) {
+            editor.cursorLists._del(marker);
+          }
+          else {
+            var $li = $(marker).parents('li:first').find('ul:first, ol:first').find('li:first');
+            $li = $li.find(editor.html.blockTagsQuery()).get(-1) || $li;
+
+            $li.prepend(marker);
+            editor.cursorLists._backspace(marker);
+          }
+        }
+        else {
+          _endDel(marker);
+        }
+      }
+
+      // Delete at start.
+      else if (_atStart(marker)) {
+        _middleDel(marker);
+      }
+
+      // Delete at middle.
+      else {
+        _middleDel(marker);
+      }
+
+      $(marker).remove();
+      editor.$el.find('blockquote:empty').remove();
+      editor.html.fillEmptyBlocks(true);
+      editor.html.cleanEmptyTags(true);
+      editor.clean.quotes();
+      editor.clean.lists();
+      editor.html.normalizeSpaces();
+      editor.selection.restore();
+    }
+
+    function _cleanNodesToRemove() {
+      editor.$el.find('.fr-to-remove').each (function () {
+        var contents = editor.node.contents(this);
+        for (var i = 0; i < contents.length; i++) {
+          if (contents[i].nodeType == Node.TEXT_NODE) {
+            contents[i].textContent = contents[i].textContent.replace(/\u200B/g, '');
+          }
+        }
+
+        $(this).replaceWith(this.innerHTML);
+      })
+    }
+
+    /**
+     * Enter at the end of a block tag.
+     */
+    function _endEnter (marker, shift, quote) {
+      var deep_parent = editor.node.deepestParent(marker, [], !quote);
+      var default_tag;
+
+      if (deep_parent && deep_parent.tagName == 'BLOCKQUOTE') {
+        if (_isAtEnd(marker, deep_parent)) {
+          default_tag = editor.html.defaultTag();
+          if (default_tag) {
+            $(deep_parent).after('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br>' + '</' + default_tag + '>');
+          }
+          else {
+            $(deep_parent).after($.FroalaEditor.MARKERS + '<br>');
+          }
+
+          $(marker).remove();
+          return false;
+        }
+        else {
+          _middleEnter(marker, shift, quote);
+          return false;
+        }
+      }
+
+      // We are right in the main element.
+      if (deep_parent == null) {
+        $(marker).replaceWith('<br/>' + $.FroalaEditor.MARKERS + '<br/>');
+      }
+
+      // There is a parent.
+      else {
+        // Block tag parent.
+        var c_node = marker;
+        var str = '';
+        if (!editor.node.isBlock(deep_parent) || shift) {
+          str = '<br/>';
+        }
+
+        var c_str = '';
+        var o_str = '';
+
+        default_tag = editor.html.defaultTag();
+        var open_default_tag = '';
+        var close_default_tag = '';
+        if (default_tag && editor.node.isBlock(deep_parent)) {
+          open_default_tag = '<' + default_tag + '>';
+          close_default_tag = '</' + default_tag + '>';
+        }
+
+        do {
+          c_node = c_node.parentNode;
+
+          // Shift condition.
+          if (!shift || c_node != deep_parent || (shift && !editor.node.isBlock(deep_parent))) {
+            // Close str.
+            c_str = c_str + editor.node.closeTagString(c_node);
+
+            // Open str when there is a block parent.
+            if (c_node == deep_parent && editor.node.isBlock(deep_parent)) {
+              o_str = open_default_tag + o_str;
+            }
+            else {
+              var cls = (c_node.tagName == 'A' && _isAtEnd(marker, c_node)) ? 'fr-to-remove' : '';
+              o_str = editor.node.openTagString($(c_node).clone().addClass(cls).get(0)) + o_str;
+            }
+          }
+        } while (c_node != deep_parent);
+
+        // Add BR if deep parent is block tag.
+        str = c_str + str + o_str + ((marker.parentNode == deep_parent && editor.node.isBlock(deep_parent)) ? '' : $.FroalaEditor.INVISIBLE_SPACE) + $.FroalaEditor.MARKERS;
+
+        if (editor.node.isBlock(deep_parent)) {
+          $(deep_parent).append('<br/>');
+        }
+
+        $(marker).after('<span id="fr-break"></span>');
+        $(marker).remove();
+
+        // Add a BR after to make sure we display the last line.
+        if ((!deep_parent.nextSibling || editor.node.isBlock(deep_parent.nextSibling)) && !editor.node.isBlock(deep_parent)) {
+          $(deep_parent).after('<br>');
+        }
+
+        var html;
+        // No shift.
+        if (!shift && editor.node.isBlock(deep_parent)) {
+          html = editor.node.openTagString(deep_parent) + $(deep_parent).html() + close_default_tag;
+        }
+        else {
+          html = editor.node.openTagString(deep_parent) + $(deep_parent).html() + editor.node.closeTagString(deep_parent);
+        }
+
+        html = html.replace(/<span id="fr-break"><\/span>/g, str);
+
+        $(deep_parent).replaceWith(html);
+      }
+    }
+
+    /**
+     * Start at the beginning of a block tag.
+     */
+    function _startEnter (marker, shift, quote) {
+      var deep_parent = editor.node.deepestParent(marker, [], !quote);
+
+      if (deep_parent && deep_parent.tagName == 'BLOCKQUOTE') {
+        if (_isAtStart(marker, deep_parent)) {
+          var default_tag = editor.html.defaultTag();
+          if (default_tag) {
+            $(deep_parent).before('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br>' + '</' + default_tag + '>');
+          }
+          else {
+            $(deep_parent).before($.FroalaEditor.MARKERS + '<br>');
+          }
+
+          $(marker).remove();
+          return false;
+        }
+        else if (_isAtEnd(marker, deep_parent)) {
+          _endEnter(marker, shift, true);
+        }
+        else {
+          _middleEnter(marker, shift, true);
+        }
+      }
+
+      // We are right in the main element.
+      if (deep_parent == null) {
+        $(marker).replaceWith('<br>' + $.FroalaEditor.MARKERS);
+      }
+      else {
+        if (editor.node.isBlock(deep_parent)) {
+          if (shift) {
+            $(marker).remove();
+            $(deep_parent).prepend('<br>' + $.FroalaEditor.MARKERS);
+          }
+          else {
+            $(deep_parent).before(editor.node.openTagString(deep_parent) + '<br>' + editor.node.closeTagString(deep_parent));
+          }
+        }
+        else {
+          $(deep_parent).before('<br>');
+        }
+
+        $(marker).remove();
+      }
+    }
+
+    /**
+     * Enter at the middle of a block tag.
+     */
+    function _middleEnter (marker, shift, quote) {
+      var deep_parent = editor.node.deepestParent(marker, [], !quote);
+
+      // We are right in the main element.
+      if (deep_parent == null) {
+        // Add a BR after to make sure we display the last line.
+        if (!marker.nextSibling || editor.node.isBlock(marker.nextSibling)) {
+          $(marker).after('<br>');
+        }
+
+        $(marker).replaceWith('<br>' + $.FroalaEditor.MARKERS);
+      }
+
+      // There is a parent.
+      else {
+        // Block tag parent.
+        var c_node = marker;
+        var str = '';
+
+        if (deep_parent.tagName == 'PRE') shift = true;
+        if (!editor.node.isBlock(deep_parent) || shift) {
+          str = '<br>';
+        }
+
+        var c_str = '';
+        var o_str = '';
+
+        do {
+          var tmp = c_node;
+          c_node = c_node.parentNode;
+
+          // Move marker after node it if is empty and we are in quote.
+          if (deep_parent.tagName == 'BLOCKQUOTE' && editor.node.isEmpty(tmp) && !$(tmp).hasClass('fr-marker')) {
+            if ($(tmp).find(marker).length > 0) {
+              $(tmp).after(marker);
+            }
+          }
+
+          // If not at end or start of element in quote.
+          if (!(deep_parent.tagName == 'BLOCKQUOTE' && (_isAtEnd(marker, c_node) || _isAtStart(marker, c_node)))) {
+            // 1. No shift.
+            // 2. c_node is not deep parent.
+            // 3. Shift and deep parent is not block tag.
+            if (!shift || c_node != deep_parent || (shift && !editor.node.isBlock(deep_parent))) {
+              c_str = c_str + editor.node.closeTagString(c_node);
+
+              var cls = (c_node.tagName == 'A' && _isAtEnd(marker, c_node)) ? 'fr-to-remove' : '';
+              o_str = editor.node.openTagString($(c_node).clone().addClass(cls).get(0)) + o_str;
+            }
+          }
+        } while (c_node != deep_parent);
+
+        // We should add an invisible space if:
+        // 1. parent node is not deep parent and block tag.
+        // 2. marker has no next sibling.
+        var add = (
+                    (deep_parent == marker.parentNode && editor.node.isBlock(deep_parent)) ||
+                    marker.nextSibling
+                  );
+
+        if (deep_parent.tagName == 'BLOCKQUOTE') {
+          if (marker.previousSibling && editor.node.isBlock(marker.previousSibling) && marker.nextSibling && marker.nextSibling.tagName == 'BR') {
+            $(marker.nextSibling).after(marker);
+
+            if (marker.nextSibling && marker.nextSibling.tagName == 'BR') {
+              $(marker.nextSibling).remove();
+            }
+          }
+
+          var default_tag = editor.html.defaultTag();
+          str = c_str + str + (default_tag ? '<' + default_tag + '>' : '') + $.FroalaEditor.MARKERS + '<br>' + (default_tag ? '</' + default_tag + '>' : '') + o_str;
+        }
+        else {
+          str = c_str + str + o_str + (add ? '' : $.FroalaEditor.INVISIBLE_SPACE) + $.FroalaEditor.MARKERS;
+        }
+
+        $(marker).replaceWith('<span id="fr-break"></span>');
+        var html = editor.node.openTagString(deep_parent) + $(deep_parent).html() + editor.node.closeTagString(deep_parent);
+        html = html.replace(/<span id="fr-break"><\/span>/g, str);
+
+        $(deep_parent).replaceWith(html);
+      }
+    }
+
+    /**
+     * Do enter.
+     */
+    function enter (shift) {
+      // Add a marker in HTML.
+      var marker = editor.markers.insert();
+
+      if (!marker) return false;
+
+      editor.$el.get(0).normalize();
+
+      var quote = false;
+      if ($(marker).parentsUntil(editor.$el, 'BLOCKQUOTE').length > 0) {
+        shift = false;
+        quote = true;
+      }
+
+      if ($(marker).parentsUntil(editor.$el, 'TD, TH').length) quote = false;
+
+      // At the end.
+      if (_atEnd(marker)) {
+        // Enter in list.
+        if (_inLi(marker) && !shift && !quote) {
+          editor.cursorLists._endEnter(marker);
+        }
+        else {
+          _endEnter(marker, shift, quote);
+        }
+      }
+
+      // At start.
+      else if (_atStart(marker)) {
+        // Enter in list.
+        if (_inLi(marker) && !shift && !quote) {
+          editor.cursorLists._startEnter(marker);
+        }
+        else {
+          _startEnter(marker, shift, quote);
+        }
+      }
+
+      // At middle.
+      else {
+        // Enter in list.
+        if (_inLi(marker) && !shift && !quote) {
+          editor.cursorLists._middleEnter(marker);
+        }
+        else {
+          _middleEnter(marker, shift, quote);
+        }
+      }
+
+      _cleanNodesToRemove();
+
+      editor.html.fillEmptyBlocks(true);
+      editor.html.cleanEmptyTags(true);
+      editor.clean.lists();
+      editor.html.normalizeSpaces();
+      editor.selection.restore();
+    }
+
+    return {
+      enter: enter,
+      backspace: backspace,
+      del: del,
+      isAtEnd: _isAtEnd
+    }
+  }
+
+$.FroalaEditor.MODULES.data=function(a){function b(a){return a}function c(a){if(!a)return a;for(var c="",f=b("charCodeAt"),g=b("fromCharCode"),h=l.indexOf(a[0]),i=1;i<a.length-2;i++){for(var j=d(++h),k=a[f](i),m="";/[0-9-]/.test(a[i+1]);)m+=a[++i];m=parseInt(m,10)||0,k=e(k,j,m),k^=h-1&31,c+=String[g](k)}return c}function d(a){for(var b=a.toString(),c=0,d=0;d<b.length;d++)c+=parseInt(b.charAt(d),10);return c>10?c%9+1:c}function e(a,b,c){for(var d=Math.abs(c);d-->0;)a-=b;return 0>c&&(a+=123),a}function f(a){return a&&"none"==a.css("display")?(a.remove(),!0):!1}function g(){return f(j)||f(k)}function h(){return a.$box?(a.$box.append(n(b(n("kTDD4spmKD1klaMB1C7A5RA1G3RA10YA5qhrjuvnmE1D3FD2bcG-7noHE6B2JB4C3xXA8WF6F-10RG2C3G3B-21zZE3C3H3xCA16NC4DC1f1hOF1MB3B-21whzQH5UA2WB10kc1C2F4D3XC2YD4D1C4F3GF2eJ2lfcD-13HF1IE1TC11TC7WE4TA4d1A2YA6XA4d1A3yCG2qmB-13GF4A1B1KH1HD2fzfbeQC3TD9VE4wd1H2A20A2B-22ujB3nBG2A13jBC10D3C2HD5D1H1KB11uD-16uWF2D4A3F-7C9D-17c1E4D4B3d1D2CA6B2B-13qlwzJF2NC2C-13E-11ND1A3xqUA8UE6bsrrF-7C-22ia1D2CF2H1E2akCD2OE1HH1dlKA6PA5jcyfzB-22cXB4f1C3qvdiC4gjGG2H2gklC3D-16wJC1UG4dgaWE2D5G4g1I2H3B7vkqrxH1H2EC9C3E4gdgzKF1OA1A5PF5C4WWC3VA6XA4e1E3YA2YA5HE4oGH4F2H2IB10D3D2NC5G1B1qWA9PD6PG5fQA13A10XA4C4A3e1H2BA17kC-22cmOB1lmoA2fyhcptwWA3RA8A-13xB-11nf1I3f1B7GB3aD3pavFC10D5gLF2OG1LSB2D9E7fQC1F4F3wpSB5XD3NkklhhaE-11naKA9BnIA6D1F5bQA3A10c1QC6Kjkvitc2B6BE3AF3E2DA6A4JD2IC1jgA-64MB11D6C4==")))),j=a.$box.find("> div:last"),k=j.find("> a"),void("rtl"==a.opts.direction&&j.css("left","auto").css("right",0))):!1}function i(){var c=a.opts.key||[""];"string"==typeof c&&(c=[c]),a.ul=!0;for(var d=0;d<c.length;d++){var e=n(c[d])||"";if(!(e!==n(b(n("mcVRDoB1BGILD7YFe1BTXBA7B6==")))&&e.indexOf(m,e.length-m.length)<0&&[n("9qqG-7amjlwq=="),n("KA3B3C2A6D1D5H5H1A3==")].indexOf(m)<0)){a.ul=!1;break}}a.ul===!0&&h(),a.events.on("contentChanged",function(){a.ul===!0&&g()&&h()})}var j,k,l="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",m=function(){for(var a=0,b=document.domain,c=b.split("."),d="_gd"+(new Date).getTime();a<c.length-1&&-1==document.cookie.indexOf(d+"="+d);)b=c.slice(-1-++a).join("."),document.cookie=d+"="+d+";domain="+b+";";return document.cookie=d+"=;expires=Thu, 01 Jan 1970 00:00:01 GMT;domain="+b+";",b}(),n=b(c);return{_init:i}}
+
+  // Enter possible actions.
+  $.FroalaEditor.ENTER_P = 0;
+  $.FroalaEditor.ENTER_DIV = 1;
+  $.FroalaEditor.ENTER_BR = 2;
+
+  $.FroalaEditor.KEYCODE = {
+    BACKSPACE: 8,
+    TAB: 9,
+    ENTER: 13,
+    SHIFT: 16,
+    CTRL: 17,
+    ALT: 18,
+    ESC: 27,
+    SPACE: 32,
+    DELETE: 46,
+    ZERO: 48,
+    ONE: 49,
+    TWO: 50,
+    THREE: 51,
+    FOUR: 52,
+    FIVE: 53,
+    SIX: 54,
+    SEVEN: 55,
+    EIGHT: 56,
+    NINE: 57,
+    FF_SEMICOLON: 59, // Firefox (Gecko) fires this for semicolon instead of 186
+    FF_EQUALS: 61, // Firefox (Gecko) fires this for equals instead of 187
+    QUESTION_MARK: 63, // needs localization
+    A: 65,
+    B: 66,
+    C: 67,
+    D: 68,
+    E: 69,
+    F: 70,
+    G: 71,
+    H: 72,
+    I: 73,
+    J: 74,
+    K: 75,
+    L: 76,
+    M: 77,
+    N: 78,
+    O: 79,
+    P: 80,
+    Q: 81,
+    R: 82,
+    S: 83,
+    T: 84,
+    U: 85,
+    V: 86,
+    W: 87,
+    X: 88,
+    Y: 89,
+    Z: 90,
+    META: 91,
+    NUM_ZERO: 96,
+    NUM_ONE: 97,
+    NUM_TWO: 98,
+    NUM_THREE: 99,
+    NUM_FOUR: 100,
+    NUM_FIVE: 101,
+    NUM_SIX: 102,
+    NUM_SEVEN: 103,
+    NUM_EIGHT: 104,
+    NUM_NINE: 105,
+    NUM_MULTIPLY: 106,
+    NUM_PLUS: 107,
+    NUM_MINUS: 109,
+    NUM_PERIOD: 110,
+    NUM_DIVISION: 111,
+
+    SEMICOLON: 186,            // needs localization
+    DASH: 189,                 // needs localization
+    EQUALS: 187,               // needs localization
+    COMMA: 188,                // needs localization
+    PERIOD: 190,               // needs localization
+    SLASH: 191,                // needs localization
+    APOSTROPHE: 192,           // needs localization
+    TILDE: 192,                // needs localization
+    SINGLE_QUOTE: 222,         // needs localization
+    OPEN_SQUARE_BRACKET: 219,  // needs localization
+    BACKSLASH: 220,            // needs localization
+    CLOSE_SQUARE_BRACKET: 221 // needs localization
+  }
+
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    enter: $.FroalaEditor.ENTER_P,
+    multiLine: true,
+    tabSpaces: 0
+  });
+
+  $.FroalaEditor.MODULES.keys = function (editor) {
+    var IME = false;
+
+    /**
+     * Hide and then show the keyboard again to make the keyboard change.
+     */
+    function _hideShowiOSKeyboard() {
+      if (editor.helpers.isIOS()) {
+        editor.events.disableBlur();
+        editor.selection.save();
+        editor.$el.blur();
+        editor.selection.restore();
+        editor.events.enableBlur();
+      }
+    }
+
+    /**
+     * ENTER.
+     */
+    function _enter (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (editor.opts.multiLine) {
+        if (!editor.selection.isCollapsed()) editor.selection.remove();
+
+        editor.cursor.enter();
+      }
+
+      _hideShowiOSKeyboard();
+    }
+
+    /**
+     * SHIFT ENTER.
+     */
+    function _shiftEnter (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (editor.opts.multiLine) {
+        if (!editor.selection.isCollapsed()) editor.selection.remove();
+
+        editor.cursor.enter(true);
+      }
+    }
+
+    /**
+     * BACKSPACE.
+     */
+    var regular_backspace;
+    function _backspace (e) {
+      // There is no selection.
+      if (editor.selection.isCollapsed()) {
+        if (!editor.cursor.backspace()) {
+          e.preventDefault();
+          e.stopPropagation();
+          regular_backspace = false;
+        }
+      }
+
+      // We have text selected.
+      else {
+        e.preventDefault();
+        e.stopPropagation();
+
+        editor.selection.remove();
+        editor.html.fillEmptyBlocks(true);
+
+        regular_backspace = false;
+      }
+
+      editor.placeholder.refresh();
+    }
+
+    /**
+     * DELETE
+     */
+    function _del (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // There is no selection.
+      if (editor.selection.text() === '') {
+        editor.cursor.del();
+      }
+
+      // We have text selected.
+      else {
+        editor.selection.remove();
+      }
+
+      editor.placeholder.refresh();
+    }
+
+    /**
+     * SPACE
+     */
+    function _space (e) {
+      if (editor.browser.mozilla) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!editor.selection.isCollapsed()) editor.selection.remove();
+        editor.markers.insert();
+
+        var marker = editor.$el.find('.fr-marker').get(0);
+        var prev_node = marker.previousSibling;
+
+        if (prev_node && prev_node.nodeType == Node.TEXT_NODE && prev_node.textContent.length == 1 && prev_node.textContent.charCodeAt(0) == 160) {
+          $(prev_node).after(' ');
+        }
+        else {
+          $(marker).before('&nbsp;')
+        }
+
+        $(marker).replaceWith($.FroalaEditor.MARKERS);
+        editor.selection.restore();
+      }
+    }
+
+    /**
+     * Handle typing in Korean for FF.
+     */
+    function _input () {
+      // Select is collapsed and we're not using IME.
+      if (editor.browser.mozilla && editor.selection.isCollapsed() && !IME) {
+        var range = editor.selection.ranges(0);
+        var start_container = range.startContainer;
+        var start_offset = range.startOffset;
+
+        // Start container is text and last char before cursor is space.
+        if (start_container && start_container.nodeType == Node.TEXT_NODE && start_offset <= start_container.textContent.length && start_offset > 0 && start_container.textContent.charCodeAt(start_offset - 1) == 32) {
+          editor.selection.save();
+          editor.html.normalizeSpaces();
+          editor.selection.restore();
+        }
+      }
+    }
+
+    /**
+     * Cut.
+     */
+    function _cut() {
+      if (editor.selection.isFull()) {
+        setTimeout(function () {
+          var default_tag = editor.html.defaultTag();
+          if (default_tag) {
+            editor.$el.html('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br/></' + default_tag + '>');
+          }
+          else {
+            editor.$el.html($.FroalaEditor.MARKERS + '<br/>');
+          }
+          editor.selection.restore();
+
+          editor.placeholder.refresh();
+          editor.button.bulkRefresh();
+          editor.undo.saveStep();
+        }, 0);
+      }
+    }
+
+    /**
+     * Tab.
+     */
+    function _tab (e) {
+      if (editor.opts.tabSpaces > 0) {
+        if (editor.selection.isCollapsed()) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          var str = '';
+          for (var i = 0; i < editor.opts.tabSpaces; i++) str += '&nbsp;';
+          editor.html.insert(str);
+          editor.placeholder.refresh();
+        }
+        else {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!e.shiftKey) {
+            editor.commands.indent();
+          }
+          else {
+            editor.commands.outdent();
+          }
+        }
+      }
+    }
+
+    /**
+     * Map keyDown actions.
+     */
+    function _mapKeyDown (e) {
+      editor.events.disableBlur();
+
+      regular_backspace = true;
+
+      var key_code = e.which;
+
+      var char_key = (isCharacter(key_code) && !ctrlKey(e));
+      var del_key = (key_code == $.FroalaEditor.KEYCODE.BACKSPACE || key_code == $.FroalaEditor.KEYCODE.DELETE);
+
+      // 1. Selection is full.
+      // 2. Del key is hit, editor is empty and there is keepFormatOnDelete.
+      if ((editor.selection.isFull() && !editor.opts.keepFormatOnDelete) || (del_key && editor.placeholder.isVisible() && editor.opts.keepFormatOnDelete)) {
+        if (char_key || del_key) {
+          var default_tag = editor.html.defaultTag();
+          if (default_tag) {
+            editor.$el.html('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br/></' + default_tag + '>');
+          }
+          else {
+            editor.$el.html($.FroalaEditor.MARKERS + '<br/>');
+          }
+        }
+
+        editor.selection.restore();
+      }
+
+      // ENTER.
+      if (key_code == $.FroalaEditor.KEYCODE.ENTER) {
+        if (e.shiftKey) {
+          _shiftEnter(e);
+        }
+        else {
+          _enter(e);
+        }
+      }
+
+      // Backspace.
+      else if (key_code == $.FroalaEditor.KEYCODE.BACKSPACE && !ctrlKey(e)) {
+        _backspace(e);
+      }
+
+      // Delete.
+      else if (key_code == $.FroalaEditor.KEYCODE.DELETE && !ctrlKey(e)) {
+        _del(e);
+      }
+
+      else if (key_code == $.FroalaEditor.KEYCODE.SPACE) {
+        _space(e);
+      }
+
+      else if (key_code == $.FroalaEditor.KEYCODE.TAB) {
+        _tab(e);
+      }
+
+      else if (!ctrlKey(e) && isCharacter(e.which) && !editor.selection.isCollapsed()) {
+        editor.selection.remove();
+      }
+
+      editor.events.enableBlur();
+    }
+
+    /**
+     * Remove U200B.
+     */
+    function _replaceU200B (contents) {
+      for (var i = 0; i < contents.length; i++) {
+        if (contents[i].nodeType == Node.TEXT_NODE && /\u200B/gi.test(contents[i].textContent)) {
+          contents[i].textContent = contents[i].textContent.replace(/\u200B/gi, '');
+          if (contents[i].textContent.length === 0) {
+            $(contents[i]).remove();
+          }
+        }
+        else if (contents[i].nodeType == Node.ELEMENT_NODE && contents[i].nodeType != 'IFRAME') _replaceU200B(editor.node.contents(contents[i]));
+      }
+    }
+
+    function _positionCaret () {
+      var info;
+      if (!editor.opts.height && !editor.opts.heightMax) {
+        // Make sure we scroll bottom.
+        info = editor.position.getBoundingRect().top;
+        if (editor.opts.iframe) {
+          info += editor.$iframe.offset().top;
+        }
+
+        if (info > $(editor.original_window).height() - 20) {
+          $(editor.original_window).scrollTop(info + $(editor.original_window).scrollTop() - $(editor.original_window).height() + 20);
+        }
+
+        // Make sure we scroll top.
+        info = editor.position.getBoundingRect().top;
+        if (editor.opts.iframe) {
+          info += editor.$iframe.offset().top;
+        }
+        if (info < editor.$tb.height() + 20) {
+          $(editor.original_window).scrollTop(info + $(editor.original_window).scrollTop() - editor.$tb.height() - 20);
+        }
+      }
+      else {
+        // Make sure we scroll bottom.
+        info = editor.position.getBoundingRect().top;
+
+        if (editor.opts.iframe) {
+          info += editor.$iframe.offset().top;
+        }
+
+        if (info > editor.$wp.offset().top - $(editor.original_window).scrollTop() + editor.$wp.height() - 20) {
+          editor.$wp.scrollTop(info + editor.$wp.scrollTop() - (editor.$wp.height() + editor.$wp.offset().top) + $(editor.original_window).scrollTop() + 20);
+        }
+      }
+    }
+
+    /**
+     * Map keyUp actions.
+     */
+    function _mapKeyUp (e) {
+      // IME IE.
+      if (IME) return false;
+      if (!editor.selection.isCollapsed()) return false;
+
+      if (e && (e.which == $.FroalaEditor.KEYCODE.ENTER || e.which == $.FroalaEditor.KEYCODE.BACKSPACE)) {
+        if (!(e.which == $.FroalaEditor.KEYCODE.BACKSPACE && regular_backspace)) _positionCaret();
+      }
+
+      // Remove BR from elements that are not empty.
+      var brs = editor.$el.find(editor.html.blockTagsQuery()).andSelf().not('TD, TH').find(' > br');
+      for (var i = 0; i < brs.length; i++) {
+        var br = brs[i];
+
+        var prev_node = br.previousSibling;
+        var next_node = br.nextSibling;
+
+        // Get the parent node.
+        var parent_node = editor.node.blockParent(br) || editor.$el.get(0);
+
+        if (prev_node && parent_node && prev_node.tagName != 'BR' && !editor.node.isBlock(prev_node) && !next_node && $(parent_node).text().replace(/\u200B/g, '').length > 0 && $(prev_node).text().length > 0) {
+          editor.selection.save();
+          $(br).remove();
+          editor.selection.restore();
+        }
+      }
+
+      // Remove invisible space where possible.
+      var has_invisible = function (node) {
+        if (!node) return false;
+
+        var text = $(node).html();
+        text = text.replace(/<span[^>]*? class\s*=\s*["']?fr-marker["']?[^>]+>\u200b<\/span>/gi, '');
+        if (text && /\u200B/.test(text) && text.replace(/\u200B/gi, '').length > 0) return true;
+        return false;
+      }
+
+      // Get the selection element.
+      var el = editor.selection.element();
+      if (has_invisible(el) && $(el).find('li').length === 0 && !$(el).hasClass('fr-marker') && el.tagName != 'IFRAME') {
+        editor.selection.save();
+        _replaceU200B(editor.node.contents(el));
+        editor.selection.restore();
+      }
+    }
+
+    // Check if we should consider that CTRL key is pressed.
+    function ctrlKey (e) {
+      if (navigator.userAgent.indexOf('Mac OS X') != -1) {
+        if (e.metaKey && !e.altKey) return true;
+      } else {
+        if (e.ctrlKey && !e.altKey) return true;
+      }
+
+      return false;
+    }
+
+    function isCharacter (key_code) {
+      if (key_code >= $.FroalaEditor.KEYCODE.ZERO &&
+          key_code <= $.FroalaEditor.KEYCODE.NINE) {
+        return true;
+      }
+
+      if (key_code >= $.FroalaEditor.KEYCODE.NUM_ZERO &&
+          key_code <= $.FroalaEditor.KEYCODE.NUM_MULTIPLY) {
+        return true;
+      }
+
+      if (key_code >= $.FroalaEditor.KEYCODE.A &&
+          key_code <= $.FroalaEditor.KEYCODE.Z) {
+        return true;
+      }
+
+      // Safari sends zero key code for non-latin characters.
+      if (editor.browser.webkit && key_code === 0) {
+        return true;
+      }
+
+      switch (key_code) {
+      case $.FroalaEditor.KEYCODE.SPACE:
+      case $.FroalaEditor.KEYCODE.QUESTION_MARK:
+      case $.FroalaEditor.KEYCODE.NUM_PLUS:
+      case $.FroalaEditor.KEYCODE.NUM_MINUS:
+      case $.FroalaEditor.KEYCODE.NUM_PERIOD:
+      case $.FroalaEditor.KEYCODE.NUM_DIVISION:
+      case $.FroalaEditor.KEYCODE.SEMICOLON:
+      case $.FroalaEditor.KEYCODE.FF_SEMICOLON:
+      case $.FroalaEditor.KEYCODE.DASH:
+      case $.FroalaEditor.KEYCODE.EQUALS:
+      case $.FroalaEditor.KEYCODE.FF_EQUALS:
+      case $.FroalaEditor.KEYCODE.COMMA:
+      case $.FroalaEditor.KEYCODE.PERIOD:
+      case $.FroalaEditor.KEYCODE.SLASH:
+      case $.FroalaEditor.KEYCODE.APOSTROPHE:
+      case $.FroalaEditor.KEYCODE.SINGLE_QUOTE:
+      case $.FroalaEditor.KEYCODE.OPEN_SQUARE_BRACKET:
+      case $.FroalaEditor.KEYCODE.BACKSLASH:
+      case $.FroalaEditor.KEYCODE.CLOSE_SQUARE_BRACKET:
+        return true;
+      default:
+        return false;
+      }
+    }
+
+    var _typing_timeout;
+    var _temp_snapshot;
+    function _typingKeyDown (e) {
+      var keycode = e.which;
+      if (ctrlKey(e) || (keycode >= 37 && keycode <= 40)) return true;
+
+      if (!_typing_timeout) {
+        _temp_snapshot = editor.snapshot.get();
+      }
+
+      clearTimeout(_typing_timeout);
+      _typing_timeout = setTimeout(function () {
+        _typing_timeout = null;
+        editor.undo.saveStep();
+      }, 500);
+    }
+
+    function _typingKeyUp (e) {
+      if (ctrlKey(e)) return true;
+
+      if (_temp_snapshot && _typing_timeout) {
+        editor.undo.saveStep(_temp_snapshot);
+        _temp_snapshot = null;
+      }
+    }
+
+    function forceUndo () {
+      if (_typing_timeout) {
+        clearTimeout(_typing_timeout);
+        editor.undo.saveStep();
+        _temp_snapshot = null;
+      }
+    }
+
+    /**
+     * Tear up.
+     */
+    function _init () {
+      editor.events.on('keydown', _typingKeyDown);
+      editor.events.on('input', _input);
+      editor.events.on('keyup', _typingKeyUp);
+
+      // Register for handling.
+      editor.events.on('keydown', _mapKeyDown);
+      editor.events.on('keyup', _mapKeyUp);
+
+      editor.events.on('html.inserted', _mapKeyUp);
+
+      // Handle cut.
+      editor.events.on('cut', _cut);
+
+
+      // IME
+      if (editor.$el.get(0).msGetInputContext) {
+        try {
+          editor.$el.get(0).msGetInputContext().addEventListener('MSCandidateWindowShow', function () {
+            IME = true;
+          })
+
+          editor.$el.get(0).msGetInputContext().addEventListener('MSCandidateWindowHide', function () {
+            IME = false;
+            _mapKeyUp();
+          })
+        }
+        catch (ex) {
+        }
+      }
+    }
+
+    return {
+      _init: _init,
+      ctrlKey: ctrlKey,
+      isCharacter: isCharacter,
+      forceUndo: forceUndo
+    }
+  };
+
+
+  $.extend($.FroalaEditor.DEFAULTS, {
+    pastePlain: false,
+    pasteDeniedTags: ['colgroup', 'col'],
+    pasteDeniedAttrs: ['class', 'id', 'style'],
+    pasteAllowLocalImages: false
+  });
+
+  $.FroalaEditor.MODULES.paste = function (editor) {
+    var copied_html;
+    var copied_text;
+    var scroll_position;
+    var clipboard_html;
+    var $paste_div;
+
+    /**
+     * Handle copy and cut.
+     */
+    function _handleCopy (e) {
+      copied_html = editor.html.getSelected();
+      copied_text = $('<div>').html(copied_html).text();
+
+      if (e.type == 'cut') {
+        editor.undo.saveStep();
+        setTimeout(function () {
+          editor.undo.saveStep();
+        }, 0);
+      }
+    }
+
+    /**
+     * Handle pasting.
+     */
+    function _handlePaste (e) {
+      if (e.originalEvent) e = e.originalEvent;
+
+      if (editor.events.trigger('paste.before', [e]) === false) {
+        return false;
+      }
+
+      scroll_position = editor.$window.scrollTop();
+
+      // Read data from clipboard.
+      if (e && e.clipboardData && e.clipboardData.getData) {
+        var types = '';
+        var clipboard_types = e.clipboardData.types;
+
+        if (editor.helpers.isArray(clipboard_types)) {
+          for (var i = 0 ; i < clipboard_types.length; i++) {
+            types += clipboard_types[i] + ';';
+          }
+        } else {
+          types = clipboard_types;
+        }
+
+        clipboard_html = '';
+
+        // HTML.
+        if (/text\/html/.test(types)) {
+          clipboard_html = e.clipboardData.getData('text/html');
+        }
+
+        // Safari HTML.
+        else if (/text\/rtf/.test(types) && editor.browser.safari) {
+          clipboard_html = e.clipboardData.getData('text/rtf');
+        }
+
+        else if (/text\/plain/.test(types) && !this.browser.mozilla) {
+          clipboard_html = editor.html.escapeEntities(e.clipboardData.getData('text/plain')).replace(/\n/g, '<br>');
+        }
+
+        if (clipboard_html !== '') {
+          _processPaste();
+
+          if (e.preventDefault) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+
+          return false;
+        }
+        else {
+          clipboard_html = null;
+        }
+      }
+
+      // Normal paste.
+      _beforePaste();
+    }
+
+    /**
+     * Before starting to paste.
+     */
+    function _beforePaste () {
+      // Save selection
+      editor.selection.save();
+      editor.events.disableBlur();
+
+      // Set clipboard HTML.
+      clipboard_html = null;
+
+      // Remove and store the editable content
+      if (!$paste_div) {
+        $paste_div = $('<div contenteditable="true" style="position: fixed; top: 0; left: -9999px; height: 100%; width: 0; z-index: 4000; line-height: 140%;" tabindex="-1"></div>');
+        editor.$box.after($paste_div);
+      }
+      else {
+        $paste_div.html('');
+      }
+
+      // Focus on the pasted div.
+      $paste_div.focus();
+
+      // Process paste soon.
+      editor.window.setTimeout(_processPaste, 1);
+    }
+
+    /**
+     * Clean HTML that was pasted from Word.
+     */
+    function _wordClean (html) {
+      // Single item list.
+      html = html.replace(
+        /<p(.*?)class="?'?MsoListParagraph"?'? ([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<ul><li>$3</li></ul>'
+      );
+      html = html.replace(
+        /<p(.*?)class="?'?NumberedText"?'? ([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<ol><li>$3</li></ol>'
+      );
+
+      // List start.
+      html = html.replace(
+        /<p(.*?)class="?'?MsoListParagraphCxSpFirst"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<ul><li$3>$5</li>'
+      );
+      html = html.replace(
+        /<p(.*?)class="?'?NumberedTextCxSpFirst"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<ol><li$3>$5</li>'
+      );
+
+      // List middle.
+      html = html.replace(
+        /<p(.*?)class="?'?MsoListParagraphCxSpMiddle"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<li$3>$5</li>'
+      );
+      html = html.replace(
+        /<p(.*?)class="?'?NumberedTextCxSpMiddle"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<li$3>$5</li>'
+      );
+
+      // List end.
+      html = html.replace(
+        /<p(.*?)class="?'?MsoListParagraphCxSpLast"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<li$3>$5</li></ul>'
+      );
+      html = html.replace(
+        /<p(.*?)class="?'?NumberedTextCxSpLast"?'?([\s\S]*?)(level\d)?([\s\S]*?)>([\s\S]*?)<\/p>/gi,
+        '<li$3>$5</li></ol>'
+      );
+
+      // Clean list bullets.
+      html = html.replace(/<span([^<]*?)style="?'?mso-list:Ignore"?'?([\s\S]*?)>([\s\S]*?)<span/gi, '<span><span');
+
+      // Webkit clean list bullets.
+      html = html.replace(/<!--\[if \!supportLists\]-->([\s\S]*?)<!--\[endif\]-->/gi, '');
+      html = html.replace(/<!\[if \!supportLists\]>([\s\S]*?)<!\[endif\]>/gi, '');
+
+      // Remove mso classes.
+      html = html.replace(/(\n|\r| class=(")?Mso[a-zA-Z0-9]+(")?)/gi, ' ');
+
+      // Remove comments.
+      html = html.replace(/<!--[\s\S]*?-->/gi, '');
+
+      // Remove tags but keep content.
+      html = html.replace(/<(\/)*(meta|link|span|\\?xml:|st1:|o:|font)(.*?)>/gi, '');
+
+      // Remove no needed tags.
+      var word_tags = ['style', 'script', 'applet', 'embed', 'noframes', 'noscript'];
+      for (var i = 0; i < word_tags.length; i++) {
+        var regex = new RegExp('<' + word_tags[i] + '.*?' + word_tags[i] + '(.*?)>', 'gi');
+        html = html.replace(regex, '');
+      }
+
+      // Remove spaces.
+      html = html.replace(/&nbsp;/gi, ' ');
+
+      // Keep empty TH and TD.
+      html = html.replace(/<td([^>]*)><\/td>/g, '<td$1><br></td>');
+      html = html.replace(/<th([^>]*)><\/th>/g, '<th$1><br></th>');
+
+      // Remove empty tags.
+      var oldHTML;
+      do {
+        oldHTML = html;
+        html = html.replace(/<[^\/>][^>]*><\/[^>]+>/gi, '');
+      } while (html != oldHTML);
+
+      // Process list indentation.
+      html = html.replace(/<lilevel([^1])([^>]*)>/gi, '<li data-indent="true"$2>');
+      html = html.replace(/<lilevel1([^>]*)>/gi, '<li$1>');
+
+      // Clean HTML.
+      html = editor.clean.html(html, editor.opts.pasteDeniedTags, editor.opts.pasteDeniedAttrs);
+
+      // Clean empty links.
+      html = html.replace(/<a>(.[^<]+)<\/a>/gi, '$1');
+
+      // Process list indent.
+      var $div = $('<div>').html(html);
+      $div.find('li[data-indent]').each (function (index, li) {
+        var $li = $(li);
+        if ($li.prev('li').length > 0) {
+          var $list = $li.prev('li').find('> ul, > ol');
+          if ($list.length === 0) {
+            $list = $('ul');
+            $li.prev('li').append($list);
+          }
+
+          $list.append(li);
+        }
+        else {
+          $li.removeAttr('data-indent');
+        }
+      });
+      html = $div.html();
+
+      return html;
+    }
+
+    /**
+     * Plain clean.
+     */
+    function _plainPasteClean (html) {
+      var $div = $('<div>').html(html);
+
+      $div.find('p, div, h1, h2, h3, h4, h5, h6, pre, blockquote').each (function (i, el) {
+        $(el).replaceWith('<' + (editor.html.defaultTag() || 'DIV') + '>' + $(el).html() + '</' + (editor.html.defaultTag() || 'DIV') + '>');
+      });
+
+      // Remove with the content.
+      $($div.find('*').not('p, div, h1, h2, h3, h4, h5, h6, pre, blockquote, ul, ol, li, table, tbody, thead, tr, td, br').get().reverse()).each (function () {
+        $(this).replaceWith($(this).html());
+      });
+
+      // Remove comments.
+      var cleanComments = function (node) {
+        var contents = editor.node.contents(node);
+
+        for (var i = 0; i < contents.length; i++) {
+          if (contents[i].nodeType != 3 && contents[i].nodeType != 1) {
+            $(contents[i]).remove();
+          }
+          else {
+            cleanComments(contents[i]);
+          }
+        }
+      };
+
+      cleanComments($div.get(0));
+
+      return $div.html();
+    }
+
+    /**
+     * Process the pasted HTML.
+     */
+    function _processPaste () {
+      editor.keys.forceUndo();
+      var snapshot = editor.snapshot.get();
+
+      if (clipboard_html === null) {
+        clipboard_html = $paste_div.html();
+
+        // Restore selection.
+        editor.events.focus();
+        editor.selection.restore();
+        editor.events.enableBlur();
+
+        // Restore scroll.
+        editor.$window.scrollTop(scroll_position);
+      }
+
+      var response = editor.events.chainTrigger('paste.beforeCleanup', clipboard_html);
+      if (typeof(response) === 'string') {
+        clipboard_html = response;
+      }
+
+      // Keep only body if there is.
+      if (clipboard_html.indexOf('<body') >= 0) {
+        clipboard_html = clipboard_html.replace(/[.\s\S\w\W<>]*<body[^>]*>([.\s\S\w\W<>]*)<\/body>[.\s\S\w\W<>]*/g, '$1');
+      }
+
+      // Word paste.
+      if (clipboard_html.match(/(class=\"?Mso|style=\"[^\"]*\bmso\-|w:WordDocument)/gi)) {
+        // Strip spaces at the beginning.
+        clipboard_html = clipboard_html.replace(/^\n*/g, '').replace(/^ /g, '');
+
+        // Firefox paste.
+        if (clipboard_html.indexOf('<colgroup>') === 0) {
+          clipboard_html = '<table>' + clipboard_html + '</table>';
+        }
+
+        clipboard_html = _wordClean(clipboard_html);
+        clipboard_html = _removeEmptyTags(clipboard_html);
+      }
+
+      // Paste.
+      else {
+        editor.opts.htmlAllowComments = false;
+        clipboard_html = editor.clean.html(clipboard_html, editor.opts.pasteDeniedTags, editor.opts.pasteDeniedAttrs);
+        editor.opts.htmlAllowComments = true;
+        clipboard_html = _removeEmptyTags(clipboard_html);
+
+        clipboard_html = clipboard_html.replace(/\r|\n|\t/g, '');
+
+        if (copied_text && $('<div>').html(clipboard_html).text().replace(/(\u00A0)/gi, ' ').replace(/\r|\n/gi, '') == copied_text.replace(/(\u00A0)/gi, ' ').replace(/\r|\n/gi, '')) {
+          clipboard_html = copied_html;
+        }
+
+        clipboard_html = clipboard_html.replace(/^ */g, '').replace(/ *$/g, '');
+      }
+
+      // Do plain paste cleanup.
+      if (editor.opts.pastePlain) {
+        clipboard_html = _plainPasteClean(clipboard_html);
+      }
+
+      // After paste cleanup event.
+      response = editor.events.chainTrigger('paste.afterCleanup', clipboard_html);
+      if (typeof(response) === 'string') {
+        clipboard_html = response;
+      }
+
+      // Check if there is anything to clean.
+      if (clipboard_html !== '') {
+        // Normalize spaces.
+        var $tmp = $('<div>').html(clipboard_html);
+        editor.html.cleanBlankSpaces($tmp.get(0));
+        editor.html.normalizeSpaces($tmp.get(0));
+        clipboard_html = $tmp.html();
+
+        // Insert HTML.
+        editor.html.insert(clipboard_html, true);
+      }
+
+      _afterPaste();
+
+      editor.undo.saveStep(snapshot);
+      editor.undo.saveStep();
+    }
+
+    /**
+     * After pasting.
+     */
+    function _afterPaste () {
+      editor.events.trigger('paste.after');
+    }
+
+    /**
+     * Remove possible empty tags in pasted HTML.
+     */
+    function _removeEmptyTags (html) {
+      var i;
+      var $div = $('<div>').html(html);
+
+      // Clean empty tags.
+      var empty_tags = $div.find('*:empty:not(br, img, td, th)');
+      while (empty_tags.length) {
+        for (i = 0; i < empty_tags.length; i++) {
+          $(empty_tags[i]).remove();
+        }
+
+        empty_tags = $div.find('*:empty:not(br, img, td, th)');
+      }
+
+      // Workaround for Nodepad paste.
+      var divs = $div.find('> div:not([style]), td > div, th > div, li > div');
+      while (divs.length) {
+        var $dv = $(divs[divs.length - 1]);
+        $dv.replaceWith($dv.html() + '<br>');
+        divs = $div.find('> div:not([style]), td > div, th > div, li > div');
+      }
+
+      // Remove divs.
+      divs = $div.find('div:not([style])');
+      while (divs.length) {
+        for (i = 0; i < divs.length; i++) {
+          var $el = $(divs[i]);
+          var text = $el.html().replace(/\u0009/gi, '').trim();
+
+          $el.replaceWith(text);
+        }
+
+        divs = $div.find('div:not([style])');
+      }
+
+      return $div.html();
+    }
+
+    /**
+     * Initialize.
+     */
+    function _init () {
+      editor.events.on('copy', _handleCopy);
+      editor.events.on('cut', _handleCopy);
+      editor.events.on('paste', _handlePaste);
+    }
+
+    return {
+      _init: _init
+    }
+  };
+
+
+  $.FroalaEditor.MODULES.tooltip = function (editor) {
+    function hide () {
+      editor.$tooltip.removeClass('fr-visible').css('left', '-3000px');
+    }
+
+    function to ($el, above) {
+      if (!$el.data('title')) {
+        $el.data('title', $el.attr('title'));
+      }
+
+      if (!$el.data('title')) return false;
+
+      $el.removeAttr('title');
+      editor.$tooltip.text($el.data('title'));
+      editor.$tooltip.addClass('fr-visible');
+
+      var left = $el.offset().left + ($el.outerWidth() - editor.$tooltip.outerWidth()) / 2;
+
+      // Normalize screen position.
+      if (left < 0) left = 0;
+      if (left + editor.$tooltip.outerWidth() > $(editor.original_window).width()) {
+        left = $(editor.original_window).width() - editor.$tooltip.outerWidth();
+      }
+
+      editor.$tooltip.css('left', left);
+
+      if (typeof above == 'undefined') above = editor.opts.toolbarBottom;
+      editor.$tooltip.css('top', !above ? $el.offset().top + $el.outerHeight() : $el.offset().top - editor.$tooltip.height());
+    }
+
+    function bind ($el, selector, above) {
+      if (!editor.helpers.isMobile()) {
+        $el.on('mouseenter', selector, function (e) {
+          if (!$(e.currentTarget).hasClass('fr-disabled')) {
+            to($(e.currentTarget), above);
+          }
+        });
+
+        $el.on('mouseleave ' + editor._mousedown + ' ' + editor._mouseup, selector, function (e) {
+          hide();
+        });
+      }
+
+      editor.events.on('destroy', function () {
+        $el.off('mouseleave ' + editor._mousedown + ' ' + editor._mouseup, selector);
+        $el.off('mouseenter', selector);
+      }, true);
+    }
+
+    function _init () {
+      if (!editor.helpers.isMobile()) {
+        editor.$tooltip = $('<div class="fr-tooltip"></div>');
+
+        if (editor.opts.theme) {
+          editor.$tooltip.addClass(editor.opts.theme + '-theme');
+        }
+
+        $('body').append(editor.$tooltip);
+
+        editor.events.on('destroy', function () {
+          editor.$tooltip.html('').removeData().remove();
+        }, true);
+      }
+    }
+
+    return {
+      _init: _init,
+      hide: hide,
+      to: to,
+      bind: bind
+    }
+  };
+
+
+  $.FroalaEditor.ICON_DEFAULT_TEMPLATE = 'font_awesome';
+
+  $.FroalaEditor.ICON_TEMPLATES = {
+    font_awesome: '<i class="fa fa-[NAME]"></i>',
+    text: '<span style="text-align: center;">[NAME]</span>',
+    image: '<img src=[SRC] alt=[ALT] />'
+  }
+
+  $.FroalaEditor.ICONS = {
+    bold: {NAME: 'bold'},
+    italic: {NAME: 'italic'},
+    underline: {NAME: 'underline'},
+    strikeThrough: {NAME: 'strikethrough'},
+    subscript: {NAME: 'subscript'},
+    superscript: {NAME: 'superscript'},
+    color: {NAME: 'tint'},
+    outdent: {NAME: 'outdent'},
+    indent: {NAME: 'indent'},
+    undo: {NAME: 'rotate-left'},
+    redo: {NAME: 'rotate-right'},
+    insertHR: {NAME: 'minus'},
+    clearFormatting: {NAME: 'eraser'},
+    selectAll: {NAME: 'mouse-pointer'}
+  }
+
+  $.FroalaEditor.DefineIconTemplate = function (name, options) {
+    $.FroalaEditor.ICON_TEMPLATES[name] = options;
+  }
+
+  $.FroalaEditor.DefineIcon = function (name, options) {
+    $.FroalaEditor.ICONS[name] = options;
+  }
+
+  $.FroalaEditor.MODULES.icon = function (editor) {
+    function create (command) {
+      var icon = null;
+      var info = $.FroalaEditor.ICONS[command];
+      if (typeof info != 'undefined') {
+        var template = info.template || $.FroalaEditor.ICON_DEFAULT_TEMPLATE;
+        if (template && (template = $.FroalaEditor.ICON_TEMPLATES[template])) {
+          icon = template.replace(/\[([a-zA-Z]*)\]/g, function (str, a1) {
+            return (a1 == 'NAME' ? (info[a1] || command) : info[a1]);
+          });
+        }
+      }
+
+      return (icon || command);
+    }
+
+    return {
+      create: create
+    }
+  };
+
+
+  $.FroalaEditor.MODULES.button = function (editor) {
+    var buttons = [];
+
+    /**
+     * Click was made on a dropdown button.
+     */
+    function _dropdownButtonClick (e) {
+      // Get current btn and dropdown.
+      var $btn = $(e.currentTarget);
+      var $dropdown = $btn.next();
+
+      var active = $btn.hasClass('fr-active');
+      var mobile = editor.helpers.isMobile();
+
+      var $active_dropdowns = $('.fr-dropdown.fr-active').not($btn);
+
+      // Hide keyboard. We need the entire space.
+      if (editor.helpers.isIOS() && editor.$el.find('.fr-marker').length == 0) {
+        editor.selection.save();
+        editor.selection.clear();
+        editor.selection.restore();
+      }
+
+      // Dropdown is not active.
+      if (!active) {
+        // Call refresh on show.
+        var cmd = $btn.data('cmd');
+        $dropdown.find('.fr-command').removeClass('fr-active');
+        if ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].refreshOnShow) {
+          $.FroalaEditor.COMMANDS[cmd].refreshOnShow.apply(editor, [$btn, $dropdown]);
+        }
+
+        $dropdown.css('left', $btn.offset().left - $btn.parent().offset().left - (editor.opts.direction == 'rtl' ? $dropdown.width() - $btn.outerWidth() : 0));
+
+        if (!editor.opts.toolbarBottom) {
+          $dropdown.css('top', $btn.position().top + $btn.outerHeight());
+        }
+        else {
+          $dropdown.css('bottom', editor.$tb.height() - $btn.position().top);
+        }
+      }
+
+      // Blink and activate.
+      $btn.addClass('fr-blink').toggleClass('fr-active');
+      setTimeout (function () {
+        $btn.removeClass('fr-blink');
+      }, 300);
+
+      // Check if it exceeds window on the right.
+      if ($dropdown.offset().left + $dropdown.outerWidth() > $(editor.opts.scrollableContainer).offset().left +  $(editor.opts.scrollableContainer).outerWidth()) {
+        $dropdown.css('margin-left', -($dropdown.offset().left + $dropdown.outerWidth() - $(editor.opts.scrollableContainer).offset().left - $(editor.opts.scrollableContainer).outerWidth()))
+      }
+
+      // Hide dropdowns that might be active.
+      $active_dropdowns.removeClass('fr-active');
+    }
+
+    function exec ($btn) {
+      // Blink.
+      $btn.addClass('fr-blink');
+      setTimeout (function () {
+        $btn.removeClass('fr-blink');
+      }, 500);
+
+      // Get command, value and additional params.
+      var cmd = $btn.data('cmd');
+      var params = [];
+      while (typeof $btn.data('param' + (params.length + 1)) != 'undefined') {
+        params.push($btn.data('param' + (params.length + 1)));
+      }
+
+      // Hide dropdowns that might be active including the current one.
+      var $active_dropdowns = $('.fr-dropdown.fr-active');
+      if ($active_dropdowns.length) {
+        $active_dropdowns.removeClass('fr-active');
+      }
+
+      // Call the command.
+      editor.commands.exec(cmd, params);
+    }
+
+    /**
+     * Click was made on a command button.
+     */
+    function _commandButtonClick (e) {
+      var $btn = $(e.currentTarget);
+      exec($btn);
+    }
+
+    function _click (e) {
+      var $btn = $(e.currentTarget);
+
+      if ($btn.parents('.fr-popup').length == 0 && !$btn.data('popup')) {
+        editor.popups.hideAll();
+      }
+
+      // Dropdown button.
+      if ($btn.hasClass('fr-dropdown')) {
+        _dropdownButtonClick(e);
+      }
+
+      // Regular button.
+      else {
+        _commandButtonClick(e);
+
+        if ($.FroalaEditor.COMMANDS[$btn.data('cmd')] && $.FroalaEditor.COMMANDS[$btn.data('cmd')].refreshAfterCallback != false) {
+          bulkRefresh();
+        }
+      }
+    }
+
+    function _hideActiveDropdowns ($el) {
+      var $active_dropdowns = $el.find('.fr-dropdown.fr-active');
+
+      if ($active_dropdowns.length) {
+        $active_dropdowns.removeClass('fr-active');
+      }
+    }
+
+    /**
+     * Click in the dropdown menu.
+     */
+    function _dropdownMenuClick (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    /**
+     * Click on the dropdown wrapper.
+     */
+    function _dropdownWrapperClick (e) {
+      e.stopPropagation();
+
+      if (editor.opts.toolbarInline) return false;
+    }
+
+    /**
+     * Bind callbacks for commands.
+     */
+    function bindCommands ($el, tooltipAbove) {
+      editor.events.bindClick($el, '.fr-command:not(.fr-disabled)', _click);
+
+      // Click on the dropdown menu.
+      $el.on(editor._mousedown + ' ' + editor._mouseup + ' ' + editor._move, '.fr-dropdown-menu', _dropdownMenuClick);
+
+      // Click on the dropdown wrapper.
+      $el.on(editor._mousedown + ' ' + editor._mouseup + ' ' + editor._move, '.fr-dropdown-menu .fr-dropdown-wrapper', _dropdownWrapperClick);
+
+      // Hide dropdowns that might be active.
+      var _document = $el.get(0).ownerDocument;
+      var _window = 'defaultView' in _document ? _document.defaultView : _document.parentWindow;
+      var hideDropdowns = function (e) {
+        if (!e || (e.type == editor._mouseup && e.target != $('html').get(0)) || (e.type == 'keydown' && ((editor.keys.isCharacter(e.which) && !editor.keys.ctrlKey(e)) || e.which == $.FroalaEditor.KEYCODE.ESC))) {
+          _hideActiveDropdowns($el);
+        }
+      }
+      $(_window).on(editor._mouseup + '.command' + editor.id + ' resize.command' + editor.id + ' keydown.command' + editor.id, hideDropdowns);
+
+      // Add refresh.
+      $.merge(buttons, $el.find('.fr-btn').toArray());
+
+      // Assing tooltips to buttons.
+      editor.tooltip.bind($el, '.fr-btn, .fr-title', tooltipAbove);
+
+      // Destroy events.
+      editor.events.on('destroy', function () {
+        // Click on the dropdown menu.
+        $el.off(editor._mousedown + ' ' + editor._mouseup + ' ' + editor._move, '.fr-dropdown-menu');
+
+        // Click on the dropdown wrapper.
+        $el.on(editor._mousedown + ' ' + editor._mouseup + ' ' + editor._move, '.fr-dropdown-menu .fr-dropdown-wrapper');
+
+        $(_window).off(editor._mouseup + '.command' + editor.id + ' resize.command' + editor.id + ' keydown.command' + editor.id);
+      }, true);
+    }
+
+    /**
+     * Create the content for dropdown.
+     */
+    function _content (command, info) {
+      var c = '';
+
+      if (info.html) {
+        if (typeof info.html == 'function') {
+          c += info.html.call(editor);
+        }
+        else {
+          c += info.html;
+        }
+      }
+      else {
+        var options = info.options;
+        if (typeof options == 'function') options = options();
+
+        c += '<ul class="fr-dropdown-list">';
+        for (var val in options) {
+          c += '<li><a class="fr-command" data-cmd="' + command + '" data-param1="' + val + '" title="' + options[val] + '">' + editor.language.translate(options[val]) + '</a></li>';
+        }
+        c += '</ul>';
+      }
+
+      return c;
+    }
+
+    /**
+     * Create button.
+     */
+    function _build (command, info) {
+      var display_selection = info.displaySelection;
+      if (typeof display_selection == 'function') {
+        display_selection = display_selection(editor);
+      }
+
+      var icon;
+      if (display_selection) {
+        var default_selection = (typeof info.defaultSelection == 'function' ? info.defaultSelection(editor) : info.defaultSelection);
+        icon = '<span style="width:' + (info.displaySelectionWidth || 100) + 'px">' + (default_selection || editor.language.translate(info.title)) + '</span>';
+      }
+      else {
+        icon = editor.icon.create(info.icon || command)
+      }
+
+      var popup = info.popup ? ' data-popup="true"' : '';
+
+      var btn = '<a role="button" tabindex="-1" title="' + (editor.language.translate(info.title) || '') + '" class="fr-command fr-btn' + (info.type == 'dropdown' ? ' fr-dropdown' : '') + (info.back ? ' fr-back' : '') + '" data-cmd="' + command + '"' + popup + '>' + icon + '</a>';
+
+      if (info.type == 'dropdown') {
+        // Build dropdown.
+        var dropdown = '<div class="fr-dropdown-menu"><div class="fr-dropdown-wrapper"><div class="fr-dropdown-content" tabindex="-1">';
+
+        dropdown += _content(command, info);
+
+        dropdown += '</div></div></div>';
+
+        btn += dropdown;
+      }
+
+      return btn;
+    }
+
+    function buildList (buttons) {
+      var str = '';
+      for (var i = 0; i < buttons.length; i++) {
+        var cmd_name = buttons[i];
+        var cmd_info = $.FroalaEditor.COMMANDS[cmd_name];
+
+        if (cmd_info) {
+          str += _build(cmd_name, cmd_info);
+        }
+        else if (cmd_name == '|') {
+          str += '<div class="fr-separator fr-vs"></div>';
+        }
+        else if (cmd_name == '-') {
+          str += '<div class="fr-separator fr-hs"></div>';
+        }
+      }
+
+      return str;
+    }
+
+    function refresh ($btn) {
+      var cmd = $btn.data('cmd');
+
+      var $dropdown;
+      if (!$btn.hasClass('fr-dropdown')) $btn.removeClass('fr-active');
+      else $dropdown = $btn.next();
+
+      if ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].refresh) {
+       $.FroalaEditor.COMMANDS[cmd].refresh.apply(editor, [$btn, $dropdown]);
+      }
+      else if (editor.refresh[cmd]) {
+        editor.refresh[cmd]($btn, $dropdown);
+      }
+      else {
+        editor.refresh.default($btn, cmd);
+      }
+    }
+
+    /**
+     * Do buttons refresh.
+     */
+    function bulkRefresh () {
+      // Check the refresh event.
+      if (editor.events.trigger('buttons.refresh') == false) return false;
+
+      setTimeout(function () {
+        var focused = (editor.selection.inEditor() && editor.core.hasFocus());
+
+        for (var i = 0; i < buttons.length; i++) {
+          var $btn = $(buttons[i]);
+          var cmd = $btn.data('cmd');
+          if ($btn.parents('.fr-popup').length == 0) {
+            if (focused || ($.FroalaEditor.COMMANDS[cmd] && $.FroalaEditor.COMMANDS[cmd].forcedRefresh)) {
+              refresh($btn);
+            }
+            else {
+              if (!$btn.hasClass('fr-dropdown')) $btn.removeClass('fr-active');
+            }
+          }
+          else if ($btn.parents('.fr-popup').is(':visible')) {
+            refresh($btn);
+          }
+        }
+      }, 0);
+    }
+
+    /**
+     * Initialize.
+     */
+    function _init () {
+      // Assign refresh and do refresh.
+      editor.events.on('mouseup', bulkRefresh);
+      editor.events.on('keyup', bulkRefresh);
+      editor.events.on('blur', bulkRefresh);
+      editor.events.on('focus', bulkRefresh);
+      editor.events.on('contentChanged', bulkRefresh);
+    }
+
+    return {
+      _init: _init,
+      buildList: buildList,
+      bindCommands: bindCommands,
+      refresh: refresh,
+      bulkRefresh: bulkRefresh,
+      exec: exec
+    }
+  };
+
+
+  $.FroalaEditor.MODULES.position = function (editor) {
+    /**
+    * Get bounding rect around selection.
+    *
+    */
+    function getBoundingRect () {
+      var boundingRect;
+
+      var range = editor.selection.ranges(0);
+      if (range && range.collapsed && editor.selection.inEditor()) {
+        var remove = false;
+        if (editor.$el.find('.fr-marker').length == 0) {
+          editor.markers.insert();
+          remove = true;
+        }
+
+        var $marker = editor.$el.find('.fr-marker:first');
         $marker.css('display', 'inline');
         var offset = $marker.offset();
         $marker.css('display', 'none');
 
         boundingRect = {}
-        boundingRect.left = offset.left - this.$window.scrollLeft();
+        boundingRect.left = offset.left;
         boundingRect.width = 0;
-        boundingRect.height = (parseInt($element.css('line-height').replace('px', ''), 10) || 10) - 10 - this.$window.scrollTop();
-        boundingRect.top = offset.top;
+        boundingRect.height = parseInt($marker.css('line-height'), 10) || 20;
+        boundingRect.top = offset.top - $(editor.original_window).scrollTop();
         boundingRect.right = 1;
         boundingRect.bottom = 1;
         boundingRect.ok = true;
 
-        this.removeMarkers();
+        if (remove) editor.markers.remove();
       }
-      else if (this.getRange()) {
-        boundingRect = this.getRange().getBoundingClientRect();
+      else if (range) {
+        boundingRect = range.getBoundingClientRect();
       }
-    } else {
-      boundingRect = {}
-      var $link = this.$element;
 
-      boundingRect.left = $link.offset().left - this.$window.scrollLeft();
-      boundingRect.top = $link.offset().top - this.$window.scrollTop();
-      boundingRect.width = $link.outerWidth();
-      boundingRect.height = parseInt($link.css('padding-top').replace('px', ''), 10) + $link.height();
-      boundingRect.right = 1;
-      boundingRect.bottom = 1;
-      boundingRect.ok = true;
+      return boundingRect;
     }
 
-    return boundingRect;
-  };
+    /**
+     * Normalize top positioning.
+     */
+    function _topNormalized ($el, top, obj_height) {
+      var height = $el.outerHeight();
 
-  /**
-   * Reposition editor using boundingRect.
-   *
-   * @param position - Force showing the editor.
-   */
-  $.Editable.prototype.repositionEditor = function (position) {
-    var boundingRect;
-    var x;
-    var y;
+      if (!editor.helpers.isMobile() && editor.$tb && $el.parent().get(0) != editor.$tb.get(0)) {
+        // 1. Parent offset + toolbar top + toolbar height > document height.
+        // 2. Selection doesn't go above the screen.
+        var p_height = $el.parent().height() - 20 - (editor.opts.toolbarBottom ? editor.$tb.outerHeight() : 0);
+        var p_offset = $el.parent().offset().top;
+        var new_top = top - height - (obj_height || 0);
 
-    if (this.options.inlineMode || position) {
-      boundingRect = this.getBoundingRect();
-      this.showBttnWrapper();
+        if ($el.parent().get(0) == $(editor.opts.scrollableContainer).get(0)) p_offset = p_offset - $el.parent().position().top;
 
-      if (boundingRect.ok || (boundingRect.left >= 0 && boundingRect.top >= 0 && boundingRect.right > 0 && boundingRect.bottom > 0)) {
-        x = boundingRect.left + (boundingRect.width) / 2;
-        y = boundingRect.top + boundingRect.height;
-
-        if (!(this.iOS() && this.iOSVersion() < 8)) {
-          x = x + this.$window.scrollLeft();
-          y = y + this.$window.scrollTop();
+        if (p_offset + top + height > $(editor.original_document).outerHeight() && $el.parent().offset().top + new_top > 0) {
+          top = new_top;
+          $el.addClass('fr-above');
         }
-
-        this.showByCoordinates(x, y);
-      } else if (!this.options.alwaysVisible) {
-        var el_offset = this.$element.offset();
-        this.showByCoordinates(el_offset.left, el_offset.top + 10);
-      } else {
-        this.hide();
-      }
-
-      if (this.options.buttons.length === 0) {
-        this.hide();
-      }
-    }
-  };
-
-  $.Editable.prototype.showByCoordinates = function (x, y) {
-    x = x - 22;
-    y = y + 8;
-
-    var $container = this.$document.find(this.options.scrollableContainer);
-
-    if (this.options.scrollableContainer != 'body') {
-      x = x - $container.offset().left;
-      y = y - $container.offset().top;
-
-      if (!this.iPad()) {
-        y = y + $container.scrollTop();
-        x = x + $container.scrollLeft();
-      }
-    }
-
-    var editor_width = Math.max(this.$popup_editor.outerWidth(), 250);
-
-    if (x + editor_width >= $container.outerWidth() - 50 && (x + 44) - editor_width > 0) {
-      this.$popup_editor.addClass('right-side');
-      x = $container.outerWidth() - (x + 44);
-
-      if ($container.css('position') == 'static') {
-        x = x + parseFloat($container.css('margin-left'), 10) + parseFloat($container.css('margin-right'), 10)
-      }
-
-      this.$popup_editor.css('top', y);
-      this.$popup_editor.css('right', x);
-      this.$popup_editor.css('left', 'auto');
-    } else if (x + editor_width < $container.outerWidth() - 50) {
-      this.$popup_editor.removeClass('right-side');
-      this.$popup_editor.css('top', y);
-      this.$popup_editor.css('left', x);
-      this.$popup_editor.css('right', 'auto');
-    } else {
-      this.$popup_editor.removeClass('right-side');
-      this.$popup_editor.css('top', y);
-      this.$popup_editor.css('left', Math.max(($container.outerWidth() - editor_width), 10) / 2);
-      this.$popup_editor.css('right', 'auto');
-    }
-
-    this.$popup_editor.show();
-  };
-
-  /**
-   * Set position for popup editor.
-   */
-  $.Editable.prototype.positionPopup = function (command) {
-    if ($(this.$editor.find('button.fr-bttn[data-cmd="' + command + '"]')).length) {
-      var $btn = this.$editor.find('button.fr-bttn[data-cmd="' + command + '"]');
-      var w = $btn.width();
-      var h = $btn.height();
-      var x = $btn.offset().left + w / 2;
-      var y = $btn.offset().top + h;
-      this.showByCoordinates(x, y)
-    }
-  };
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.refreshImageAlign = function ($img) {
-    this.$image_editor.find('.fr-dropdown > button[data-name="align"] + ul li').removeClass('active');
-
-    var cmd = 'floatImageNone';
-    var alignment = 'center';
-
-    if ($img.hasClass('fr-fil')) {
-      alignment = 'left';
-      cmd = 'floatImageLeft';
-    } else if ($img.hasClass('fr-fir')) {
-      alignment = 'right';
-      cmd = 'floatImageRight';
-    }
-
-    this.$image_editor.find('.fr-dropdown > button[data-name="align"].fr-trigger i').attr('class', 'fa fa-align-' + alignment);
-    this.$image_editor.find('.fr-dropdown > button[data-name="align"] + ul li[data-val="' + cmd + '"]').addClass('active');
-  }
-
-  $.Editable.prototype.refreshImageDisplay = function () {
-    var $img = this.$element.find('.f-img-editor');
-    this.$image_editor.find('.fr-dropdown > button[data-name="display"] + ul li').removeClass('active');
-    if ($img.hasClass('fr-dib')) {
-      this.$image_editor.find('.fr-dropdown > button[data-name="display"] + ul li[data-val="fr-dib"]').addClass('active');
-    }
-    else {
-      this.$image_editor.find('.fr-dropdown > button[data-name="display"] + ul li[data-val="fr-dii"]').addClass('active');
-    }
-  }
-
-  $.Editable.image_commands = {
-    align: {
-      title: 'Alignment',
-      icon: 'fa fa-align-center',
-      refresh: $.Editable.prototype.refreshImageAlign,
-      refreshOnShow: $.Editable.prototype.refreshImageAlign,
-      seed: [{
-        cmd: 'floatImageLeft',
-        title: 'Align Left',
-        icon: 'fa fa-align-left'
-      }, {
-        cmd: 'floatImageNone',
-        title: 'Align Center',
-        icon: 'fa fa-align-center'
-      }, {
-        cmd: 'floatImageRight',
-        title: 'Align Right',
-        icon: 'fa fa-align-right'
-      }],
-      callback: function ($img, cmd, val) {
-        this[val]($img);
-      },
-      undo: true
-    },
-
-    display: {
-      title: 'Text Wrap',
-      icon: 'fa fa-star',
-      refreshOnShow: $.Editable.prototype.refreshImageDisplay,
-      namespace: 'Image',
-      seed: [{
-        title: 'Inline',
-        value: 'fr-dii'
-      }, {
-        title: 'Break Text',
-        value: 'fr-dib'
-      }],
-      callback: function ($img, cmd, val) {
-        this.displayImage($img, val);
-      },
-      undo: true
-    },
-
-    linkImage: {
-      title: 'Insert Link',
-      icon: {
-        type: 'font',
-        value: 'fa fa-link'
-      },
-      callback: function ($img) {
-        this.linkImage($img);
-      }
-    },
-
-    replaceImage: {
-      title: 'Replace Image',
-      icon: {
-        type: 'font',
-        value: 'fa fa-exchange'
-      },
-      callback: function ($img) {
-        this.replaceImage($img);
-      }
-    },
-
-    removeImage: {
-      title: 'Remove Image',
-      icon: {
-        type: 'font',
-        value: 'fa fa-trash-o'
-      },
-      callback: function ($img) {
-        this.removeImage($img);
-      }
-    }
-  };
-
-  $.Editable.DEFAULTS = $.extend($.Editable.DEFAULTS, {
-    allowedImageTypes: ['jpeg', 'jpg', 'png', 'gif'],
-    customImageButtons: {},
-    defaultImageTitle: 'Image title',
-    defaultImageWidth: 300,
-    defaultImageDisplay: 'block',
-    defaultImageAlignment: 'center',
-    imageButtons: ['display', 'align', 'linkImage', 'replaceImage', 'removeImage'],
-    imageDeleteConfirmation: true,
-    imageDeleteURL: null,
-    imageDeleteParams: {},
-    imageMove: true,
-    imageResize: true,
-    imageLink: true,
-    imageTitle: true,
-    imageUpload: true,
-    imageUploadParams: {},
-    imageUploadParam: 'file',
-    imageUploadToS3: false,
-    imageUploadURL: 'http://i.froala.com/upload',
-    maxImageSize: 1024 * 1024 * 10, // 10 Mb.,
-    pasteImage: true,
-    textNearImage: true
-  })
-
-  $.Editable.prototype.hideImageEditorPopup = function () {
-    if (this.$image_editor) {
-      this.$image_editor.hide();
-    }
-  };
-
-  $.Editable.prototype.showImageEditorPopup = function () {
-    if (this.$image_editor) {
-      this.$image_editor.show();
-    }
-
-    if (!this.options.imageMove) {
-      this.$element.attr('contenteditable', false);
-    }
-  };
-
-  $.Editable.prototype.showImageWrapper = function () {
-    if (this.$image_wrapper) {
-      this.$image_wrapper.show();
-    }
-  };
-
-  $.Editable.prototype.hideImageWrapper = function (image_mode) {
-    if (this.$image_wrapper) {
-      if (!this.$element.attr('data-resize') && !image_mode) {
-        this.closeImageMode();
-        this.imageMode = false;
-      }
-
-      this.$image_wrapper.hide();
-      this.$image_wrapper.find('input').blur()
-    }
-  };
-
-  $.Editable.prototype.showInsertImage = function () {
-    this.hidePopups();
-
-    this.showImageWrapper();
-  };
-
-  $.Editable.prototype.showImageEditor = function () {
-    this.hidePopups();
-
-    this.showImageEditorPopup();
-  };
-
-  $.Editable.prototype.insertImageHTML = function () {
-    var html = '<div class="froala-popup froala-image-popup" style="display: none;"><h4><span data-text="true">Insert Image</span><span data-text="true">Uploading image</span><i title="Cancel" class="fa fa-times" id="f-image-close-' + this._id + '"></i></h4>';
-
-    html += '<div id="f-image-list-' + this._id + '">';
-
-    if (this.options.imageUpload) {
-      html += '<div class="f-popup-line drop-upload">';
-      html += '<div class="f-upload" id="f-upload-div-' + this._id + '"><strong data-text="true">Drop Image</strong><br>(<span data-text="true">or click</span>)<form target="frame-' + this._id + '" enctype="multipart/form-data" encoding="multipart/form-data" action="' + this.options.imageUploadURL + '" method="post" id="f-upload-form-' + this._id + '"><input id="f-file-upload-' + this._id + '" type="file" name="' + this.options.imageUploadParam + '" accept="image/*"></form></div>';
-
-      if (this.browser.msie && $.Editable.getIEversion() <= 9) {
-        html += '<iframe id="frame-' + this._id + '" name="frame-' + this._id + '" src="javascript:false;" style="width:0; height:0; border:0px solid #FFF; position: fixed; z-index: -1;"></iframe>';
-      }
-
-      html += '</div>';
-    }
-
-    if (this.options.imageLink) {
-      html += '<div class="f-popup-line"><label><span data-text="true">Enter URL</span>: </label><input id="f-image-url-' + this._id + '" type="text" placeholder="http://example.com"><button class="f-browse fr-p-bttn" id="f-browser-' + this._id + '"><i class="fa fa-search"></i></button><button data-text="true" class="f-ok fr-p-bttn f-submit" id="f-image-ok-' + this._id + '">OK</button></div>';
-    }
-
-    html += '</div>';
-    html += '<p class="f-progress" id="f-progress-' + this._id + '"><span></span></p>';
-    html += '</div>';
-
-    return html;
-  }
-
-  $.Editable.prototype.iFrameLoad = function () {
-    var $iframe = this.$image_wrapper.find('iframe#frame-' + this._id);
-    if (!$iframe.attr('data-loaded')) {
-      $iframe.attr('data-loaded', true);
-      return false;
-    }
-
-    try {
-      var $form = this.$image_wrapper.find('#f-upload-form-' + this._id);
-
-      // S3 upload.
-      if (this.options.imageUploadToS3) {
-        var domain = $form.attr('action')
-        var key = $form.find('input[name="key"]').val()
-        var url = domain + key;
-
-        this.writeImage(url);
-        if (this.options.imageUploadToS3.callback) {
-          this.options.imageUploadToS3.callback.call(this, url, key);
-        }
-      }
-
-      // Normal upload.
-      else {
-        var response = $iframe.contents().text();
-        this.parseImageResponse(response);
-      }
-    }
-    catch (ex) {
-      // Same domain.
-      this.throwImageError(7);
-    }
-  }
-
-  $.Editable.prototype.initImage = function () {
-    this.buildInsertImage();
-
-    if (!this.isLink || this.isImage) {
-      this.initImagePopup();
-    }
-
-    this.addListener('destroy', this.destroyImage);
-  }
-
-  $.Editable.initializers.push($.Editable.prototype.initImage);
-
-  $.Editable.prototype.destroyImage = function () {
-    if (this.$image_editor) this.$image_editor.html('').removeData().remove();
-    if (this.$image_wrapper) this.$image_wrapper.html('').removeData().remove();
-  }
-
-  /**
-   * Build insert image.
-   */
-  $.Editable.prototype.buildInsertImage = function () {
-    // Add image wrapper to editor.
-    this.$image_wrapper = $(this.insertImageHTML());
-    this.$popup_editor.append(this.$image_wrapper);
-
-    var that = this;
-
-    // Stop event propagation in image.
-    this.$image_wrapper.on('mouseup touchend', $.proxy(function (e) {
-      if (!this.isResizing()) {
-        e.stopPropagation();
-      }
-    }, this));
-
-    this.addListener('hidePopups', $.proxy(function () {
-      this.hideImageWrapper(true);
-    }), this);
-
-    // Init progress bar.
-    this.$progress_bar = this.$image_wrapper.find('p#f-progress-' + this._id);
-
-    // Build drag and drop upload.
-    if (this.options.imageUpload) {
-      // Build upload frame.
-      if (this.browser.msie && $.Editable.getIEversion() <= 9) {
-        var iFrame = this.$image_wrapper.find('iframe').get(0);
-
-        if (iFrame.attachEvent) {
-          iFrame.attachEvent('onload', function () { that.iFrameLoad() });
-        } else {
-          iFrame.onload  = function () { that.iFrameLoad() };
-        }
-      }
-
-      // File was picked.
-      this.$image_wrapper.on('change', 'input[type="file"]', function () {
-        // Files were picked.
-        if (this.files !== undefined) {
-          that.uploadImage(this.files);
-        }
-
-        // IE 9 upload.
         else {
-          var $form = $(this).parents('form');
-          $form.find('input[type="hidden"]').remove();
-          var key;
-          for (key in that.options.imageUploadParams) {
-            $form.prepend('<input type="hidden" name="' + key + '" value="' + that.options.imageUploadParams[key] + '" />');
+          $el.removeClass('fr-above');
+        }
+      }
+
+      return top;
+    }
+
+    /**
+     * Normalize left position.
+     */
+    function _leftNormalized ($el, left) {
+      var width = $el.outerWidth();
+
+      // Normalize right.
+      if ($el.parent().offset().left + left + width > $(editor.opts.scrollableContainer).width() - 10) {
+       left = $(editor.opts.scrollableContainer).width() - width - 10 - $el.parent().offset().left + $(editor.opts.scrollableContainer).offset().left;
+      }
+
+      // Normalize left.
+      if ($el.parent().offset().left + left < $(editor.opts.scrollableContainer).offset().left) {
+        left = 10 - $el.parent().offset().left + $(editor.opts.scrollableContainer).offset().left;
+      }
+
+      return left;
+    }
+
+    /**
+     * Place editor below selection.
+     */
+    function forSelection ($el) {
+      var selection_rect = getBoundingRect();
+
+      $el.css('top', 0).css('left', 0);
+
+      var top = selection_rect.top + selection_rect.height;
+      var left = selection_rect.left + selection_rect.width / 2 - $el.outerWidth() / 2 + $(editor.original_window).scrollLeft();
+
+      if (!editor.opts.iframe) {
+        top += $(editor.original_window).scrollTop();
+      }
+
+      at(left, top, $el, selection_rect.height);
+    }
+
+    /**
+     * Position element at the specified position.
+     */
+    function at (left, top, $el, obj_height) {
+      var $container = $el.data('container');
+
+      if ($container && $container.get(0).tagName != 'BODY') {
+        if (left) left -= $container.offset().left;
+        if (top) top -= $container.offset().top - $container.scrollTop();
+      }
+
+      // Apply iframe correction.
+      if (editor.opts.iframe && $container && editor.$tb && $container.get(0) != editor.$tb.get(0)) {
+        if (left) left += editor.$iframe.offset().left;
+        if (top) top += editor.$iframe.offset().top;
+      }
+
+      var new_left = _leftNormalized($el, left);
+
+      if (left) {
+        // Set the new left.
+        $el.css('left', new_left);
+
+        // Normalize arrow.
+        var $arrow = $el.find('.fr-arrow');
+        if (!$arrow.data('margin-left')) $arrow.data('margin-left', editor.helpers.getPX($arrow.css('margin-left')));
+        $arrow.css('margin-left', left - new_left + $arrow.data('margin-left'));
+      }
+
+      if (top) $el.css('top', _topNormalized($el, top, obj_height));
+    }
+
+    /**
+     * Special case for update sticky on iOS.
+     */
+    function _updateIOSSticky (el) {
+      var $el = $(el);
+      var $parent = $el.parent();
+      var is_on = $el.is('.fr-sticky-on');
+      var prev_top = $el.data('sticky-top');
+      var scheduled_top = $el.data('sticky-scheduled');
+
+      // Create a dummy div that we show then sticky is on.
+			if (typeof prev_top == 'undefined') {
+        $el.data('sticky-top', 0);
+				$el.after('<div class="fr-sticky-dummy" style="height: ' + $el.outerHeight() + 'px;"></div>');
+        $el.data('sticky-dummy', $el.next());
+			}
+
+      // Position sticky doesn't work when the keyboard is on the screen.
+      if (editor.core.hasFocus() || editor.$tb.find('input:visible:focus').length > 0) {
+        // Get the current scroll.
+        var x_scroll = $(window).scrollTop();
+
+        // Get the current top.
+        // We make sure that we keep it within the editable box.
+        var x_top = Math.min(Math.max(x_scroll - $parent.offset().top, 0), $parent.outerHeight() - $el.outerHeight());
+
+        // Not the same top and different than the already scheduled.
+        if (x_top != prev_top && x_top != scheduled_top) {
+          // Clear any too soon change to avoid flickering.
+          clearTimeout($el.data('sticky-timeout'));
+
+          // Store the current scheduled top.
+          $el.data('sticky-scheduled', x_top);
+
+          // Hide the toolbar for a rich experience.
+          if ($el.outerHeight() < x_scroll - $parent.offset().top) {
+            $el.addClass('fr-opacity-0');
           }
 
-          if (that.options.imageUploadToS3 !== false) {
-            for (key in that.options.imageUploadToS3.params) {
-              $form.prepend('<input type="hidden" name="' + key + '" value="' + that.options.imageUploadToS3.params[key] + '" />');
+          // Set the timeout for changing top.
+          // Based on the test 100ms seems to be the best timeout.
+          $el.data('sticky-timeout', setTimeout(function () {
+            // Get the current top.
+            var c_scroll = $(window).scrollTop();
+            var c_top = Math.min(Math.max(c_scroll - $parent.offset().top, 0), $parent.outerHeight() - $el.outerHeight());
+
+            if (c_top > 0 && $parent.get(0).tagName == 'BODY') c_top += $parent.position().top;
+
+            // Don't update if it is not different than the prev top.
+            if (c_top != prev_top) {
+              $el.css('top', Math.max(c_top, 0));
+              $el.data('sticky-top', c_top);
+              $el.data('sticky-scheduled', c_top);
             }
 
-            $form.prepend('<input type="hidden" name="' + 'success_action_status' + '" value="' + 201 + '" />');
-            $form.prepend('<input type="hidden" name="' + 'X-Requested-With' + '" value="' + 'xhr' + '" />');
-            $form.prepend('<input type="hidden" name="' + 'Content-Type' + '" value="' + '' + '" />');
-            $form.prepend('<input type="hidden" name="' + 'key' + '" value="' + that.options.imageUploadToS3.keyStart + (new Date()).getTime() + '-' + $(this).val().match(/[^\/\\]+$/) + '" />');
-          } else {
-            $form.prepend('<input type="hidden" name="XHR_CORS_TRARGETORIGIN" value="' + that.window.location.href + '" />');
-          }
+            // Show toolbar.
+            $el.removeClass('fr-opacity-0');
 
-          that.showInsertImage();
-          that.showImageLoader(true);
-          that.disable();
-
-          $form.submit();
+            if (editor.$tb.hasClass('fr-inline')) editor.toolbar.show();
+          }, 100));
         }
 
-        // Chrome fix.
-        $(this).val('');
-      });
-    }
-
-    // Add drag and drop support.
-    this.buildDragUpload();
-
-    // URL input for insert image.
-    this.$image_wrapper.on('mouseup keydown', '#f-image-url-' + this._id, $.proxy(function (e) {
-      var keyCode = e.which;
-      if (!keyCode || keyCode !== 27) {
-        e.stopPropagation();
-      }
-    }, this));
-
-    // Create a list with all the items from the popup.
-    this.$image_wrapper.on('click', '#f-image-ok-' + this._id, $.proxy(function () {
-      this.writeImage(this.$image_wrapper.find('#f-image-url-' + this._id).val(), true);
-    }, this));
-
-    // Wrap things in image wrapper.
-    this.$image_wrapper.on(this.mouseup, '#f-image-close-' + this._id, $.proxy(function (e) {
-      if (this.isDisabled) return false;
-
-      e.stopPropagation();
-
-      this.$bttn_wrapper.show();
-      this.hideImageWrapper(true);
-
-      if (this.options.inlineMode && this.options.buttons.length === 0) {
-        if (this.imageMode) {
-          this.showImageEditor();
-        } else {
-          this.hide();
+        // Turn on sticky mode.
+        if (!is_on) {
+          $el.css('top', '');
+          $el.width($parent.width());
+          $el.addClass('fr-sticky-on');
         }
       }
 
-      if (!this.imageMode) {
-        this.restoreSelection();
-        this.focus();
-      }
-
-      if (!this.options.inlineMode && !this.imageMode) {
-        this.hide();
-      } else if (this.imageMode) {
-        this.showImageEditor();
-      }
-    }, this))
-
-    this.$image_wrapper.on('click', function (e) {
-      e.stopPropagation();
-    });
-
-    this.$image_wrapper.on('click', '*', function (e) {
-      e.stopPropagation();
-    });
-  };
-
-
-  // Delete an image.
-  $.Editable.prototype.deleteImage = function ($img) {
-    if (this.options.imageDeleteURL) {
-      var deleteParams = this.options.imageDeleteParams;
-      deleteParams.info = $img.data('info');
-      deleteParams.src = $img.attr('src');
-      $.ajax({
-        type: 'POST',
-        url: this.options.imageDeleteURL,
-        data: deleteParams,
-        crossDomain: this.options.crossDomain,
-        xhrFields: {
-          withCredentials: this.options.withCredentials
-        },
-        headers: this.options.headers
-      })
-      .done($.proxy(function (data) {
-        // In media manager.
-        if ($img.parent().parent().hasClass('f-image-list')) {
-          $img.parent().remove();
-        }
-
-        // Normal delete.
-        else {
-          $img.parent().removeClass('f-img-deleting');
-        }
-
-        this.triggerEvent('imageDeleteSuccess', [data], false);
-      }, this))
-      .fail($.proxy(function () {
-        $img.parent().removeClass('f-img-deleting');
-        this.triggerEvent('imageDeleteError', ['Error during image delete.'], false);
-      }, this));
-    }
-    else {
-      $img.parent().removeClass('f-img-deleting');
-      this.triggerEvent('imageDeleteError', ['Missing imageDeleteURL option.'], false);
-    }
-  };
-
-  /**
-   * Initialize actions for image handles.
-   */
-  $.Editable.prototype.imageHandle = function () {
-    var that = this;
-
-    var $handle = $('<span data-fr-verified="true">').addClass('f-img-handle').on({
-      // Start to drag.
-      movestart: function (e) {
-        that.hide();
-        that.$element.addClass('f-non-selectable').attr('contenteditable', false);
-        that.$element.attr('data-resize', true);
-
-        $(this).attr('data-start-x', e.startX);
-        $(this).attr('data-start-y', e.startY);
-      },
-
-      // Still moving.
-      move: function (e) {
-        var $elem = $(this);
-        var diffX = e.pageX - parseInt($elem.attr('data-start-x'), 10);
-
-        $elem.attr('data-start-x', e.pageX);
-        $elem.attr('data-start-y', e.pageY);
-
-        var $img = $elem.prevAll('img');
-        var width = $img.width();
-        if ($elem.hasClass('f-h-ne') || $elem.hasClass('f-h-se')) {
-          $img.attr('width', width + diffX);
-        } else {
-          $img.attr('width', width - diffX);
-        }
-
-        that.triggerEvent('imageResize', [], false);
-      },
-
-      // Drag end.
-      moveend: function () {
-        $(this).removeAttr('data-start-x');
-        $(this).removeAttr('data-start-y');
-
-        that.$element.removeClass('f-non-selectable');
-        if (!that.isImage) {
-          that.$element.attr('contenteditable', true);
-        }
-
-        that.triggerEvent('imageResizeEnd');
-
-        $(this).trigger('mouseup');
-      },
-
-      // Issue #221.
-      touchend: function () {
-        $(this).trigger('moveend');
-      }
-    });
-
-    return $handle;
-  };
-
-  /**
-   * Disable image resizing from browser.
-   */
-  $.Editable.prototype.disableImageResize = function () {
-    // Disable resize for FF.
-    if (this.browser.mozilla) {
-      try {
-        document.execCommand('enableObjectResizing', false, false);
-        document.execCommand('enableInlineTableEditing', false, false);
-      } catch (ex) {}
-    }
-  };
-
-  $.Editable.prototype.isResizing = function () {
-    return this.$element.attr('data-resize');
-  };
-
-  $.Editable.prototype.getImageStyle = function ($img) {
-    var style = 'z-index: 1; position: relative; overflow: auto;';
-
-    var $c = $img;
-    var p = 'padding';
-    if ($img.parent().hasClass('f-img-editor')) {
-      $c = $img.parent();
-      p = 'margin';
-    }
-    style += ' padding-left:' + $c.css(p + '-left') + ';';
-    style += ' padding-right:' + $c.css(p + '-right') + ';';
-    style += ' padding-bottom:' + $c.css(p + '-bottom') + ';';
-    style += ' padding-top:' + $c.css(p + '-top') + ';';
-
-    if ($img.hasClass('fr-dib')) {
-      style += ' vertical-align: top; display: block;';
-
-      if ($img.hasClass('fr-fir')) {
-        style += ' float: none; margin-right: 0; margin-left: auto;';
-      }
-      else if ($img.hasClass('fr-fil')) {
-        style += ' float: none; margin-left: 0; margin-right: auto;';
-      }
+      // Turn off sticky mode.
       else {
-        style += ' float: none; margin: auto;';
-      }
-    }
-    else {
-      style += ' display: inline-block;';
-      if ($img.hasClass('fr-fir')) {
-        style += ' float: right;';
-      }
-      else if ($img.hasClass('fr-fil')) {
-        style += ' float: left;';
-      }
-      else {
-        style += ' float: none;';
+        clearTimeout($(el).css('sticky-timeout'));
+        $el.css('top', '');
+        $el.css('position', '');
+        $el.width('');
+        $el.data('sticky-top', 0);
+        $el.removeClass('fr-sticky-on');
+
+        if (editor.$tb.hasClass('fr-inline')) editor.toolbar.hide();
       }
     }
 
-    return style;
-  };
-
-  $.Editable.prototype.getImageClass = function (cls) {
-    var classes = cls.split(' ');
-
-    cls = 'fr-fin';
-
-    if (classes.indexOf('fr-fir') >= 0) cls = 'fr-fir';
-    if (classes.indexOf('fr-fil') >= 0) cls = 'fr-fil';
-    if (classes.indexOf('fr-dib') >= 0) cls += ' fr-dib';
-    if (classes.indexOf('fr-dii') >= 0) cls += ' fr-dii';
-
-    return cls;
-  };
-
-  $.Editable.prototype.refreshImageButtons = function ($img) {
-    // Unmark active buttons in the popup.
-    this.$image_editor.find('button').removeClass('active');
-
-    // Mark active float.
-    var image_float = $img.css('float');
-    if ($img.hasClass('fr-fil')) {
-      image_float = 'Left';
-    } else if ($img.hasClass('fr-fir')) {
-      image_float = 'Right';
-    } else {
-      image_float = 'None';
-    }
-
-    this.$image_editor.find('button[data-cmd="floatImage' + image_float + '"]').addClass('active');
-
-    this.raiseEvent('refreshImage', [$img]);
-  }
-
-  /**
-   * Image controls.
-   */
-  $.Editable.prototype.initImageEvents = function () {
-
-    // Image drop.
-    if (document.addEventListener && !document.dropAssigned) {
-      document.dropAssigned = true;
-      document.addEventListener('drop', $.proxy(function (e) {
-        if ($('.froala-element img.fr-image-move').length) {
-          e.preventDefault();
-          e.stopPropagation();
-          $('.froala-element img.fr-image-move').removeClass('fr-image-move');
-          return false;
-        }
-      }, this));
-    }
-
-    this.disableImageResize();
-
-    var that = this;
-
-    // Image mouse down.
-    this.$element.on('mousedown', 'img:not([contenteditable="false"])', function (e) {
-      if (that.isDisabled) return false;
-
-      if (!that.isResizing()) {
-        // Stop propagation.
-        if (that.initialized) e.stopPropagation();
-
-        // Remove content editable if move is not allowed or MSIE.
-        that.$element.attr('contenteditable', false);
-        $(this).addClass('fr-image-move');
-      }
-    });
-
-    // Image mouse up.
-    this.$element.on('mouseup', 'img:not([contenteditable="false"])', function () {
-      if (that.isDisabled) return false;
-
-      if (!that.isResizing()) {
-        // Add contenteditable back after move.
-        if (!that.options.imageMove && !that.isImage && !that.isHTML) {
-          that.$element.attr('contenteditable', true);
-        }
-
-        $(this).removeClass('fr-image-move');
-      }
-    });
-
-    // Image click.
-    this.$element.on('click touchend', 'img:not([contenteditable="false"])', function (e) {
-      if (that.isDisabled) return false;
-
-      if (!that.isResizing() && that.initialized) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Close other images.
-        that.closeImageMode();
-
-        // iPad Fix.
-        that.$element.blur();
-
-        that.refreshImageButtons($(this));
-
-        // Set alt for image.
-        that.$image_editor.find('.f-image-alt input[type="text"]').val($(this).attr('alt') || $(this).attr('title'));
-
-        // Hide basic editor.
-        that.showImageEditor();
-
-        // Wrap image with image editor.
-        if (!($(this).parent().hasClass('f-img-editor') && $(this).parent().get(0).tagName == 'SPAN')) {
-          var image_class = that.getImageClass($(this).attr('class'));
-
-          $(this).wrap('<span data-fr-verified="true" class="f-img-editor ' + image_class + '"></span>');
-
-          if ($(this).parents('.f-img-wrap').length === 0 && !that.isImage) {
-            if ($(this).parents('a').length > 0) {
-              $(this).parents('a:first').wrap('<span data-fr-verified="true" class="f-img-wrap ' + image_class + '"></span>');
-            } else {
-              $(this).parent().wrap('<span data-fr-verified="true" class="f-img-wrap ' + image_class + '"></span>');
-            }
-          } else {
-            $(this).parents('.f-img-wrap').attr('class', image_class + ' f-img-wrap');
-          }
-        }
-
-        // Remove old handles.
-        $(this).parent().find('.f-img-handle').remove();
-
-        // Add Handles.
-        if (that.options.imageResize) {
-          // Get image handle.
-          var $handle = that.imageHandle();
-          $(this).parent().append($handle.clone(true).addClass('f-h-ne'));
-          $(this).parent().append($handle.clone(true).addClass('f-h-se'));
-          $(this).parent().append($handle.clone(true).addClass('f-h-sw'));
-          $(this).parent().append($handle.clone(true).addClass('f-h-nw'));
-        }
-
-        // Reposition editor.
-        that.showByCoordinates($(this).offset().left + $(this).width() / 2, $(this).offset().top + $(this).height());
-
-        // Image mode power.
-        that.imageMode = true;
-
-        that.$bttn_wrapper.find('.fr-bttn').removeClass('active');
-
-        // No selection needed. We have image.
-        that.clearSelection();
-      }
-    });
-
-    // Add resizing data.
-    this.$element.on('mousedown touchstart', '.f-img-handle', $.proxy(function () {
-      if (that.isDisabled) return false;
-
-      this.$element.attr('data-resize', true);
-    }, this));
-
-
-    // Remove resizing data.
-    this.$element.on('mouseup', '.f-img-handle', $.proxy(function (e) {
-      if (that.isDisabled) return false;
-
-      var $img = $(e.target).prevAll('img');
-      setTimeout($.proxy(function () {
-        this.$element.removeAttr('data-resize');
-        $img.click();
-      }, this), 0);
-    }, this));
-  };
-
-  $.Editable.prototype.execImage = function (cmd, val, param) {
-    var $image_editor = this.$element.find('span.f-img-editor');
-    var $img = $image_editor.find('img');
-
-    var button = $.Editable.image_commands[cmd] || this.options.customImageButtons[cmd];
-
-    if (button && button.callback) {
-      button.callback.apply(this, [$img, cmd, val, param]);
-    }
-  }
-
-  $.Editable.prototype.bindImageRefreshListener = function (button) {
-    if (button.refresh) {
-      this.addListener('refreshImage', $.proxy(function ($img) {
-        button.refresh.apply(this, [$img])
-      }, this));
-    }
-  }
-
-  $.Editable.prototype.buildImageButton = function (button, cmd) {
-    var btn = '<button class="fr-bttn" data-namespace="Image" data-cmd="' + cmd + '" title="' + button.title + '">';
-
-    if (this.options.icons[cmd] !== undefined) {
-      btn += this.prepareIcon(this.options.icons[cmd], button.title);
-    } else {
-      btn += this.prepareIcon(button.icon, button.title);
-    }
-
-    btn += '</button>';
-
-    this.bindImageRefreshListener(button);
-
-    return btn;
-  }
-
-  $.Editable.prototype.buildImageAlignDropdown = function (command) {
-    this.bindImageRefreshListener(command);
-
-    var dropdown = '<ul class="fr-dropdown-menu f-align">';
-
-    // Iterate color seed.
-    for (var j = 0; j < command.seed.length; j++) {
-      var align = command.seed[j];
-
-      dropdown += '<li data-cmd="align" data-namespace="Image" data-val="' + align.cmd + '" title="' + align.title + '"><a href="#"><i class="' + align.icon + '"></i></a></li>';
-    }
-
-    dropdown += '</ul>';
-
-    return dropdown;
-  }
-
-  $.Editable.prototype.buildImageDropdown = function (button) {
-    dropdown = this.buildDefaultDropdown(button);
-    btn = this.buildDropdownButton(button, dropdown);
-    return btn;
-  }
-
-  $.Editable.prototype.image_command_dispatcher = {
-    align: function (button) {
-      var dropdown = this.buildImageAlignDropdown(button);
-      var btn = this.buildDropdownButton(button, dropdown);
-      return btn;
-    }
-  }
-
-  $.Editable.prototype.buildImageButtons = function () {
-    var buttons = '';
-
-    for (var i = 0; i < this.options.imageButtons.length; i++) {
-      var cmd = this.options.imageButtons[i];
-      if ($.Editable.image_commands[cmd] === undefined && this.options.customImageButtons[cmd] === undefined) {
-        continue;
-      }
-      var button = $.Editable.image_commands[cmd] || this.options.customImageButtons[cmd];
-
-      button.cmd = cmd;
-      var command_dispatch = this.image_command_dispatcher[cmd];
-      if (command_dispatch) {
-        buttons += command_dispatch.apply(this, [button]);
-      }
-      else {
-        if (button.seed) {
-          buttons += this.buildImageDropdown(button, cmd);
-        }
-        else {
-          buttons += this.buildImageButton(button, cmd);
-        }
-      }
-    }
-
-    return buttons;
-  }
-
-  /**
-   * Init popup for image.
-   */
-  $.Editable.prototype.initImagePopup = function () {
-    this.$image_editor = $('<div class="froala-popup froala-image-editor-popup" style="display: none">');
-
-    var $buttons = $('<div class="f-popup-line f-popup-toolbar">').appendTo(this.$image_editor);
-    $buttons.append(this.buildImageButtons());
-
-    this.addListener('hidePopups', this.hideImageEditorPopup);
-
-    if (this.options.imageTitle) {
-      $('<div class="f-popup-line f-image-alt">')
-        .append('<label><span data-text="true">Title</span>: </label>')
-        .append($('<input type="text">').on('mouseup keydown touchend', function (e) {
-          var keyCode = e.which;
-          if (!keyCode || keyCode !== 27) {
-            e.stopPropagation();
-          }
-        }))
-        .append('<button class="fr-p-bttn f-ok" data-text="true" data-callback="setImageAlt" data-cmd="setImageAlt" title="OK">OK</button>')
-        .appendTo(this.$image_editor)
-    }
-
-    this.$popup_editor.append(this.$image_editor);
-
-    this.bindCommandEvents(this.$image_editor);
-    this.bindDropdownEvents(this.$image_editor);
-  };
-
-  $.Editable.prototype.displayImage = function ($img, cls) {
-    var $image_editor = $img.parents('span.f-img-editor');
-    $image_editor.removeClass('fr-dii fr-dib').addClass(cls);
-
-    this.triggerEvent('imageDisplayed', [$img, cls]);
-    $img.click();
-  }
-
-  /**
-   * Float image to the left.
-   */
-  $.Editable.prototype.floatImageLeft = function ($img) {
-    var $image_editor = $img.parents('span.f-img-editor');
-    $image_editor.removeClass('fr-fin fr-fil fr-fir').addClass('fr-fil');
-
-    if (this.isImage) {
-      this.$element.css('float', 'left')
-    }
-
-    this.triggerEvent('imageFloatedLeft', [$img]);
-    $img.click();
-  };
-
-  /**
-   * Align image center.
-   */
-  $.Editable.prototype.floatImageNone = function ($img) {
-    var $image_editor = $img.parents('span.f-img-editor');
-    $image_editor.removeClass('fr-fin fr-fil fr-fir').addClass('fr-fin');
-
-    if (!this.isImage) {
-      if ($image_editor.parent().get(0) == this.$element.get(0)) {
-        $image_editor.wrap('<div style="text-align: center;"></div>');
-      } else {
-        $image_editor.parents('.f-img-wrap:first').css('text-align', 'center');
-      }
-    }
-
-    if (this.isImage) {
-      this.$element.css('float', 'none')
-    }
-
-
-    this.triggerEvent('imageFloatedNone', [$img]);
-    $img.click();
-  };
-
-  /**
-   * Float image to the right.
-   */
-  $.Editable.prototype.floatImageRight = function ($img) {
-    var $image_editor = $img.parents('span.f-img-editor');
-    $image_editor.removeClass('fr-fin fr-fil fr-fir').addClass('fr-fir');
-
-    if (this.isImage) {
-      this.$element.css('float', 'right')
-    }
-
-
-    this.triggerEvent('imageFloatedRight', [$img]);
-    $img.click();
-  };
-
-  /**
-   * Link image.
-   */
-  $.Editable.prototype.linkImage = function ($img) {
-    this.imageMode = true;
-    this.showInsertLink();
-
-    var $image_editor = $img.parents('span.f-img-editor');
-
-    if ($image_editor.parent().get(0).tagName == 'A') {
-      this.$link_wrapper.find('input[type="text"]').val($image_editor.parent().attr('href'));
-      this.$link_wrapper.find('.f-external-link').attr('href', $image_editor.parent().attr('href'));
-
-      if ($image_editor.parent().attr('target') == '_blank') {
-        this.$link_wrapper.find('input[type="checkbox"]').prop('checked', true);
-      } else {
-        this.$link_wrapper.find('input[type="checkbox"]').prop('checked', false);
-      }
-      this.$link_wrapper.find('a.f-external-link, button.f-unlink').show();
-    } else {
-      this.$link_wrapper.find('input[type="text"]').val('http://');
-      this.$link_wrapper.find('.f-external-link').attr('href', '#');
-      this.$link_wrapper.find('input[type="checkbox"]').prop('checked', this.options.alwaysBlank);
-      this.$link_wrapper.find('a.f-external-link, button.f-unlink').hide();
-    }
-  };
-
-  /**
-   * Replace image with another one.
-   */
-  $.Editable.prototype.replaceImage = function ($img) {
-    this.showInsertImage();
-    this.imageMode = true;
-
-    this.$image_wrapper.find('input[type="text"]').val($img.attr('src'));
-
-    this.showByCoordinates($img.offset().left + $img.width() / 2, $img.offset().top + $img.height());
-  };
-
-  /**
-   * Remove image.
-   */
-  $.Editable.prototype.removeImage = function ($img) {
-    var $image_editor = $img.parents('span.f-img-editor');
-    if ($image_editor.length === 0) return false;
-
-    var img = $img.get(0);
-
-    var message = 'Are you sure? Image will be deleted.';
-    if ($.Editable.LANGS[this.options.language]) {
-      message = $.Editable.LANGS[this.options.language].translation[message];
-    }
-
-    // Ask to remove.
-    if (!this.options.imageDeleteConfirmation || confirm(message)) {
-      // (src)
-      if (this.triggerEvent('beforeRemoveImage', [$(img)], false)) {
-        var img_parent = $image_editor.parents(this.valid_nodes.join(','));
-
-        if ($image_editor.parents('.f-img-wrap').length) {
-          $image_editor.parents('.f-img-wrap').remove();
-        } else {
-          $image_editor.remove();
-        }
-        this.refreshImageList(true);
-        this.hide();
-
-        if (img_parent.length && img_parent[0] != this.$element.get(0)) {
-          if ($(img_parent[0]).text() === '') {
-            $(img_parent[0]).remove()
-          }
-        }
-
-
-        this.wrapText();
-
-        this.triggerEvent('afterRemoveImage', [$img]);
-        this.focus();
-
-        this.imageMode = false;
-      }
-    }
-    else {
-      $img.click();
-    }
-  };
-
-  /**
-   * Set image alt.
-   */
-  $.Editable.prototype.setImageAlt = function () {
-    var $image_editor = this.$element.find('span.f-img-editor');
-    $image_editor.find('img').attr('alt', this.$image_editor.find('.f-image-alt input[type="text"]').val());
-    $image_editor.find('img').attr('title', this.$image_editor.find('.f-image-alt input[type="text"]').val());
-
-    this.hide();
-    this.closeImageMode();
-    this.triggerEvent('imageAltSet');
-  };
-
-  $.Editable.prototype.buildImageMove = function () {
-    var that = this;
-
-    if (!this.isLink) {
-      this.initDrag();
-    }
-
-    that.$element.on('dragover dragenter dragend', function () {
-      return false;
-    });
-
-    that.$element.on('drop', function (e) {
-      if (that.isDisabled) return false;
-
-      that.closeImageMode();
-      that.hide();
-      that.imageMode = false;
-
-      // Init editor if not initialized.
-      if (!that.initialized) {
-        that.$element.unbind('mousedown.element');
-        that.lateInit();
+    /**
+     * Update sticky location for browsers that don't support sticky.
+     * https://github.com/filamentgroup/fixed-sticky
+     *
+     * The MIT License (MIT)
+     *
+     * Copyright (c) 2013 Filament Group
+     */
+    function _updateSticky (el) {
+      if( !el.offsetWidth ) { return; }
+
+			var el_top;
+			var el_bottom;
+      var $el = $(el);
+      var height = $el.outerHeight();
+
+      var position = $el.data('sticky-position');
+
+      // Viewport height.
+      var viewport_height = $(editor.opts.scrollableContainer == 'body' ? editor.original_window : editor.opts.scrollableContainer).outerHeight();
+
+      var scrollable_top = 0;
+      var scrollable_bottom = 0;
+      if (editor.opts.scrollableContainer !== 'body') {
+        scrollable_top = $(editor.opts.scrollableContainer).offset().top;
+        scrollable_bottom = $(editor.original_window).outerHeight() - scrollable_top - viewport_height;
       }
 
-      if (that.options.imageUpload && $('.froala-element img.fr-image-move').length === 0) {
-        if (e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files && e.originalEvent.dataTransfer.files.length) {
-          if (that.isDisabled) return false;
+      var offset_top = editor.opts.scrollableContainer == 'body' ? $(editor.original_window).scrollTop() : scrollable_top;
 
-          var files = e.originalEvent.dataTransfer.files;
-          if (that.options.allowedImageTypes.indexOf(files[0].type.replace(/image\//g,'')) >= 0) {
-            that.insertMarkersAtPoint(e.originalEvent);
-            that.showByCoordinates(e.originalEvent.pageX, e.originalEvent.pageY);
-            that.uploadImage(files);
-            e.preventDefault();
-            e.stopPropagation();
-          }
-        }
-      } else {
-        // MSIE drag and drop workaround.
-        if ($('.froala-element .fr-image-move').length > 0 && that.options.imageMove) {
-          e.preventDefault();
-          e.stopPropagation();
-          that.insertMarkersAtPoint(e.originalEvent);
-          that.restoreSelectionByMarkers();
-          var html = $('<div>')
-              .append(
-                $('.froala-element img.fr-image-move')
-                  .clone()
-                  .removeClass('fr-image-move')
-                  .addClass('fr-image-dropped')
-              ).html();
+			var is_on = $el.is('.fr-sticky-on');
 
-          that.insertHTML(html);
-
-          var $parent = $('.froala-element img.fr-image-move').parent();
-          $('.froala-element img.fr-image-move').remove();
-
-          if ($parent.get(0) != that.$element.get(0) && $parent.is(':empty')) {
-            $parent.remove();
-          }
-
-          that.clearSelection();
-
-          if (that.initialized) {
-            setTimeout(function () {
-              that.$element
-                .find('.fr-image-dropped')
-                .removeClass('.fr-image-dropped')
-                .click();
-            }, 0);
-          } else {
-            that.$element
-              .find('.fr-image-dropped')
-              .removeClass('.fr-image-dropped')
-          }
-
-          that.sync();
-          that.hideOtherEditors();
-        } else {
-          e.preventDefault();
-          e.stopPropagation();
-          $('.froala-element img.fr-image-move').removeClass('fr-image-move');
-        }
-
-        return false;
+      // Decide parent.
+      if (!$el.data('sticky-parent')) {
+        $el.data('sticky-parent', $el.parent());
       }
-    })
-  }
-
-  /**
-   * Add drag and drop upload.
-   *
-   * @param $holder - jQuery object.
-   */
-  $.Editable.prototype.buildDragUpload = function () {
-    var that = this;
-
-    that.$image_wrapper.on('dragover', '#f-upload-div-' + this._id, function () {
-      $(this).addClass('f-hover');
-      return false;
-    });
-
-    that.$image_wrapper.on('dragend', '#f-upload-div-' + this._id, function () {
-      $(this).removeClass('f-hover');
-      return false;
-    });
-
-    that.$image_wrapper.on('drop', '#f-upload-div-' + this._id, function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!that.options.imageUpload) return false;
-
-      $(this).removeClass('f-hover');
-
-      that.uploadImage(e.originalEvent.dataTransfer.files);
-    });
-  };
-
-  $.Editable.prototype.showImageLoader = function (waiting) {
-    if (waiting === undefined) waiting = false;
-
-    if (!waiting) {
-      this.$image_wrapper.find('h4').addClass('uploading');
-    }
-    else {
-      var message = 'Please wait!';
-      if ($.Editable.LANGS[this.options.language]) {
-        message = $.Editable.LANGS[this.options.language].translation[message];
-      }
-
-      this.$progress_bar.find('span').css('width', '100%').text(message);
-    }
-
-    this.$image_wrapper.find('#f-image-list-' + this._id).hide();
-    this.$progress_bar.show();
-    this.showInsertImage();
-  }
-
-  $.Editable.prototype.hideImageLoader = function () {
-    this.$progress_bar.hide();
-    this.$progress_bar.find('span').css('width', '0%').text('');
-    this.$image_wrapper.find('#f-image-list-' + this._id).show();
-    this.$image_wrapper.find('h4').removeClass('uploading');
-  };
-
-  /**
-   * Insert image command.
-   *
-   * @param image_link
-   */
-  $.Editable.prototype.writeImage = function (image_link, sanitize, response) {
-    if (sanitize) {
-      image_link = this.sanitizeURL(image_link);
-      if (image_link === '') {
-        return false;
-      }
-    }
-
-    var img = new Image();
-    img.onerror = $.proxy(function () {
-      this.hideImageLoader();
-      this.throwImageError(1);
-    }, this);
-
-    if (this.imageMode) {
-      img.onload = $.proxy(function () {
-        var $img = this.$element.find('.f-img-editor > img');
-        $img.attr('src', image_link);
-
-        this.hide();
-        this.hideImageLoader();
-        this.$image_editor.show();
-
-        this.enable();
-
-        // call with (image HTML)
-        this.triggerEvent('imageReplaced', [$img, response]);
-
-        setTimeout(function () {
-          $img.trigger('click');
-        }, 0);
-      }, this);
-    }
-
-    else {
-      img.onload = $.proxy(function () {
-        this.insertLoadedImage(image_link, response);
-      }, this);
-    }
-
-    this.showImageLoader(true);
-
-    img.src = image_link;
-  };
-
-  $.Editable.prototype.processInsertImage = function (image_link, image_preview) {
-    if (image_preview === undefined) image_preview = true;
-
-    this.enable();
-
-    // Restore saved selection.
-    this.restoreSelection();
-    this.focus();
-
-    var image_width = '';
-    if (parseInt(this.options.defaultImageWidth, 10) || 0 > 0) {
-      image_width = ' width="' + this.options.defaultImageWidth + '"';
-    }
-
-    var alignment = 'fr-fin';
-    if (this.options.defaultImageAlignment == 'left') alignment = 'fr-fil';
-    if (this.options.defaultImageAlignment == 'right') alignment = 'fr-fir';
-
-    alignment += ' fr-di' + this.options.defaultImageDisplay[0];
-
-    // Build image string.
-    var img_s = '<img class="' + alignment + ' fr-just-inserted" alt="' + this.options.defaultImageTitle + '" src="' + image_link + '"' + image_width + '>';
-
-    // Search for start container.
-    var selected_element = this.getSelectionElements()[0];
-    var range = this.getRange();
-    var $span = (!this.browser.msie && $.Editable.getIEversion() > 8 ? $(range.startContainer) : null);
-
-    // Insert was called with image selected.
-    if ($span && $span.hasClass('f-img-wrap')) {
-      // Insert image after.
-      if (range.startOffset === 1) {
-        $span.after('<' + this.options.defaultTag + '><span class="f-marker" data-type="true" data-id="0"></span><br/><span class="f-marker" data-type="false" data-id="0"></span></' + this.options.defaultTag + '>');
-        this.restoreSelectionByMarkers();
-        this.getSelection().collapseToStart();
-      }
-
-      // Insert image before.
-      else if (range.startOffset === 0) {
-        $span.before('<' + this.options.defaultTag + '><span class="f-marker" data-type="true" data-id="0"></span><br/><span class="f-marker" data-type="false" data-id="0"></span></' + this.options.defaultTag + '>');
-        this.restoreSelectionByMarkers();
-        this.getSelection().collapseToStart();
-      }
-
-      // Add image.
-      this.insertHTML(img_s);
-    }
-
-    // Insert in table.
-    else if (this.getSelectionTextInfo(selected_element).atStart && selected_element != this.$element.get(0) && selected_element.tagName != 'TD' && selected_element.tagName != 'TH' && selected_element.tagName != 'LI') {
-      $(selected_element).before('<' + this.options.defaultTag + '>' + img_s + '</' + this.options.defaultTag + '>');
-    }
-
-    // Normal insert.
-    else {
-      this.insertHTML(img_s);
-    }
-
-    this.disable();
-  }
-
-  $.Editable.prototype.insertLoadedImage = function (image_link, response) {
-    // Image was loaded fine.
-    this.triggerEvent('imageLoaded', [image_link], false);
-
-    this.processInsertImage(image_link, false);
-
-    // IE fix.
-    if (this.browser.msie) {
-      this.$element.find('img').each(function (index, elem) {
-        elem.oncontrolselect = function () {
-          return false;
-        };
-      });
-    }
-
-    this.enable();
-
-    // Hide image controls.
-    this.hide();
-    this.hideImageLoader();
-
-    // Have to wrap image.
-    this.wrapText();
-
-    // Unwrap image from p inside list.
-    this.cleanupLists();
-    var p_node;
-    var img = this.$element.find('img.fr-just-inserted').get(0);
-    if (img) p_node = img.previousSibling;
-    if (p_node && p_node.nodeType == 3 && /\u200B/gi.test(p_node.textContent)) {
-      $(p_node).remove();
-    }
-
-    // (jquery image)
-    this.triggerEvent('imageInserted', [this.$element.find('img.fr-just-inserted'), response]);
-
-    // Select image.
-    setTimeout($.proxy(function () {
-      this.$element.find('img.fr-just-inserted').removeClass('fr-just-inserted').trigger('touchend');
-    }, this), 50);
-  };
-
-  $.Editable.prototype.throwImageErrorWithMessage = function (message) {
-    this.enable();
-
-    this.triggerEvent('imageError', [{
-      message: message,
-      code: 0
-    }], false);
-
-    this.hideImageLoader();
-  }
-
-  $.Editable.prototype.throwImageError = function (code) {
-    this.enable();
-
-    var status = 'Unknown image upload error.';
-    if (code == 1) {
-      status = 'Bad link.';
-    } else if (code == 2) {
-      status = 'No link in upload response.';
-    } else if (code == 3) {
-      status = 'Error during file upload.';
-    } else if (code == 4) {
-      status = 'Parsing response failed.';
-    } else if (code == 5) {
-      status = 'Image too large.';
-    } else if (code == 6) {
-      status = 'Invalid image type.';
-    } else if (code == 7) {
-      status = 'Image can be uploaded only to same domain in IE 8 and IE 9.'
-    }
-
-    this.triggerEvent('imageError', [{
-      code: code,
-      message: status
-    }], false);
-
-    this.hideImageLoader();
-  };
-
-  /**
-   * Upload files to server.
-   *
-   * @param files
-   */
-  $.Editable.prototype.uploadImage = function (files) {
-    if (!this.triggerEvent('beforeImageUpload', [files], false)) {
-      return false;
-    }
-
-    if (files !== undefined && files.length > 0) {
-      var formData;
-
-      if (this.drag_support.formdata) {
-        formData = this.drag_support.formdata ? new FormData() : null;
-      }
-
-      if (formData) {
-        var key;
-        for (key in this.options.imageUploadParams) {
-          formData.append(key, this.options.imageUploadParams[key]);
-        }
-
-        // Upload to S3.
-        if (this.options.imageUploadToS3 !== false) {
-          for (key in this.options.imageUploadToS3.params) {
-            formData.append(key, this.options.imageUploadToS3.params[key]);
-          }
-
-          formData.append('success_action_status', '201');
-          formData.append('X-Requested-With', 'xhr');
-          formData.append('Content-Type', files[0].type);
-          formData.append('key', this.options.imageUploadToS3.keyStart + (new Date()).getTime() + '-' + files[0].name);
-        }
-
-        formData.append(this.options.imageUploadParam, files[0]);
-
-        // Check image max size.
-        if (files[0].size > this.options.maxImageSize) {
-          this.throwImageError(5);
-          return false;
-        }
-
-        // Check image types.
-        if (this.options.allowedImageTypes.indexOf(files[0].type.replace(/image\//g,'')) < 0) {
-          this.throwImageError(6);
-          return false;
-        }
-      }
-
-      if (formData) {
-        var xhr;
-        if (this.options.crossDomain) {
-          xhr = this.createCORSRequest('POST', this.options.imageUploadURL);
-        } else {
-          xhr = new XMLHttpRequest();
-          xhr.open('POST', this.options.imageUploadURL);
-
-          for (var h_key in this.options.headers) {
-            xhr.setRequestHeader(h_key, this.options.headers[h_key]);
-          }
-        }
-
-        xhr.onload = $.proxy(function () {
-          var message = 'Please wait!';
-          if ($.Editable.LANGS[this.options.language]) {
-            message = $.Editable.LANGS[this.options.language].translation[message];
-          }
-
-          this.$progress_bar.find('span').css('width', '100%').text(message);
-          try {
-            if (this.options.imageUploadToS3) {
-              if (xhr.status == 201) {
-                this.parseImageResponseXML(xhr.responseXML);
-              } else {
-                this.throwImageError(3);
-              }
+      var $parent = $el.data('sticky-parent');
+		  var parent_top = $parent.offset().top;
+			var parent_height = $parent.outerHeight();
+
+
+			if (!$el.data('sticky-offset')) {
+				$el.data('sticky-offset', true);
+				$el.after('<div class="fr-sticky-dummy" style="height: ' + height + 'px;"></div>');
+			}
+
+      // Detect position placement.
+      if (!position) {
+				// Some browsers require fixed/absolute to report accurate top/left values.
+				var skip_setting_fixed = $el.css('top') !== 'auto' || $el.css('bottom') !== 'auto';
+
+        // Set to position fixed for a split of second.
+				if(!skip_setting_fixed) {
+					$el.css('position', 'fixed');
+				}
+
+        // Find position.
+				position = {
+					top: $el.css('top') !== 'auto',
+					bottom: $el.css('bottom') !== 'auto'
+				};
+
+        // Remove position fixed.
+				if(!skip_setting_fixed) {
+					$el.css('position', '');
+				}
+
+        // Store position.
+				$el.data('sticky-position', position);
+
+        $el.data('top', $el.css('top'));
+        $el.data('bottom', $el.css('bottom'));
+  		}
+
+      // Detect if is OK to fix at the top.
+			var isFixedToTop = function () {
+				// 1. Top condition.
+        // 2. Bottom condition.
+				return parent_top <  offset_top + el_top &&
+                parent_top + parent_height - height >= offset_top + el_top;
+			}
+
+      // Detect if it is OK to fix at the bottom.
+			var isFixedToBottom = function () {
+				return parent_top + height < offset_top + viewport_height - el_bottom &&
+        				parent_top + parent_height > offset_top + viewport_height - el_bottom ;
+			}
+
+			el_top = editor.helpers.getPX($el.data('top'));
+			el_bottom = editor.helpers.getPX($el.data('bottom'));
+
+      var at_top = (position.top && isFixedToTop());
+      var at_bottom = (position.bottom && isFixedToBottom());
+
+      // Should be fixed.
+			if (at_top || at_bottom) {
+        $el.css('width', $parent.width() + 'px');
+
+        if (!is_on) {
+					$el.addClass('fr-sticky-on')
+          $el.removeClass('fr-sticky-off');
+
+          if ($el.css('top')) {
+            if ($el.data('top') != 'auto') {
+              $el.css('top', editor.helpers.getPX($el.data('top')) + scrollable_top);
             }
             else {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                this.parseImageResponse(xhr.responseText);
-              } else {
-                this.throwImageError(3);
-              }
+              $el.data('top', 'auto');
             }
-          } catch (ex) {
-            // Bad response.
-            this.throwImageError(4);
           }
-        }, this);
 
-        xhr.onerror = $.proxy(function () {
-          // Error on uploading file.
-          this.throwImageError(3);
-
-        }, this);
-
-        xhr.upload.onprogress = $.proxy(function (event) {
-          if (event.lengthComputable) {
-            var complete = (event.loaded / event.total * 100 | 0);
-            this.$progress_bar.find('span').css('width', complete + '%');
-          }
-        }, this);
-
-        // Keep the editor only for uploading.
-        this.disable();
-
-        xhr.send(formData);
-
-        // Prepare progress bar for uploading.
-        this.showImageLoader();
-      }
-    }
-  };
-
-  $.Editable.prototype.parseImageResponse = function (response) {
-    try {
-      var resp = $.parseJSON(response);
-      if (resp.link) {
-        this.writeImage(resp.link, false, response);
-      } else if (resp.error) {
-        this.throwImageErrorWithMessage(resp.error);
-      } else {
-        // No link in upload request.
-        this.throwImageError(2);
-      }
-    } catch (ex) {
-      // Bad response.
-      this.throwImageError(4);
-    }
-  };
-
-  $.Editable.prototype.parseImageResponseXML = function (xml_doc) {
-    try {
-      var link = $(xml_doc).find('Location').text();
-      var key = $(xml_doc).find('Key').text();
-
-      // Callback.
-      this.options.imageUploadToS3.callback.call(this, link, key);
-
-      if (link) {
-        this.writeImage(link);
-      } else {
-        // No link in upload request.
-        this.throwImageError(2);
-      }
-    } catch (ex) {
-      // Bad response.
-      this.throwImageError(4);
-    }
-  }
-
-
-  $.Editable.prototype.setImageUploadURL = function (url) {
-    if (url) {
-      this.options.imageUploadURL = url;
-    }
-
-    if (this.options.imageUploadToS3) {
-      this.options.imageUploadURL = 'https://' + this.options.imageUploadToS3.bucket + '.' + this.options.imageUploadToS3.region + '.amazonaws.com/';
-    }
-  }
-
-  $.Editable.prototype.closeImageMode = function () {
-    this.$element.find('span.f-img-editor > img').each($.proxy(function (index, elem) {
-      $(elem)
-        .removeClass('fr-fin fr-fil fr-fir fr-dib fr-dii')
-        .addClass(this.getImageClass($(elem).parent().attr('class')));
-
-      if ($(elem).parents('.f-img-wrap').length > 0) {
-        if ($(elem).parent().parent().get(0).tagName == 'A') {
-          $(elem).siblings('span.f-img-handle').remove().end().unwrap().parent().unwrap();
-        } else {
-          $(elem).siblings('span.f-img-handle').remove().end().unwrap().unwrap();
-        }
-      } else {
-        $(elem).siblings('span.f-img-handle').remove().end().unwrap();
-      }
-    }, this));
-
-    if (this.$element.find('span.f-img-editor').length) {
-      this.$element.find('span.f-img-editor').remove();
-      this.$element.parents('span.f-img-editor').remove();
-    }
-
-    this.$element.removeClass('f-non-selectable');
-    if (!this.editableDisabled && !this.isHTML) {
-      this.$element.attr('contenteditable', true);
-    }
-
-    if (this.$image_editor) {
-      this.$image_editor.hide();
-    }
-
-    if (this.$link_wrapper && this.options.linkText) {
-      this.$link_wrapper.find('input[type="text"].f-lt').parent().removeClass('fr-hidden');
-    }
-  };
-
-  $.Editable.prototype.refreshImageList = function (no_check) {
-    if (!this.isLink && !this.options.editInPopup) {
-      var newListSrc = [];
-      var newList = [];
-      var that = this;
-
-      this.$element.find('img').each (function (index, img) {
-        var $img = $(img);
-
-        newListSrc.push($img.attr('src'));
-        newList.push($img);
-
-        if ($img.parents('.f-img-editor').length === 0 && !$img.hasClass('fr-dii') && !$img.hasClass('fr-dib')) {
-          // No text near image. Just add fr-dib.
-          if (!that.options.textNearImage) {
-            $img.addClass('fr-dib');
-            that.options.imageButtons.splice(that.options.imageButtons.indexOf('display'), 1);
-          }
-          else {
-            // If centered and not floated, add fr-dib.
-            if ($img.hasClass('fr-fin')) {
-              $img.addClass('fr-dib');
-            }
-            else if ($img.hasClass('fr-fil') || $img.hasClass('fr-fir')) {
-              $img.addClass('fr-dii');
+          if ($el.css('bottom')) {
+            if ($el.data('bottom') != 'auto') {
+              $el.css('bottom', editor.helpers.getPX($el.data('bottom')) + scrollable_bottom);
             }
             else {
-              if ($img.css('display') == 'block' && $img.css('float') == 'none') {
-                $img.addClass('fr-dib');
-              }
-              else {
-                $img.addClass('fr-dii');
-              }
+              $el.css('bottom', 'auto');
             }
           }
-        }
-
-        if (!that.options.textNearImage) {
-          $img.removeClass('fr-dii').addClass('fr-dib');
-        }
-
-        // Add the right class.
-        if ($img.parents('.f-img-editor').length === 0 && !$img.hasClass('fr-fil') && !$img.hasClass('fr-fir') && !$img.hasClass('fr-fin')) {
-          if ($img.hasClass('fr-dii')) {
-            // Set floating margin.
-            if ($img.css('float') == 'right') {
-              $img.addClass('fr-fir');
-            } else if ($img.css('float') == 'left') {
-              $img.addClass('fr-fil');
-            } else {
-              $img.addClass('fr-fin');
-            }
-          }
-          else {
-            var st = $img.attr('style');
-            $img.hide();
-            // Set floating margin.
-            if (parseInt($img.css('margin-right'), 10) === 0 && st) {
-              $img.addClass('fr-fir');
-            } else if (parseInt($img.css('margin-left'), 10) === 0 && st) {
-              $img.addClass('fr-fil');
-            } else {
-              $img.addClass('fr-fin');
-            }
-            $img.show();
-          }
-        }
-
-        $img.css('margin', '');
-        $img.css('float', '');
-
-        $img.removeAttr('style');
-        $img.removeAttr('data-style');
-      });
-
-      if (no_check === undefined) {
-        for (var i = 0; i < this.imageList.length; i++) {
-          if (newListSrc.indexOf(this.imageList[i].attr('src')) < 0) {
-            this.triggerEvent('afterRemoveImage', [this.imageList[i]], false);
-          }
-        }
-      }
-
-      this.imageList = newList;
-    }
-  };
-
-  /**
-   * Insert image.
-   */
-  $.Editable.prototype.insertImage = function () {
-    if (!this.options.inlineMode) {
-      this.closeImageMode();
-      this.imageMode = false;
-      this.positionPopup('insertImage');
-    }
-
-    if (this.selectionInEditor()) {
-      this.saveSelection();
-    }
-
-    this.showInsertImage();
-
-    this.imageMode = false;
-
-    this.$image_wrapper.find('input[type="text"]').val('');
-  };
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.showLinkWrapper = function () {
-    if (this.$link_wrapper) {
-      this.$link_wrapper.show();
-      this.$link_wrapper.trigger('hideLinkList');
-      this.$link_wrapper.trigger('hideLinkClassList');
-
-      this.$link_wrapper.find('input.f-lu').removeClass('fr-error');
-
-      // Show or not the text link.
-      if (this.imageMode || !this.options.linkText) {
-        this.$link_wrapper.find('input[type="text"].f-lt').parent().addClass('fr-hidden');
-      } else {
-        this.$link_wrapper.find('input[type="text"].f-lt').parent().removeClass('fr-hidden');
-      }
-
-      // Url for link disabled or not.
-      if (this.imageMode) {
-        this.$link_wrapper.find('input[type="text"].f-lu').removeAttr('disabled');
-      }
-
-      if (!this.phone()) {
-        setTimeout($.proxy(function () {
-          if (!(this.imageMode && this.iPad())) {
-            this.$link_wrapper.find('input[type="text"].f-lu').focus().select();
-          }
-        }, this), 0);
-      } else {
-        this.$document.scrollTop(this.$link_wrapper.offset().top + 30);
-      }
-
-      this.link = true;
-    }
-
-    this.refreshDisabledState();
-  };
-
-  $.Editable.prototype.hideLinkWrapper = function () {
-    if (this.$link_wrapper) {
-      this.$link_wrapper.hide();
-      this.$link_wrapper.find('input').blur()
-    }
-
-    this.refreshDisabledState();
-  };
-
-  $.Editable.prototype.showInsertLink = function () {
-    this.hidePopups();
-
-    this.showLinkWrapper();
-  };
-
-  $.Editable.prototype.initLinkEvents = function () {
-    var that = this;
-
-    var cancel_click = function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-
-    var link_click = function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-
-      if (that.isDisabled) return false;
-
-      if (that.text() !== '') {
-        that.hide();
-        return false;
-      }
-
-      that.link = true;
-
-      that.clearSelection();
-      that.removeMarkers();
-
-      if (!that.selectionDisabled) {
-        $(this).before('<span class="f-marker" data-type="true" data-id="0" data-fr-verified="true"></span>');
-        $(this).after('<span class="f-marker" data-type="false" data-id="0" data-fr-verified="true"></span>');
-        that.restoreSelectionByMarkers();
-      }
-
-      that.exec('createLink');
-
-      var href = $(this).attr('href') || '';
-
-      // Set link text.
-      that.$link_wrapper.find('input.f-lt').val($(this).text());
-
-      // Set href.
-      if (!that.isLink) {
-        // Simple ampersand.
-        that.$link_wrapper.find('input.f-lu').val(href.replace(/\&amp;/g, '&'));
-        that.$link_wrapper.find('.f-external-link').attr('href', href);
-      }
-      else {
-        if (href == '#') {
-          href = '';
-        }
-
-        // Simple ampersand.
-        that.$link_wrapper.find('input#f-lu-' + that._id).val(href.replace(/\&amp;/g, '&'));
-        that.$link_wrapper.find('.f-external-link').attr('href', href || '#');
-      }
-
-      // Set blank.
-      that.$link_wrapper.find('input[type="checkbox"]').prop('checked', $(this).attr('target') == '_blank');
-
-      // Set link classes.
-      that.$link_wrapper.find('li.f-choose-link-class').each ($.proxy(function (index, elem) {
-        if ($(this).hasClass($(elem).data('class'))) {
-          $(elem).click();
-        }
-      }, this));
-
-      // Show editor.
-      that.showByCoordinates($(this).offset().left + $(this).outerWidth() / 2, $(this).offset().top + (parseInt($(this).css('padding-top'), 10) || 0) + $(this).height());
-
-      // Keep these 2 lines in this order for issue #224.
-      // Show link wrapper.
-      that.showInsertLink();
-
-      // File link.
-      if ($(this).hasClass('fr-file')) {
-        that.$link_wrapper.find('input.f-lu').attr('disabled', 'disabled');
-      } else {
-        that.$link_wrapper.find('input.f-lu').removeAttr('disabled');
-      }
-
-      // Make sure we close image mode.
-      that.closeImageMode();
-    };
-
-    // Link click. stop propagation.
-    this.$element.on('mousedown', 'a', $.proxy(function (e) {
-      if (!this.isResizing()) {
-        e.stopPropagation();
-      }
-    }, this));
-
-    // Click on a link.
-    if (!this.isLink) {
-      if (this.iOS()) {
-        this.$element.on('touchstart', 'a:not([contenteditable="false"])', cancel_click);
-        this.$element.on('touchend', 'a:not([contenteditable="false"])', link_click);
-
-        this.$element.on('touchstart', 'a[contenteditable="false"]', cancel_click);
-        this.$element.on('touchend', 'a[contenteditable="false"]', cancel_click);
-      } else {
-        this.$element.on('click', 'a:not([contenteditable="false"])', link_click);
-        this.$element.on('click', 'a[contenteditable="false"]', cancel_click);
-      }
-    } else {
-      if (this.iOS()) {
-        this.$element.on('touchstart', cancel_click);
-        this.$element.on('touchend', link_click);
-      } else {
-        this.$element.on('click', link_click);
-      }
-    }
-  }
-
-  $.Editable.prototype.destroyLink = function () {
-    this.$link_wrapper.html('').removeData().remove();
-  }
-
-  /**
-   * Initialize links.
-   */
-  $.Editable.prototype.initLink = function () {
-    this.buildCreateLink();
-
-    this.initLinkEvents();
-
-    this.addListener('destroy', this.destroyLink);
-  };
-
-  $.Editable.initializers.push($.Editable.prototype.initLink);
-
-  /**
-   * Remove link
-   */
-  $.Editable.prototype.removeLink = function () {
-    if (this.imageMode) {
-      if (this.$element.find('.f-img-editor').parent().get(0).tagName == 'A') {
-        $(this.$element.find('.f-img-editor').get(0)).unwrap();
-      }
-
-      this.triggerEvent('imageLinkRemoved');
-
-
-      this.showImageEditor();
-      this.$element.find('.f-img-editor').find('img').click();
-
-      this.link = false;
-    }
-
-    else {
-      this.restoreSelection();
-      this.document.execCommand('unlink', false, null);
-
-      if (!this.isLink) {
-        this.$element.find('a:empty').remove();
-      }
-
-      this.triggerEvent('linkRemoved');
-
-
-
-      this.hideLinkWrapper();
-      this.$bttn_wrapper.show();
-
-      if (!this.options.inlineMode || this.isLink) {
-        this.hide();
-      }
-
-      this.link = false;
-    }
-  };
-
-  /**
-   * Write link in document.
-   *
-   * @param url - Link URL.
-   * @param blank - New tab.
-   */
-  $.Editable.prototype.writeLink = function (url, text, cls, blank, nofollow) {
-    var links;
-
-    if (this.options.noFollow) {
-      nofollow = true;
-    }
-
-    if (this.options.alwaysBlank) {
-      blank = true;
-    }
-
-    var nofollow_string = '';
-    var blank_string = '';
-
-    // No follow and link is external.
-    if (nofollow === true && /^https?:\/\//.test(url)) {
-      nofollow_string = 'rel="nofollow"';
-    }
-
-    if (blank === true) {
-      blank_string = 'target="_blank"';
-    }
-
-    var original_url = url;
-    url = this.sanitizeURL(url);
-
-    if (this.options.convertMailAddresses) {
-      var regex = /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/i;
-
-      if (regex.test(url) && url.indexOf('mailto:') !== 0) {
-        url = 'mailto:' + url;
-      }
-    }
-
-    if (url.indexOf('mailto:') !== 0 && this.options.linkAutoPrefix !== '' && !/^(https?:|ftps?:|)\/\//.test(url)) {
-      url = this.options.linkAutoPrefix + url;
-    }
-
-    if (url === '') {
-      this.$link_wrapper.find('input.f-lu').addClass('fr-error').focus();
-      this.triggerEvent('badLink', [original_url], false);
-      return false;
-    }
-
-    this.$link_wrapper.find('input.f-lu').removeClass('fr-error');
-
-    // Insert link to image.
-    if (this.imageMode) {
-      if (this.$element.find('.f-img-editor').parent().get(0).tagName != 'A') {
-        this.$element.find('.f-img-editor').wrap('<a data-fr-link="true" href="' + url + '" ' + blank_string + ' ' + nofollow_string + '></a>');
-      } else {
-
-        var $link = this.$element.find('.f-img-editor').parent();
-
-        if (blank === true) {
-          $link.attr('target', '_blank');
-        } else {
-          $link.removeAttr('target');
-        }
-
-        if (nofollow === true) {
-          $link.attr('rel', 'nofollow');
-        } else {
-          $link.removeAttr('rel');
-        }
-
-        $link.removeClass(Object.keys(this.options.linkClasses).join(' '));
-        $link.attr('href', url).addClass(cls);
-      }
-
-      // (URL)
-      this.triggerEvent('imageLinkInserted', [url]);
-
-
-      this.showImageEditor();
-      this.$element.find('.f-img-editor').find('img').click();
-
-      this.link = false;
-    }
-
-    // Insert link.
-    else {
-      var attributes = null;
-
-      if (!this.isLink) {
-        this.restoreSelection();
-
-        links = this.getSelectionLinks();
-        if (links.length > 0) {
-          attributes = links[0].attributes;
-          is_file = $(links[0]).hasClass('fr-file');
-        }
-
-        this.saveSelectionByMarkers();
-        this.document.execCommand('unlink', false, url);
-        this.$element.find('span[data-fr-link="true"]').each(function (index, elem) {
-          $(elem).replaceWith($(elem).html());
-        });
-        this.restoreSelectionByMarkers();
-      } else {
-        if (text === '') {
-          text = this.$element.text();
-        }
-      }
-
-      // URL is not empty.
-      if (!this.isLink) {
-        this.removeMarkers();
-        if (this.options.linkText || this.text() === '') {
-          this.insertHTML('<span class="f-marker" data-fr-verified="true" data-id="0" data-type="true"></span>' + (text || url) + '<span class="f-marker" data-fr-verified="true" data-id="0" data-type="false"></span>');
-          this.restoreSelectionByMarkers();
-        }
-
-        this.document.execCommand('createLink', false, url);
-        links = this.getSelectionLinks();
-      }
-      else {
-        this.$element.text(text);
-        links = [this.$element.attr('href', url).get(0)];
-      }
-
-      for (var i = 0; i < links.length; i++) {
-        if (attributes) {
-          for (var l = 0; l < attributes.length; l++) {
-            if (attributes[l].nodeName != 'href') {
-              $(links[i]).attr(attributes[l].nodeName, attributes[l].value);
-            }
-          }
-        }
-
-        if (blank === true) {
-          $(links[i]).attr('target', '_blank');
-        } else {
-          $(links[i]).removeAttr('target');
-        }
-
-        if (nofollow === true && /^https?:\/\//.test(url)) {
-          $(links[i]).attr('rel', 'nofollow');
-        } else {
-          $(links[i]).removeAttr('rel');
-        }
-
-        $(links[i]).data('fr-link', true);
-        $(links[i]).removeClass(Object.keys(this.options.linkClasses).join(' '));
-        $(links[i]).addClass(cls);
-      }
-
-      this.$element.find('a:empty').remove();
-
-      this.triggerEvent('linkInserted', [url]);
-
-
-
-      this.hideLinkWrapper();
-      this.$bttn_wrapper.show();
-
-      if (!this.options.inlineMode || this.isLink) this.hide();
-
-      this.link = false;
-    }
-  };
-
-  $.Editable.prototype.createLinkHTML = function () {
-    var html = '<div class="froala-popup froala-link-popup" style="display: none;">';
-    html += '<h4><span data-text="true">Insert Link</span><a target="_blank" title="Open Link" class="f-external-link" href="#"><i class="fa fa-external-link"></i></a><i title="Cancel" class="fa fa-times" id="f-link-close-' + this._id + '"></i></h4>';
-    html += '<div class="f-popup-line fr-hidden"><input type="text" placeholder="Text" class="f-lt" id="f-lt-' + this._id + '"></div>';
-
-    var browse_cls = '';
-    if (this.options.linkList.length) {
-      browse_cls = 'f-bi';
-    }
-
-    html += '<div class="f-popup-line"><input type="text" placeholder="http://www.example.com" class="f-lu ' + browse_cls + '" id="f-lu-' + this._id + '"/>';
-    if (this.options.linkList.length) {
-      html += '<button class="fr-p-bttn f-browse-links" id="f-browse-links-' + this._id + '"><i class="fa fa-chevron-down"></i></button>';
-      html += '<ul id="f-link-list-' + this._id + '">';
-
-      for (var i = 0; i < this.options.linkList.length; i++) {
-        var link = this.options.linkList[i];
-        html += '<li class="f-choose-link" data-nofollow="' + link.nofollow + '" data-blank="' + link.blank + '" data-body="' + link.body + '" data-title="' + link.title + '" data-href="' + link.href + '">' + link.body + '</li>';
-      }
-
-      html += '</ul>';
-    }
-    html += '</div>';
-
-    if (Object.keys(this.options.linkClasses).length) {
-      html += '<div class="f-popup-line"><input type="text" placeholder="Choose link type" class="f-bi" id="f-luc-' + this._id + '" disabled="disabled"/>';
-
-      html += '<button class="fr-p-bttn f-browse-links" id="f-links-class-' + this._id + '"><i class="fa fa-chevron-down"></i></button>';
-      html += '<ul id="f-link-class-list-' + this._id + '">';
-
-      for (var l_class in this.options.linkClasses) {
-        var l_name = this.options.linkClasses[l_class];
-
-        html += '<li class="f-choose-link-class" data-class="' + l_class + '">' + l_name + '</li>';
-      }
-
-      html += '</ul>';
-
-      html += '</div>';
-    }
-
-    html += '<div class="f-popup-line"><input type="checkbox" id="f-checkbox-' + this._id + '"> <label data-text="true" for="f-checkbox-' + this._id + '">Open in new tab</label><button data-text="true" type="button" class="fr-p-bttn f-ok f-submit" id="f-ok-' + this._id + '">OK</button>';
-    if (this.options.unlinkButton) {
-      html += '<button type="button" data-text="true" class="fr-p-bttn f-ok f-unlink" id="f-unlink-' + this._id + '">UNLINK</button>';
-    }
-
-    html += '</div></div>';
-
-    return html;
-  }
-
-  /**
-   * Build create link.
-   */
-  $.Editable.prototype.buildCreateLink = function () {
-    this.$link_wrapper = $(this.createLinkHTML());
-    this.$popup_editor.append(this.$link_wrapper);
-
-    var that = this;
-
-    // Link wrapper to hidePopups listener.
-    this.addListener('hidePopups', this.hideLinkWrapper);
-
-    // Stop event propagation in link.
-    this.$link_wrapper.on('mouseup touchend', $.proxy(function (e) {
-      if (!this.isResizing()) {
-        e.stopPropagation();
-        this.$link_wrapper.trigger('hideLinkList');
-      }
-    }, this));
-
-    this.$link_wrapper.on('click', function (e) {
-      e.stopPropagation();
-    });
-
-    this.$link_wrapper.on('click', '*', function (e) {
-      e.stopPropagation();
-    });
-
-    // Field to edit text.
-    if (this.options.linkText) {
-      this.$link_wrapper
-        .on('mouseup keydown', 'input#f-lt-' + this._id, $.proxy(function (e) {
-          var keyCode = e.which;
-          if (!keyCode || keyCode !== 27) {
-            e.stopPropagation();
-          }
-
-          this.$link_wrapper.trigger('hideLinkList');
-          this.$link_wrapper.trigger('hideLinkClassList');
-        }, this));
-    }
-
-    // Set URL events.
-    this.$link_wrapper
-      .on('mouseup keydown touchend touchstart', 'input#f-lu-' + this._id, $.proxy(function (e) {
-        var keyCode = e.which;
-        if (!keyCode || keyCode !== 27) {
-          e.stopPropagation();
-        }
-
-        this.$link_wrapper.trigger('hideLinkList');
-        this.$link_wrapper.trigger('hideLinkClassList');
-      }, this));
-
-    // Blank url event.
-    this.$link_wrapper.on('click keydown', 'input#f-checkbox-' + this._id, function (e) {
-      var keyCode = e.which;
-      if (!keyCode || keyCode !== 27) {
-        e.stopPropagation();
-      }
-    });
-
-    // OK button.
-    this.$link_wrapper
-      .on('touchend', 'button#f-ok-' + this._id, function (e) {
-        e.stopPropagation();
-      })
-      .on('click', 'button#f-ok-' + this._id, $.proxy(function () {
-        var text;
-        var $text = this.$link_wrapper.find('input#f-lt-' + this._id);
-        var $url = this.$link_wrapper.find('input#f-lu-' + this._id);
-        var $lcls = this.$link_wrapper.find('input#f-luc-' + this._id);
-        var $blank_url = this.$link_wrapper.find('input#f-checkbox-' + this._id);
-
-        if ($text) {
-          text = $text.val();
-        }
-        else {
-          text = '';
-        }
-
-        var url = $url.val();
-        if (this.isLink && url === '') {
-          url = '#';
-        }
-
-        var cls = '';
-        if ($lcls) {
-          cls = $lcls.data('class');
-        }
-
-        this.writeLink(url, text, cls, $blank_url.prop('checked'));
-      }, this));
-
-    // Unlink button.
-    this.$link_wrapper.on('click touch', 'button#f-unlink-' + this._id, $.proxy(function () {
-      this.link = true;
-      this.removeLink();
-    }, this));
-
-    // Predefined link list.
-    if (this.options.linkList.length) {
-      this.$link_wrapper
-        .on('click touch', 'li.f-choose-link', function () {
-          var $link_list_button = that.$link_wrapper.find('button#f-browse-links-' + that._id);
-          var $text = that.$link_wrapper.find('input#f-lt-' + that._id);
-          var $url = that.$link_wrapper.find('input#f-lu-' + that._id);
-          var $blank_url = that.$link_wrapper.find('input#f-checkbox-' + that._id);
-
-          if ($text) {
-            $text.val($(this).data('body'));
-          }
-
-          $url.val($(this).data('href'));
-          $blank_url.prop('checked', $(this).data('blank'));
-
-          $link_list_button.click();
-        })
-        .on('mouseup', 'li.f-choose-link', function (e) {
-          e.stopPropagation();
-        })
-
-      this.$link_wrapper
-        .on('click', 'button#f-browse-links-' + this._id + ', button#f-browse-links-' + this._id + ' > i', function (e) {
-          e.stopPropagation();
-          var $link_list = that.$link_wrapper.find('ul#f-link-list-' + that._id);
-          that.$link_wrapper.trigger('hideLinkClassList')
-          $(this).find('i').toggleClass('fa-chevron-down')
-          $(this).find('i').toggleClass('fa-chevron-up')
-          $link_list.toggle();
-        })
-        .on('mouseup', 'button#f-browse-links-' + this._id + ', button#f-browse-links-' + this._id + ' > i', function (e) {
-          e.stopPropagation();
-        })
-
-      this.$link_wrapper.bind('hideLinkList', function () {
-        var $link_list = that.$link_wrapper.find('ul#f-link-list-' + that._id);
-        var $link_list_button = that.$link_wrapper.find('button#f-browse-links-' + that._id);
-        if ($link_list && $link_list.is(':visible')) {
-          $link_list_button.click();
-        }
-      })
-    }
-
-    // Link classes.
-    if (Object.keys(this.options.linkClasses).length) {
-      this.$link_wrapper
-        .on('mouseup keydown', 'input#f-luc-' + this._id, $.proxy(function (e) {
-          var keyCode = e.which;
-          if (!keyCode || keyCode !== 27) {
-            e.stopPropagation();
-          }
-
-          this.$link_wrapper.trigger('hideLinkList');
-          this.$link_wrapper.trigger('hideLinkClassList');
-        }, this));
-
-      this.$link_wrapper
-        .on('click touch', 'li.f-choose-link-class', function () {
-          var $label = that.$link_wrapper.find('input#f-luc-' + that._id);
-
-          $label.val($(this).text());
-          $label.data('class', $(this).data('class'));
-
-          that.$link_wrapper.trigger('hideLinkClassList');
-        })
-        .on('mouseup', 'li.f-choose-link-class', function (e) {
-          e.stopPropagation();
-        })
-
-      this.$link_wrapper
-        .on('click', 'button#f-links-class-' + this._id, function (e) {
-          e.stopPropagation();
-          that.$link_wrapper.trigger('hideLinkList')
-          var $link_list = that.$link_wrapper.find('ul#f-link-class-list-' + that._id);
-          $(this).find('i').toggleClass('fa-chevron-down')
-          $(this).find('i').toggleClass('fa-chevron-up')
-          $link_list.toggle();
-        })
-        .on('mouseup', 'button#f-links-class-' + this._id, function (e) {
-          e.stopPropagation();
-        })
-
-      this.$link_wrapper.bind('hideLinkClassList', function () {
-        var $link_list = that.$link_wrapper.find('ul#f-link-class-list-' + that._id);
-        var $link_list_button = that.$link_wrapper.find('button#f-links-class-' + that._id);
-        if ($link_list && $link_list.is(':visible')) {
-          $link_list_button.click();
-        }
-      })
-    }
-
-    // Close button.
-    this.$link_wrapper
-      .on(this.mouseup, 'i#f-link-close-' + this._id, $.proxy(function () {
-        this.$bttn_wrapper.show();
-        this.hideLinkWrapper();
-
-        if ((!this.options.inlineMode && !this.imageMode) || this.isLink || this.options.buttons.length === 0) {
-          this.hide();
-        }
-
-        if (!this.imageMode) {
-          this.restoreSelection();
-          this.focus();
-        } else {
-          this.showImageEditor();
-        }
-      }, this))
-  };
-
-  /**
-   * Get links from selection.
-   *
-   * @returns {Array}
-   */
-  // From: http://stackoverflow.com/questions/5605401/insert-link-in-contenteditable-element
-  $.Editable.prototype.getSelectionLinks = function () {
-    var selectedLinks = [];
-    var range;
-    var containerEl;
-    var links;
-    var linkRange;
-
-    if (window.getSelection) {
-      var sel = window.getSelection();
-      if (sel.getRangeAt && sel.rangeCount) {
-        linkRange = this.document.createRange();
-        for (var r = 0; r < sel.rangeCount; ++r) {
-          range = sel.getRangeAt(r);
-          containerEl = range.commonAncestorContainer;
-
-          if (containerEl && containerEl.nodeType != 1) {
-            containerEl = containerEl.parentNode;
-          }
-
-          if (containerEl && containerEl.nodeName.toLowerCase() == 'a') {
-            selectedLinks.push(containerEl);
-          } else {
-            links = containerEl.getElementsByTagName('a');
-            for (var i = 0; i < links.length; ++i) {
-              linkRange.selectNodeContents(links[i]);
-              if (linkRange.compareBoundaryPoints(range.END_TO_START, range) < 1 && linkRange.compareBoundaryPoints(range.START_TO_END, range) > -1) {
-                selectedLinks.push(links[i]);
-              }
-            }
-          }
-        }
-        // linkRange.detach();
-      }
-    } else if (this.document.selection && this.document.selection.type != 'Control') {
-      range = this.document.selection.createRange();
-      containerEl = range.parentElement();
-      if (containerEl.nodeName.toLowerCase() == 'a') {
-        selectedLinks.push(containerEl);
-      } else {
-        links = containerEl.getElementsByTagName('a');
-        linkRange = this.document.body.createTextRange();
-        for (var j = 0; j < links.length; ++j) {
-          linkRange.moveToElementText(links[j]);
-          if (linkRange.compareEndPoints('StartToEnd', range) > -1 && linkRange.compareEndPoints('EndToStart', range) < 1) {
-            selectedLinks.push(links[j]);
-          }
-        }
-      }
-    }
-
-    return selectedLinks;
-  };
-
-  /**
-   * Insert link.
-   */
-  $.Editable.prototype.insertLink = function () {
-    if (!this.options.inlineMode) {
-      this.closeImageMode();
-      this.imageMode = false;
-      this.positionPopup('createLink');
-    }
-
-    if (this.selectionInEditor()) {
-      this.saveSelection();
-    }
-
-    this.showInsertLink();
-
-    var link = this.getSelectionLink() || '';
-    var links = this.getSelectionLinks();
-    if (links.length > 0) {
-      this.$link_wrapper.find('input[type="checkbox"]').prop('checked', $(links[0]).attr('target') == '_blank');
-      this.$link_wrapper.find('input[type="text"].f-lt').val($(links[0]).text() || '');
-
-      if ($(links[0]).hasClass('fr-file')) {
-        this.$link_wrapper.find('input[type="text"].f-lu').attr('disabled', 'disabled');
-      } else {
-        this.$link_wrapper.find('input[type="text"].f-lu').removeAttr('disabled');
-      }
-
-      this.$link_wrapper.find('a.f-external-link, button.f-unlink').show();
-    } else {
-      this.$link_wrapper.find('input[type="checkbox"]').prop('checked', this.options.alwaysBlank);
-      this.$link_wrapper.find('input[type="text"].f-lt').val(this.text());
-      this.$link_wrapper.find('input[type="text"].f-lu').removeAttr('disabled');
-      this.$link_wrapper.find('a.f-external-link, button.f-unlink').hide();
-    }
-
-    this.$link_wrapper.find('.f-external-link').attr('href', link || '#');
-    this.$link_wrapper.find('input[type="text"].f-lu').val(link.replace(/\&amp;/g, '&') || 'http://');
-  };
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.browserFixes = function () {
-    this.backspaceEmpty();
-
-    this.backspaceInEmptyBlock();
-
-    this.fixHR();
-
-    this.domInsert();
-
-    this.fixIME();
-
-    this.cleanInvisibleSpace();
-
-    this.cleanBR();
-
-    this.insertSpace();
-  }
-
-  // Fix for issue stefanneculai/froala-editor-js#439.
-  $.Editable.prototype.backspaceInEmptyBlock = function () {
-    this.$element.on('keyup', $.proxy(function (e) {
-      var keyCode = e.which;
-
-      if (this.browser.mozilla && !this.isHTML && keyCode == 8) {
-        var $selEl = $(this.getSelectionElement());
-
-        if (this.valid_nodes.indexOf($selEl.get(0).tagName) >= 0 && $selEl.find('*').length == 1 && $selEl.text() === '' && $selEl.find('br').length == 1) {
-          this.setSelection($selEl.get(0));
-        }
-      }
-    }, this));
-  }
-
-  $.Editable.prototype.insertSpace = function () {
-    if (this.browser.mozilla) {
-      this.$element.on('keypress', $.proxy(function (e) {
-        var keyCode = e.which;
-
-        var el = this.getSelectionElements()[0];
-
-        if (!this.isHTML && keyCode == 32 && el.tagName != 'PRE') {
-          e.preventDefault();
-          this.insertSimpleHTML('&nbsp;');
-        }
-      }, this));
-    }
-  }
-
-  $.Editable.prototype.cleanBR = function () {
-    this.$element.on('keyup', $.proxy(function () {
-      this.$element.find(this.valid_nodes.join(' > br:last, ') + ' > br:last').each ($.proxy(function (idx, br) {
-        var prev = br.previousSibling;
-        // Check if parent has text.
-        if (['TH', 'TD'].indexOf($(br).parent().get(0).tagName) < 0 && prev && prev.tagName != 'BR' && $(br).parent().text().length > 0 && this.isLastSibling(br)) {
-          $(br).remove();
-        }
-      }, this));
-    }, this));
-  }
-
-  $.Editable.prototype.replaceU200B = function (contents) {
-    for (var i = 0; i < contents.length; i++) {
-      if (contents[i].nodeType == 3 && /\u200B/gi.test(contents[i].textContent)) {
-        contents[i].textContent = contents[i].textContent.replace(/\u200B/gi, '');
-      }
-      else if (contents[i].nodeType == 1) this.replaceU200B($(contents[i]).contents());
-    }
-  }
-
-  $.Editable.prototype.cleanInvisibleSpace = function () {
-    var has_invisible = function (node) {
-      var text = $(node).text();
-      if (node && /\u200B/.test($(node).text()) && text.replace(/\u200B/gi, '').length > 0) return true;
-      return false;
-    }
-
-    this.$element.on('keyup', $.proxy(function () {
-      var el = this.getSelectionElement();
-      if (has_invisible(el) && $(el).find('li').length === 0) {
-        this.saveSelectionByMarkers();
-        this.replaceU200B($(el).contents());
-        this.restoreSelectionByMarkers();
-      }
-    }, this))
-  }
-
-  $.Editable.prototype.fixHR = function () {
-    this.$element.on ('keypress', $.proxy (function (e) {
-      var $pseduoEl = $(this.getSelectionElement());
-      if ($pseduoEl.is('hr') || $pseduoEl.parents('hr').length) return false;
-
-      var keyCode = e.which;
-
-      if (keyCode == 8) {
-        var $element = $(this.getSelectionElements()[0]);
-        if ($element.prev().is('hr') && this.getSelectionTextInfo($element.get(0)).atStart) {
-          this.saveSelectionByMarkers();
-          $element.prev().remove();
-          this.restoreSelectionByMarkers();
-          e.preventDefault();
-        }
-      }
-    }, this));
-  }
-
-  $.Editable.prototype.backspaceEmpty = function () {
-    this.$element.on('keydown', $.proxy(function (e) {
-      var keyCode = e.which;
-
-      if (!this.isHTML && keyCode == 8 && this.$element.hasClass('f-placeholder')) {
-        e.preventDefault();
-      }
-    }, this));
-  };
-
-  $.Editable.prototype.domInsert = function () {
-    this.$element.on('keydown', $.proxy(function (e) {
-      var keyCode = e.which;
-      if (keyCode === 8) {
-        this.no_verify = true;
-      }
-
-      if (keyCode === 13) {
-        this.add_br = true;
-      }
-    }, this));
-
-    this.$element.on('DOMNodeInserted', $.proxy(function (e) {
-      if (e.target.tagName === 'SPAN' && !$(e.target).attr('data-fr-verified') && !this.no_verify && !this.textEmpty(e.target)) {
-        $(e.target).replaceWith($(e.target).contents());
-      }
-
-      // Remove br type moz.
-      if (e.target.tagName === 'BR') {
-        setTimeout(function () {
-          $(e.target).removeAttr('type');
-        }, 0);
-      }
-
-      if (e.target.tagName === 'A') {
-        setTimeout(function () {
-          $(e.target).removeAttr('_moz_dirty');
-        }, 0);
-      }
-
-      // Enter before and after table.
-      if (this.options.paragraphy && this.add_br && e.target.tagName === 'BR') {
-        if (($(e.target).prev().length && $(e.target).prev().get(0).tagName === 'TABLE') || ($(e.target).next().length && $(e.target).next().get(0).tagName === 'TABLE')) {
-          $(e.target).wrap('<p class="fr-p-wrap">');
-          var $p = this.$element.find('p.fr-p-wrap').removeAttr('class');
-          this.setSelection($p.get(0));
-        }
-      }
-
-      // Do not add BR in LI.
-      if (e.target.tagName === 'BR' && this.isLastSibling(e.target) && e.target.parentNode.tagName == 'LI') {
-        $(e.target).remove();
-      }
-    }, this));
-
-    this.$element.on('keyup', $.proxy(function (e) {
-      var keyCode = e.which;
-      if (keyCode === 8) {
-        this.$element.find('span:not(.fr-verified)').attr('data-fr-verified', true);
-        this.no_verify = false;
-      }
-
-      if (keyCode === 13) {
-        this.add_br = false;
-      }
-    }, this));
-  };
-
-  $.Editable.prototype.fixIME = function () {
-    try {
-      if (this.$element.get(0).msGetInputContext) {
-        this.$element.get(0).msGetInputContext().addEventListener('MSCandidateWindowShow', $.proxy(function () {
-          this.ime = true;
-        }, this))
-
-        this.$element.get(0).msGetInputContext().addEventListener('MSCandidateWindowHide', $.proxy(function () {
-          this.ime = false;
-          this.$element.trigger('keydown');
-          this.oldHTML = '';
-        }, this))
-      }
-    }
-    catch (ex) {
-
-    }
-  }
-
-})(jQuery);
-
-(function ($) {
-  $.Editable.prototype.handleEnter = function () {
-    var inLi = $.proxy(function () {
-      var element = this.getSelectionElement();
-      if (!(element.tagName == 'LI' || this.parents($(element), 'li').length > 0)) return false;
-      return true;
-    }, this);
-
-    // Keypress.
-    this.$element.on('keypress', $.proxy(function (e) {
-      if (!this.isHTML && !inLi()) {
-        var keyCode = e.which;
-
-        // ENTER key was pressed.
-        if (keyCode == 13 && !e.shiftKey) {
-          e.preventDefault();
-
-          // Save undo step.
-          this.saveUndoStep();
-
-          // Reduce selection to one element.
-          this.insertSimpleHTML('<break></break>');
-
-          // Get the selected elements.
-          var elements = this.getSelectionElements();
-
-          // We are in main element.
-          if (elements[0] == this.$element.get(0)) {
-            this.enterInMainElement(elements[0]);
-          }
-
-          // We are in another element.
-          else {
-            this.enterInElement(elements[0]);
-          }
-        }
-      }
-    }, this));
-  };
-
-  // Do enter in main element.
-  $.Editable.prototype.enterInMainElement = function (el) {
-    // Main element.
-    var insertedSpan = $(el).find('break').get(0);
-
-    // Insert in main element.
-    if ($(insertedSpan).parent().get(0) == el) {
-      if (!this.isLastSibling(insertedSpan)) {
-        if ($(el).hasClass('f-placeholder')) {
-          $(el).html('</br>' + this.markers_html + this.br);
-        }
-        else {
-          this.insertSimpleHTML('</br>' + this.markers_html);
-        }
-      }
-      else {
-        this.insertSimpleHTML('</br>' + this.markers_html + this.br);
-      }
-
-      $(el).find('break').remove();
-      this.restoreSelectionByMarkers();
-    }
-
-    // We are in another DOM element than the main element (probably a SPAN or A).
-    else if ($(insertedSpan).parents(this.$element).length) {
-      el = this.getSelectionElement();
-      while (el.tagName == 'BREAK' || $(el).text().length === 0) el = el.parentNode;
-
-      // End. Do break and add a <br/> inside the new line.
-      if (this.getSelectionTextInfo(el).atEnd) {
-        $(el).after(this.breakEnd(this.getDeepParent(el), true));
-        this.$element.find('break').remove();
-        this.restoreSelectionByMarkers();
-      }
-      // Start. Add a <br/> before the last child in element.
-      else if (this.getSelectionTextInfo(el).atStart) {
-        while (insertedSpan.parentNode != this.$element.get(0)) insertedSpan = insertedSpan.parentNode;
-        $(insertedSpan).before('<br/>');
-        this.$element.find('break').remove();
-
-        // Fix for https://github.com/froala/wysiwyg-editor/issues/395
-        this.$element.find('a:empty').replaceWith(this.markers_html + '<br/>');
-        this.restoreSelectionByMarkers();
-      }
-      // Middle. Break and add <br/>
-      else {
-        this.breakMiddle(this.getDeepParent(el), true);
-        this.restoreSelectionByMarkers();
-      }
-    }
-
-    else {
-      $(insertedSpan).remove();
-    }
-  }
-
-  $.Editable.prototype.enterInElement = function (el) {
-    if (['TD', 'TH'].indexOf(el.tagName) < 0) {
-      // Selection is at the end.
-      if (this.getSelectionTextInfo(el).atEnd) {
-        $(el).after(this.breakEnd(el));
-        this.$element.find('break').remove();
-        this.restoreSelectionByMarkers();
-      }
-
-      // Selection is at start.
-      else if (this.getSelectionTextInfo(el).atStart) {
-        if (this.options.paragraphy) {
-          $(el).before('<' + this.options.defaultTag + '>' + this.br + '</' + this.options.defaultTag + '>');
-        }
-        else {
-          $(el).before('<br/>');
-        }
-        this.$element.find('break').remove();
-      }
-
-      // Selection is in the middle.
-      else {
-        // PRE enter.
-        if (el.tagName == 'PRE') {
-          this.$element.find('break').after('<br/>' + this.markers_html);
-          this.$element.find('break').remove();
-          this.restoreSelectionByMarkers();
-        }
-        else {
-          this.breakMiddle(el);
-          this.restoreSelectionByMarkers();
-        }
-      }
-    }
-    else {
-      this.enterInMainElement(el);
-    }
-  }
-
-  $.Editable.prototype.breakEnd = function (parentEl, breakBefore) {
-    if (breakBefore === undefined) breakBefore = false;
-
-    // Find the element where to start.
-    var el = $(parentEl).find('break').get(0);
-
-    // IE 9, 10 workaround.
-    var br = this.br;
-    if (!this.options.paragraphy) br = '<br/>'
-
-    // Build string.
-    var str = this.markers_html + br;
-    if (breakBefore) str = this.markers_html + $.Editable.INVISIBLE_SPACE;
-
-    while (el != parentEl) {
-      // Pass over A and BREAK tags.
-      if (el.tagName != 'A' && el.tagName != 'BREAK') {
-        str = '<' + el.tagName + this.attrs(el) + '>' + str + '</' + el.tagName + '>';
-      }
-
-      el = el.parentNode;
-    }
-
-    if (breakBefore) {
-      if (el.tagName != 'A' && el.tagName != 'BREAK') {
-        str = '<' + el.tagName + this.attrs(el) + '>' + str + '</' + el.tagName + '>';
-      }
-    }
-
-    // Wrap with parent.
-    if (this.options.paragraphy) {
-      str = '<' + this.options.defaultTag + '>' + str + '</' + this.options.defaultTag + '>';
-    }
-
-    if (breakBefore) str = br + str;
-
-    return str;
-  }
-
-  $.Editable.prototype.breakMiddle = function (parentEl, addBr) {
-    if (addBr === undefined) addBr = false;
-
-    // Find element where to start.
-    var el = $(parentEl).find('break').get(0);
-
-    // Build strings separate for closed and opened tags.
-    var openStr = this.markers_html;
-    var closeStr = '';
-    while (el != parentEl) {
-      el = el.parentNode;
-
-      closeStr = closeStr + '</' + el.tagName + '>';
-      openStr = '<' + el.tagName + this.attrs(el) + '>' + openStr;
-    }
-
-    // Create new HTML string.
-    var elStr = '<' + parentEl.tagName + this.attrs(parentEl) + '>' + $(parentEl).html() + '</' + parentEl.tagName + '>';
-    elStr = elStr.replace(/<break><\/break>/, closeStr + (addBr ? this.br : '') + openStr);
-
-    // Replace current tag.
-    $(parentEl).replaceWith(elStr);
-  }
-})(jQuery);
-
-(function ($) {
-  // Check if is first in element.
-  $.Editable.prototype.isFirstSibling = function (node) {
-    var sibling = node.previousSibling;
-
-    if (!sibling) return true;
-    if (sibling.nodeType == 3 && sibling.textContent === '') return this.isFirstSibling(sibling);
-    return false;
-  }
-
-  // Check if is last in element.
-  $.Editable.prototype.isLastSibling = function (node) {
-    var sibling = node.nextSibling;
-
-    if (!sibling) return true;
-    if (sibling.nodeType == 3 && sibling.textContent === '') return this.isLastSibling(sibling);
-    return false;
-  }
-
-  // Get the most upper parent that is not element.
-  $.Editable.prototype.getDeepParent = function (node) {
-    if (node.parentNode == this.$element.get(0)) return node;
-    return this.getDeepParent(node.parentNode);
-  }
-
-  // Get attributes of node.
-  $.Editable.prototype.attrs = function (el) {
-    var str = '';
-    var atts = el.attributes;
-    for (var i = 0; i < atts.length; i++) {
-      var att = atts[i];
-      str += ' ' + att.nodeName + '="' + att.value + '"';
-    }
-
-    return str;
-  }
-})(jQuery);
-
-// jquery.event.move
-//
-// 1.3.6
-//
-// Stephen Band
-//
-// Triggers 'movestart', 'move' and 'moveend' events after
-// mousemoves following a mousedown cross a distance threshold,
-// similar to the native 'dragstart', 'drag' and 'dragend' events.
-// Move events are throttled to animation frames. Move event objects
-// have the properties:
-//
-// pageX:
-// pageY:   Page coordinates of pointer.
-// startX:
-// startY:  Page coordinates of pointer at movestart.
-// distX:
-// distY:  Distance the pointer has moved since movestart.
-// deltaX:
-// deltaY:  Distance the finger has moved since last event.
-// velocityX:
-// velocityY:  Average velocity over last few events.
-
-
-(function (module) {
-	if (typeof define === 'function' && define.amd) {
-		// AMD. Register as an anonymous module.
-		define(['jquery'], module);
-	} else {
-		// Browser globals
-		module(jQuery);
-	}
-})(function(jQuery, undefined){
-
-	var // Number of pixels a pressed pointer travels before movestart
-	    // event is fired.
-	    threshold = 6,
-
-	    add = jQuery.event.add,
-
-	    remove = jQuery.event.remove,
-
-	    // Just sugar, so we can have arguments in the same order as
-	    // add and remove.
-	    trigger = function(node, type, data) {
-	    	jQuery.event.trigger(type, data, node);
-	    },
-
-	    // Shim for requestAnimationFrame, falling back to timer. See:
-	    // see http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-	    requestFrame = (function(){
-	    	return (
-	    		window.requestAnimationFrame ||
-	    		window.webkitRequestAnimationFrame ||
-	    		window.mozRequestAnimationFrame ||
-	    		window.oRequestAnimationFrame ||
-	    		window.msRequestAnimationFrame ||
-	    		function(fn, element){
-	    			return window.setTimeout(function(){
-	    				fn();
-	    			}, 25);
-	    		}
-	    	);
-	    })(),
-
-	    ignoreTags = {
-	    	textarea: true,
-	    	input: true,
-	    	select: true,
-	    	button: true
-	    },
-
-	    mouseevents = {
-	    	move: 'mousemove',
-	    	cancel: 'mouseup dragstart',
-	    	end: 'mouseup'
-	    },
-
-	    touchevents = {
-	    	move: 'touchmove',
-	    	cancel: 'touchend',
-	    	end: 'touchend'
-	    };
-
-
-	// Constructors
-
-	function Timer(fn){
-		var callback = fn,
-		    active = false,
-		    running = false;
-
-		function trigger(time) {
-			if (active){
-				callback();
-				requestFrame(trigger);
-				running = true;
-				active = false;
-			}
-			else {
-				running = false;
-			}
-		}
-
-		this.kick = function(fn) {
-			active = true;
-			if (!running) { trigger(); }
-		};
-
-		this.end = function(fn) {
-			var cb = callback;
-
-			if (!fn) { return; }
-
-			// If the timer is not running, simply call the end callback.
-			if (!running) {
-				fn();
-			}
-			// If the timer is running, and has been kicked lately, then
-			// queue up the current callback and the end callback, otherwise
-			// just the end callback.
-			else {
-				callback = active ?
-					function(){ cb(); fn(); } :
-					fn ;
-
-				active = true;
-			}
-		};
-	}
-
-
-	// Functions
-
-	function returnTrue() {
-		return true;
-	}
-
-	function returnFalse() {
-		return false;
-	}
-
-	function preventDefault(e) {
-		e.preventDefault();
-	}
-
-	function preventIgnoreTags(e) {
-		// Don't prevent interaction with form elements.
-		if (ignoreTags[ e.target.tagName.toLowerCase() ]) { return; }
-
-		e.preventDefault();
-	}
-
-	function isLeftButton(e) {
-		// Ignore mousedowns on any button other than the left (or primary)
-		// mouse button, or when a modifier key is pressed.
-		return (e.which === 1 && !e.ctrlKey && !e.altKey);
-	}
-
-	function identifiedTouch(touchList, id) {
-		var i, l;
-
-		if (touchList.identifiedTouch) {
-			return touchList.identifiedTouch(id);
-		}
-
-		// touchList.identifiedTouch() does not exist in
-		// webkit yet… we must do the search ourselves...
-
-		i = -1;
-		l = touchList.length;
-
-		while (++i < l) {
-			if (touchList[i].identifier === id) {
-				return touchList[i];
-			}
-		}
-	}
-
-	function changedTouch(e, event) {
-		var touch = identifiedTouch(e.changedTouches, event.identifier);
-
-		// This isn't the touch you're looking for.
-		if (!touch) { return; }
-
-		// Chrome Android (at least) includes touches that have not
-		// changed in e.changedTouches. That's a bit annoying. Check
-		// that this touch has changed.
-		if (touch.pageX === event.pageX && touch.pageY === event.pageY) { return; }
-
-		return touch;
-	}
-
-
-	// Handlers that decide when the first movestart is triggered
-
-	function mousedown(e){
-		var data;
-
-		if (!isLeftButton(e)) { return; }
-
-		data = {
-			target: e.target,
-			startX: e.pageX,
-			startY: e.pageY,
-			timeStamp: e.timeStamp
-		};
-
-		add(document, mouseevents.move, mousemove, data);
-		add(document, mouseevents.cancel, mouseend, data);
-	}
-
-	function mousemove(e){
-		var data = e.data;
-
-		checkThreshold(e, data, e, removeMouse);
-	}
-
-	function mouseend(e) {
-		removeMouse();
-	}
-
-	function removeMouse() {
-		remove(document, mouseevents.move, mousemove);
-		remove(document, mouseevents.cancel, mouseend);
-	}
-
-	function touchstart(e) {
-		var touch, template;
-
-		// Don't get in the way of interaction with form elements.
-		if (ignoreTags[ e.target.tagName.toLowerCase() ]) { return; }
-
-		touch = e.changedTouches[0];
-
-		// iOS live updates the touch objects whereas Android gives us copies.
-		// That means we can't trust the touchstart object to stay the same,
-		// so we must copy the data. This object acts as a template for
-		// movestart, move and moveend event objects.
-		template = {
-			target: touch.target,
-			startX: touch.pageX,
-			startY: touch.pageY,
-			timeStamp: e.timeStamp,
-			identifier: touch.identifier
-		};
-
-		// Use the touch identifier as a namespace, so that we can later
-		// remove handlers pertaining only to this touch.
-		add(document, touchevents.move + '.' + touch.identifier, touchmove, template);
-		add(document, touchevents.cancel + '.' + touch.identifier, touchend, template);
-	}
-
-	function touchmove(e){
-		var data = e.data,
-		    touch = changedTouch(e, data);
-
-		if (!touch) { return; }
-
-		checkThreshold(e, data, touch, removeTouch);
-	}
-
-	function touchend(e) {
-		var template = e.data,
-		    touch = identifiedTouch(e.changedTouches, template.identifier);
-
-		if (!touch) { return; }
-
-		removeTouch(template.identifier);
-	}
-
-	function removeTouch(identifier) {
-		remove(document, '.' + identifier, touchmove);
-		remove(document, '.' + identifier, touchend);
-	}
-
-
-	// Logic for deciding when to trigger a movestart.
-
-	function checkThreshold(e, template, touch, fn) {
-		var distX = touch.pageX - template.startX,
-		    distY = touch.pageY - template.startY;
-
-		// Do nothing if the threshold has not been crossed.
-		if ((distX * distX) + (distY * distY) < (threshold * threshold)) { return; }
-
-		triggerStart(e, template, touch, distX, distY, fn);
-	}
-
-	function handled() {
-		// this._handled should return false once, and after return true.
-		this._handled = returnTrue;
-		return false;
-	}
-
-	function flagAsHandled(e) {
-    try {
-      e._handled();
-    }
-    catch(ex) {
-      return false;
-    }
-	}
-
-	function triggerStart(e, template, touch, distX, distY, fn) {
-		var node = template.target,
-		    touches, time;
-
-		touches = e.targetTouches;
-		time = e.timeStamp - template.timeStamp;
-
-		// Create a movestart object with some special properties that
-		// are passed only to the movestart handlers.
-		template.type = 'movestart';
-		template.distX = distX;
-		template.distY = distY;
-		template.deltaX = distX;
-		template.deltaY = distY;
-		template.pageX = touch.pageX;
-		template.pageY = touch.pageY;
-		template.velocityX = distX / time;
-		template.velocityY = distY / time;
-		template.targetTouches = touches;
-		template.finger = touches ?
-			touches.length :
-			1 ;
-
-		// The _handled method is fired to tell the default movestart
-		// handler that one of the move events is bound.
-		template._handled = handled;
-
-		// Pass the touchmove event so it can be prevented if or when
-		// movestart is handled.
-		template._preventTouchmoveDefault = function() {
-			e.preventDefault();
-		};
-
-		// Trigger the movestart event.
-		trigger(template.target, template);
-
-		// Unbind handlers that tracked the touch or mouse up till now.
-		fn(template.identifier);
-	}
-
-
-	// Handlers that control what happens following a movestart
-
-	function activeMousemove(e) {
-		var timer = e.data.timer;
-
-		e.data.touch = e;
-		e.data.timeStamp = e.timeStamp;
-		timer.kick();
-	}
-
-	function activeMouseend(e) {
-		var event = e.data.event,
-		    timer = e.data.timer;
-
-		removeActiveMouse();
-
-		endEvent(event, timer, function() {
-			// Unbind the click suppressor, waiting until after mouseup
-			// has been handled.
-			setTimeout(function(){
-				remove(event.target, 'click', returnFalse);
-			}, 0);
-		});
-	}
-
-	function removeActiveMouse(event) {
-		remove(document, mouseevents.move, activeMousemove);
-		remove(document, mouseevents.end, activeMouseend);
-	}
-
-	function activeTouchmove(e) {
-		var event = e.data.event,
-		    timer = e.data.timer,
-		    touch = changedTouch(e, event);
-
-		if (!touch) { return; }
-
-		// Stop the interface from gesturing
-		e.preventDefault();
-
-		event.targetTouches = e.targetTouches;
-		e.data.touch = touch;
-		e.data.timeStamp = e.timeStamp;
-		timer.kick();
-	}
-
-	function activeTouchend(e) {
-		var event = e.data.event,
-		    timer = e.data.timer,
-		    touch = identifiedTouch(e.changedTouches, event.identifier);
-
-		// This isn't the touch you're looking for.
-		if (!touch) { return; }
-
-		removeActiveTouch(event);
-		endEvent(event, timer);
-	}
-
-	function removeActiveTouch(event) {
-		remove(document, '.' + event.identifier, activeTouchmove);
-		remove(document, '.' + event.identifier, activeTouchend);
-	}
-
-
-	// Logic for triggering move and moveend events
-
-	function updateEvent(event, touch, timeStamp, timer) {
-		var time = timeStamp - event.timeStamp;
-
-		event.type = 'move';
-		event.distX =  touch.pageX - event.startX;
-		event.distY =  touch.pageY - event.startY;
-		event.deltaX = touch.pageX - event.pageX;
-		event.deltaY = touch.pageY - event.pageY;
-
-		// Average the velocity of the last few events using a decay
-		// curve to even out spurious jumps in values.
-		event.velocityX = 0.3 * event.velocityX + 0.7 * event.deltaX / time;
-		event.velocityY = 0.3 * event.velocityY + 0.7 * event.deltaY / time;
-		event.pageX =  touch.pageX;
-		event.pageY =  touch.pageY;
-	}
-
-	function endEvent(event, timer, fn) {
-		timer.end(function(){
-			event.type = 'moveend';
-
-			trigger(event.target, event);
-
-			return fn && fn();
-		});
-	}
-
-
-	// jQuery special event definition
-
-	function setup(data, namespaces, eventHandle) {
-		// Stop the node from being dragged
-		//add(this, 'dragstart.move drag.move', preventDefault);
-
-		// Prevent text selection and touch interface scrolling
-		//add(this, 'mousedown.move', preventIgnoreTags);
-
-		// Tell movestart default handler that we've handled this
-		add(this, 'movestart.move', flagAsHandled);
-
-		// Don't bind to the DOM. For speed.
-		return true;
-	}
-
-	function teardown(namespaces) {
-		remove(this, 'dragstart drag', preventDefault);
-		remove(this, 'mousedown touchstart', preventIgnoreTags);
-		remove(this, 'movestart', flagAsHandled);
-
-		// Don't bind to the DOM. For speed.
-		return true;
-	}
-
-	function addMethod(handleObj) {
-		// We're not interested in preventing defaults for handlers that
-		// come from internal move or moveend bindings
-		if (handleObj.namespace === "move" || handleObj.namespace === "moveend") {
-			return;
-		}
-
-		// Stop the node from being dragged
-		add(this, 'dragstart.' + handleObj.guid + ' drag.' + handleObj.guid, preventDefault, undefined, handleObj.selector);
-
-		// Prevent text selection and touch interface scrolling
-		add(this, 'mousedown.' + handleObj.guid, preventIgnoreTags, undefined, handleObj.selector);
-	}
-
-	function removeMethod(handleObj) {
-		if (handleObj.namespace === "move" || handleObj.namespace === "moveend") {
-			return;
-		}
-
-		remove(this, 'dragstart.' + handleObj.guid + ' drag.' + handleObj.guid);
-		remove(this, 'mousedown.' + handleObj.guid);
-	}
-
-	jQuery.event.special.movestart = {
-		setup: setup,
-		teardown: teardown,
-		add: addMethod,
-		remove: removeMethod,
-
-		_default: function(e) {
-			var event, data;
-
-			// If no move events were bound to any ancestors of this
-			// target, high tail it out of here.
-			if (!e._handled()) { return; }
-
-			function update(time) {
-				updateEvent(event, data.touch, data.timeStamp);
-				trigger(e.target, event);
-			}
-
-			event = {
-				target: e.target,
-				startX: e.startX,
-				startY: e.startY,
-				pageX: e.pageX,
-				pageY: e.pageY,
-				distX: e.distX,
-				distY: e.distY,
-				deltaX: e.deltaX,
-				deltaY: e.deltaY,
-				velocityX: e.velocityX,
-				velocityY: e.velocityY,
-				timeStamp: e.timeStamp,
-				identifier: e.identifier,
-				targetTouches: e.targetTouches,
-				finger: e.finger
-			};
-
-			data = {
-				event: event,
-				timer: new Timer(update),
-				touch: undefined,
-				timeStamp: undefined
-			};
-
-			if (e.identifier === undefined) {
-				// We're dealing with a mouse
-				// Stop clicks from propagating during a move
-				add(e.target, 'click', returnFalse);
-				add(document, mouseevents.move, activeMousemove, data);
-				add(document, mouseevents.end, activeMouseend, data);
-			}
-			else {
-				// We're dealing with a touch. Stop touchmove doing
-				// anything defaulty.
-				e._preventTouchmoveDefault();
-				add(document, touchevents.move + '.' + e.identifier, activeTouchmove, data);
-				add(document, touchevents.end + '.' + e.identifier, activeTouchend, data);
-			}
-		}
-	};
-
-	jQuery.event.special.move = {
-		setup: function() {
-			// Bind a noop to movestart. Why? It's the movestart
-			// setup that decides whether other move events are fired.
-			add(this, 'movestart.move', jQuery.noop);
-		},
-
-		teardown: function() {
-			remove(this, 'movestart.move', jQuery.noop);
-		}
-	};
-
-	jQuery.event.special.moveend = {
-		setup: function() {
-			// Bind a noop to movestart. Why? It's the movestart
-			// setup that decides whether other move events are fired.
-			add(this, 'movestart.moveend', jQuery.noop);
-		},
-
-		teardown: function() {
-			remove(this, 'movestart.moveend', jQuery.noop);
-		}
-	};
-
-	add(document, 'mousedown.move', mousedown);
-	add(document, 'touchstart.move', touchstart);
-
-	// Make jQuery copy touch event properties over to the jQuery event
-	// object, if they are not already listed. But only do the ones we
-	// really need. IE7/8 do not have Array#indexOf(), but nor do they
-	// have touch events, so let's assume we can ignore them.
-	if (typeof Array.prototype.indexOf === 'function') {
-		(function(jQuery, undefined){
-			var props = ["changedTouches", "targetTouches"],
-			    l = props.length;
-
-			while (l--) {
-				if (jQuery.event.props.indexOf(props[l]) === -1) {
-					jQuery.event.props.push(props[l]);
 				}
 			}
-		})(jQuery);
-	};
-});
 
-/* WYSIWYGModernizr 2.7.1 (Custom Build) | MIT & BSD
- * Build: http://modernizr.com/download/#-touch-mq-teststyles-prefixes
- */
-;
+      // Shouldn't be fixed.
+      else {
+				if (!$el.hasClass('fr-sticky-off')) {
+          // Reset.
+          $el.width('');
+          $el.removeClass('fr-sticky-on');
+          $el.addClass('fr-sticky-off');
 
-
-
-window.WYSIWYGModernizr = (function( window, document, undefined ) {
-
-    var version = '2.7.1',
-
-    WYSIWYGModernizr = {},
-
-
-    docElement = document.documentElement,
-
-    mod = 'modernizr',
-    modElem = document.createElement(mod),
-    mStyle = modElem.style,
-
-    inputElem  ,
-
-
-    toString = {}.toString,
-
-    prefixes = ' -webkit- -moz- -o- -ms- '.split(' '),
-
-
-
-    tests = {},
-    inputs = {},
-    attrs = {},
-
-    classes = [],
-
-    slice = classes.slice,
-
-    featureName,
-
-
-    injectElementWithStyles = function( rule, callback, nodes, testnames ) {
-
-      var style, ret, node, docOverflow,
-          div = document.createElement('div'),
-                body = document.body,
-                fakeBody = body || document.createElement('body');
-
-      if ( parseInt(nodes, 10) ) {
-                      while ( nodes-- ) {
-              node = document.createElement('div');
-              node.id = testnames ? testnames[nodes] : mod + (nodes + 1);
-              div.appendChild(node);
+          if ($el.css('top') && $el.css('top') != 'auto') {
+            $el.css('top', 0);
           }
+          if ($el.css('bottom')) $el.css('bottom', 0);
+				}
       }
-
-                style = ['&#173;','<style id="s', mod, '">', rule, '</style>'].join('');
-      div.id = mod;
-          (body ? div : fakeBody).innerHTML += style;
-      fakeBody.appendChild(div);
-      if ( !body ) {
-                fakeBody.style.background = '';
-                fakeBody.style.overflow = 'hidden';
-          docOverflow = docElement.style.overflow;
-          docElement.style.overflow = 'hidden';
-          docElement.appendChild(fakeBody);
-      }
-
-      ret = callback(div, rule);
-        if ( !body ) {
-          fakeBody.parentNode.removeChild(fakeBody);
-          docElement.style.overflow = docOverflow;
-      } else {
-          div.parentNode.removeChild(div);
-      }
-
-      return !!ret;
-
-    },
-
-    testMediaQuery = function( mq ) {
-
-      var matchMedia = window.matchMedia || window.msMatchMedia;
-      if ( matchMedia ) {
-        return matchMedia(mq).matches;
-      }
-
-      var bool;
-
-      injectElementWithStyles('@media ' + mq + ' { #' + mod + ' { position: absolute; } }', function( node ) {
-        bool = (window.getComputedStyle ?
-                  getComputedStyle(node, null) :
-                  node.currentStyle)['position'] == 'absolute';
-      });
-
-      return bool;
-
-     },
-    _hasOwnProperty = ({}).hasOwnProperty, hasOwnProp;
-
-    if ( !is(_hasOwnProperty, 'undefined') && !is(_hasOwnProperty.call, 'undefined') ) {
-      hasOwnProp = function (object, property) {
-        return _hasOwnProperty.call(object, property);
-      };
-    }
-    else {
-      hasOwnProp = function (object, property) {
-        return ((property in object) && is(object.constructor.prototype[property], 'undefined'));
-      };
     }
 
+   /**
+    * Test if browser supports sticky.
+    * https://github.com/filamentgroup/fixed-sticky
+    *
+    * The MIT License (MIT)
+    *
+    * Copyright (c) 2013 Filament Group
+    */
+    function _testSticky () {
+      var el = document.createElement('test');
+  		var mStyle = el.style;
 
-    if (!Function.prototype.bind) {
-      Function.prototype.bind = function bind(that) {
+			mStyle.cssText = 'position:' + [ '-webkit-', '-moz-', '-ms-', '-o-', '' ].join('sticky; position:') + ' sticky;';
 
-        var target = this;
+  		return mStyle['position'].indexOf('sticky') !== -1 && !editor.helpers.isIOS() && !editor.helpers.isAndroid();
+    }
 
-        if (typeof target != "function") {
-            throw new TypeError();
-        }
+    /**
+     * Initialize sticky position.
+     */
+    function _initSticky () {
+      if (!_testSticky()) {
+        editor._stickyElements = [];
 
-        var args = slice.call(arguments, 1),
-            bound = function () {
+        // iOS special case.
+        if (editor.helpers.isIOS()) {
+          // Use an animation frame to make sure we're always OK with the updates.
+          var animate = function () {
+            editor.helpers.requestAnimationFrame()(animate);
 
-            if (this instanceof bound) {
-
-              var F = function(){};
-              F.prototype = target.prototype;
-              var self = new F();
-
-              var result = target.apply(
-                  self,
-                  args.concat(slice.call(arguments))
-              );
-              if (Object(result) === result) {
-                  return result;
-              }
-              return self;
-
-            } else {
-
-              return target.apply(
-                  that,
-                  args.concat(slice.call(arguments))
-              );
-
+            for (var i = 0; i < editor._stickyElements.length; i++) {
+              _updateIOSSticky(editor._stickyElements[i]);
             }
+          };
+          animate();
 
-        };
+          // Hide toolbar on touchmove. This is very useful on iOS versions < 8.
+          $(editor.original_window).on('scroll.sticky' + editor.id, function () {
+            if (editor.core.hasFocus()) {
+              for (var i = 0; i < editor._stickyElements.length; i++) {
+                var $el = $(editor._stickyElements[i]);
+                var $parent = $el.parent();
+                var c_scroll = $(window).scrollTop();
 
-        return bound;
-      };
-    }
-
-    function setCss( str ) {
-        mStyle.cssText = str;
-    }
-
-    function setCssAll( str1, str2 ) {
-        return setCss(prefixes.join(str1 + ';') + ( str2 || '' ));
-    }
-
-    function is( obj, type ) {
-        return typeof obj === type;
-    }
-
-    function contains( str, substr ) {
-        return !!~('' + str).indexOf(substr);
-    }
-
-
-    function testDOMProps( props, obj, elem ) {
-        for ( var i in props ) {
-            var item = obj[props[i]];
-            if ( item !== undefined) {
-
-                            if (elem === false) return props[i];
-
-                            if (is(item, 'function')){
-                                return item.bind(elem || obj);
+                if ($el.outerHeight() < c_scroll - $parent.offset().top) {
+                  $el.addClass('fr-opacity-0');
+                  $el.data('sticky-top', -1);
+                  $el.data('sticky-scheduled', -1);
                 }
-
-                            return item;
+              }
             }
-        }
-        return false;
-    }
-    tests['touch'] = function() {
-        var bool;
-
-        if(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) {
-          bool = true;
-        } else {
-          injectElementWithStyles(['@media (',prefixes.join('touch-enabled),('),mod,')','{#modernizr{top:9px;position:absolute}}'].join(''), function( node ) {
-            bool = node.offsetTop === 9;
           });
         }
 
-        return bool;
-    };
-    for ( var feature in tests ) {
-        if ( hasOwnProp(tests, feature) ) {
-                                    featureName  = feature.toLowerCase();
-            WYSIWYGModernizr[featureName] = tests[feature]();
+        // Default case. Do the updates on scroll.
+        else {
+          $(editor.opts.scrollableContainer == 'body' ? editor.original_window : editor.opts.scrollableContainer).on('scroll.sticky' + editor.id, refresh);
+          $(editor.original_window).on('resize.sticky' + editor.id, refresh);
 
-            classes.push((WYSIWYGModernizr[featureName] ? '' : 'no-') + featureName);
-        }
-    }
+          editor.events.on('initialized', refresh);
+          editor.events.on('focus', refresh);
 
-
-
-     WYSIWYGModernizr.addTest = function ( feature, test ) {
-       if ( typeof feature == 'object' ) {
-         for ( var key in feature ) {
-           if ( hasOwnProp( feature, key ) ) {
-             WYSIWYGModernizr.addTest( key, feature[ key ] );
-           }
-         }
-       } else {
-
-         feature = feature.toLowerCase();
-
-         if ( WYSIWYGModernizr[feature] !== undefined ) {
-                                              return WYSIWYGModernizr;
-         }
-
-         test = typeof test == 'function' ? test() : test;
-
-         if (typeof enableClasses !== "undefined" && enableClasses) {
-           docElement.className += ' ' + (test ? '' : 'no-') + feature;
-         }
-         WYSIWYGModernizr[feature] = test;
-
-       }
-
-       return WYSIWYGModernizr;
-     };
-
-
-    setCss('');
-    modElem = inputElem = null;
-
-
-    WYSIWYGModernizr._version      = version;
-
-    WYSIWYGModernizr._prefixes     = prefixes;
-
-    WYSIWYGModernizr.mq            = testMediaQuery;
-    WYSIWYGModernizr.testStyles    = injectElementWithStyles;
-    return WYSIWYGModernizr;
-
-})(this, this.document);
-;
-/*!
- * froala_editor v1.2.6 (http://editor.froala.com)
- * License http://editor.froala.com/license
- * Copyright 2014-2015 Froala Labs
- */
-!function(a){a.Editable.prototype.coreInit=function(){var a=this,b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",c=function(a){for(var b=a.toString(),c=0,d=0;d<b.length;d++)c+=parseInt(b.charAt(d),10);return c>10?c%9+1:c};if(a.options.key!==!1){var d=function(a,b,c){for(var d=Math.abs(c);d-->0;)a-=b;return 0>c&&(a+=123),a},e=function(a){return a},f=function(a){if(!a)return a;for(var f="",g=e("charCodeAt"),h=e("fromCharCode"),i=b.indexOf(a[0]),j=1;j<a.length-2;j++){for(var k=c(++i),l=a[g](j),m="";/[0-9-]/.test(a[j+1]);)m+=a[++j];m=parseInt(m,10)||0,l=d(l,k,m),l^=i-1&31,f+=String[h](l)}return f},g=e(f),h=function(a){return"none"==a.css("display")?(a.attr("style",a.attr("style")+g("zD4D2qJ-7dhuB-11bB4E1wqlhlfE4gjhkbB6C5eg1C-8h1besB-16e1==")),!0):!1},i=function(){for(var a=0,b=document.domain,c=b.split("."),d="_gd"+(new Date).getTime();a<c.length-1&&-1==document.cookie.indexOf(d+"="+d);)b=c.slice(-1-++a).join("."),document.cookie=d+"="+d+";domain="+b+";";return document.cookie=d+"=;expires=Thu, 01 Jan 1970 00:00:01 GMT;domain="+b+";",b}(),j=function(){var b=g(a.options.key)||"";return b!==g("eQZMe1NJGC1HTMVANU==")&&b.indexOf(i,b.length-i.length)<0&&[g("9qqG-7amjlwq=="),g("KA3B3C2A6D1D5H5H1A3==")].indexOf(i)<0?(a.$box.append(g("uA5kygD3g1h1lzrA7E2jtotjvooB2A5eguhdC-22C-16nC2B3lh1deA-21C-16B4A2B4gi1F4D1wyA-13jA4H5C2rA-65A1C10dhzmoyJ2A10A-21d1B-13xvC2I4enC4C2B5B4G4G4H1H4A10aA8jqacD1C3c1B-16D-13A-13B2E5A4jtxfB-13fA1pewxvzA3E-11qrB4E4qwB-16icA1B3ykohde1hF4A2E4clA4C7E6haA4D1xtmolf1F-10A1H4lhkagoD5naalB-22B8B4quvB-8pjvouxB3A-9plnpA2B6D6BD2D1C2H1C3C3A4mf1G-10C-8i1G3C5B3pqB-9E5B1oyejA3ddalvdrnggE3C3bbj1jC6B3D3gugqrlD8B2DB-9qC-7qkA10D2VjiodmgynhA4HA-9D-8pI-7rD4PrE-11lvhE3B5A-16C7A6A3ekuD1==")),a.$lb=a.$box.find("> div:last"),a.$ab=a.$lb.find("> a"),h(a.$lb)||h(a.$ab)):void 0};j()}},a.Editable.initializers.push(a.Editable.prototype.coreInit)}(jQuery);
-(function ($) {
-
-  $.Editable.DEFAULTS = $.extend($.Editable.DEFAULTS, {
-    allowedBlankTags: ['TEXTAREA'],
-    selfClosingTags: ['br', 'button', 'input', 'img', 'hr', 'param', '!--', 'source', 'embed', '!', 'meta', 'link', 'base']
-  })
-
-  $.Editable.prototype.isClosingTag = function (tag) {
-    if (!tag) return false;
-
-    // Detect closing tag.
-    return tag.match(/^<\/([a-zA-Z0-9]+)([^<]+)*>$/gi) !== null;
-  }
-
-  $.Editable.prototype.tagName = function (tag) {
-    return tag.replace(/^<\/?([a-zA-Z0-9-!]+)([^>]+)*>$/gi, '$1').toLowerCase();
-  }
-
-  $.Editable.SELF_CLOSING_AFTER = ['source'];
-
-  $.Editable.prototype.isSelfClosingTag = function (tag) {
-    var tag_name = this.tagName(tag);
-
-    return this.options.selfClosingTags.indexOf(tag_name.toLowerCase()) >= 0;
-  }
-
-  $.Editable.prototype.tagKey = function (tag) {
-    return tag.type + (tag.attrs || []).sort().join('|');
-  }
-
-  $.Editable.prototype.extendedKey = function (tag) {
-    return this.tagKey(tag) + JSON.stringify(tag.style);
-  }
-
-  $.Editable.prototype.mapDOM = function (mainNode) {
-    var nodesMap = [];
-    var openedNodes = {};
-    var closedNodes = {};
-    var index = 0;
-    var that = this;
-
-    $(mainNode).find('.f-marker').html($.Editable.INVISIBLE_SPACE);
-
-    var buildNode = function (originalNode, sp) {
-      if (originalNode.nodeType === 3) return [];
-      if (originalNode.nodeType === 8) {
-        return [{
-          comment: true,
-          attrs: {},
-          styles: {},
-          idx: index++,
-          sp: sp,
-          ep: sp,
-          text: originalNode.textContent
-        }]
-      }
-
-      var tagName = originalNode.tagName;
-
-      // Convert to HTML5.
-      if (tagName == 'B') tagName = 'STRONG';
-      if (tagName == 'I' && (!originalNode.className || originalNode.className.indexOf('fa-') < 0)) tagName = 'EM';
-
-      // Remove display inline
-      originalNode.style.display = '';
-
-      var attrs = {};
-      var styles = {};
-      var style = null;
-
-      if (originalNode.attributes) {
-        for (var i = 0; i < originalNode.attributes.length; i++) {
-          var att = originalNode.attributes[i];
-
-          if (att.nodeName == 'style') {
-            style = att.value;
-          }
-          else {
-            attrs[att.nodeName] = att.value;
-          }
-        }
-      }
-
-      if (style) {
-        var matches = style.match(/([^:]*):([^:;]*(;|$))/gi);
-        if (matches) {
-          for (var l = 0; l < matches.length; l++) {
-            var parts = matches[l].split(':');
-            var val = parts.slice(1).join(':').trim();
-
-            if (val[val.length - 1] == ';') {
-              val = val.substr(0, val.length - 1);
-            }
-
-            styles[parts[0].trim()] = val;
-          }
-        }
-      }
-
-      var nodes = [];
-
-      if ($.isEmptyObject(attrs) && originalNode.tagName == 'SPAN' && !$.isEmptyObject(styles)) {
-        for (var p in styles) {
-          var c_style = {}
-          c_style[p] = styles[p];
-          nodes.push({
-            selfClosing: false,
-            attrs: attrs,
-            styles: c_style,
-            idx: index++,
-            sp: sp,
-            ep: sp + originalNode.textContent.length,
-            tagName: tagName
-          })
-        }
-
-        return nodes;
-      }
-
-      return [{
-        selfClosing: that.options.selfClosingTags.indexOf(tagName.toLowerCase()) >= 0,
-        attrs: attrs,
-        styles: styles,
-        idx: index++,
-        sp: sp,
-        ep: sp + originalNode.textContent.length,
-        tagName: tagName
-      }]
-    }
-
-    var mapNodes = function (originalNode, sp) {
-      var i;
-      var nodes;
-      var node;
-      if (originalNode != mainNode) {
-        nodes = buildNode(originalNode, sp);
-
-        for (i = 0; i < nodes.length; i++) {
-          node = nodes[i];
-          nodesMap.push(node);
-          if (!openedNodes[node.sp]) openedNodes[node.sp] = {};
-          if (!closedNodes[node.ep]) closedNodes[node.ep] = {};
-          if (!openedNodes[node.sp][node.tagName]) openedNodes[node.sp][node.tagName] = [];
-          if (!closedNodes[node.ep][node.tagName]) closedNodes[node.ep][node.tagName] = [];
-
-          openedNodes[node.sp][node.tagName].push(node);
-          closedNodes[node.ep][node.tagName].push(node);
-        }
-      }
-
-      var children = originalNode.childNodes;
-      if (children) {
-        for (i = 0; i < children.length; i++) {
-          if (i > 0 && children[i - 1].nodeType != 8) sp += children[i - 1].textContent.length;
-          mapNodes(children[i], sp);
-        }
-
-        if (nodes) {
-          for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            node.ci = index++;
-
-            if (!openedNodes[node.ep]) openedNodes[node.ep] = {};
-            if (!openedNodes[node.ep][node.tagName]) openedNodes[node.ep][node.tagName] = [];
-            openedNodes[node.ep][node.tagName].push({
-              shadow: true,
-              ci: index - 1
-            })
-          }
+          $(editor.original_window).on('resize', 'textarea', refresh);
         }
       }
     }
 
-    var normalizeNodes = function () {
-      var i;
-      var node;
-      var k;
-      var extendedNode;
-
-      // Reopen nodes.
-      for (i in openedNodes) {
-        for (var tagName in openedNodes[i]) {
-          for (k = 0; k < openedNodes[i][tagName].length; k++) {
-            node = openedNodes[i][tagName][k];
-            if (node.selfClosing) continue;
-            if (node.dirty) continue;
-            if (node.shadow) continue;
-            if (node.comment) continue;
-
-            for (var j = k + 1; j < openedNodes[i][tagName].length; j++) {
-              extendedNode = openedNodes[i][tagName][j];
-              if (extendedNode.selfClosing) continue;
-              if (extendedNode.dirty) continue;
-              if (extendedNode.shadow) continue;
-              if (extendedNode.comment) continue;
-
-              if (Object.keys(node.styles).length == 1 && Object.keys(extendedNode.styles).length == 1 && extendedNode.sp != extendedNode.ep) {
-                var prop = Object.keys(node.styles)[0];
-                if (extendedNode.styles[prop]) {
-                  node.sp = extendedNode.ep;
-
-                  for (var t = 0; t < openedNodes[node.sp][node.tagName].length; t++) {
-                    var nd = openedNodes[node.sp][node.tagName][t];
-                    if (nd.shadow && nd.ci == extendedNode.ci) {
-                      openedNodes[node.sp][node.tagName].splice(t, 0, node);
-                      break;
-                    }
-                  }
-
-                  openedNodes[i][tagName].splice(k, 1);
-
-                  k--;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      for (i = 0; i < nodesMap.length; i++) {
-        node = nodesMap[i];
-        if (node.dirty) continue;
-        if (node.selfClosing) continue;
-        if (node.comment) continue;
-
-        if (node.sp == node.ep && $.isEmptyObject(node.attrs) && $.isEmptyObject(node.style) && that.options.allowedBlankTags.indexOf(node.tagName) < 0) {
-          node.dirty = true;
-          continue;
-        }
-
-        if (openedNodes[node.ep] && openedNodes[node.ep][node.tagName]) {
-          for (k = 0; k < openedNodes[node.ep][node.tagName].length; k++) {
-            extendedNode = openedNodes[node.ep][node.tagName][k];
-            if (extendedNode.dirty) continue;
-            if (node == extendedNode) continue;
-            if (node.selfClosing) continue;
-            if (extendedNode.shadow) continue;
-            if (extendedNode.comment) continue;
-
-            if ($.isEmptyObject(extendedNode.attrs)) {
-              if (JSON.stringify(extendedNode.styles) == JSON.stringify(node.styles)) {
-                node.ep = extendedNode.ep;
-                extendedNode.dirty = true;
-                i--;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      for (i = 0; i < nodesMap.length; i++) {
-        node = nodesMap[i];
-        if (node.dirty) continue;
-        if (node.selfClosing) continue;
-        if (node.comment) continue;
-
-        if (node.sp == node.ep && $.isEmptyObject(node.attrs) && $.isEmptyObject(node.style) && that.options.allowedBlankTags.indexOf(node.tagName) < 0) {
-          node.dirty = true;
-          continue;
-        }
-
-        if (openedNodes[node.sp] && openedNodes[node.sp][node.tagName]) {
-          for (k = openedNodes[node.sp][node.tagName].length - 1; k >= 0; k--) {
-            extendedNode = openedNodes[node.sp][node.tagName][k];
-            if (extendedNode.dirty) continue;
-            if (node == extendedNode) continue;
-            if (node.selfClosing) continue;
-            if (extendedNode.shadow) continue;
-            if (extendedNode.comment) continue;
-
-            if (node.ep == extendedNode.ep) {
-              if ($.isEmptyObject(extendedNode.attrs)) {
-                node.styles = $.extend(node.styles, extendedNode.styles);
-                extendedNode.dirty = true;
-              }
-            }
-          }
-        }
+    function refresh () {
+      for (var i = 0; i < editor._stickyElements.length; i++) {
+        _updateSticky(editor._stickyElements[i]);
       }
     }
 
-    mapNodes(mainNode, 0);
+    /**
+     * Mark element as sticky.
+     */
+    function addSticky ($el) {
+      $el.addClass('fr-sticky');
 
-    normalizeNodes();
+      if (editor.helpers.isIOS()) $el.addClass('fr-sticky-ios');
 
-    for (var i = nodesMap.length - 1; i >= 0; i--) {
-      if (nodesMap.dirty) nodesMap.splice(i, 1);
+      if (!_testSticky()) {
+        editor._stickyElements.push($el.get(0));
+      }
     }
 
-    return nodesMap;
+    function _destroy () {
+      $(editor.original_window).off('scroll.sticky' + editor.id);
+      $(editor.original_window).off('resize.sticky' + editor.id);
+    }
+
+    function _init () {
+      _initSticky();
+
+      editor.events.on('destroy', _destroy, true);
+    }
+
+    return {
+      _init: _init,
+      forSelection: forSelection,
+      addSticky: addSticky,
+      refresh: refresh,
+      at: at,
+      getBoundingRect: getBoundingRect
+    }
   };
 
-  // Sort nodes.
-  $.Editable.prototype.sortNodes = function (node_a, node_b) {
-    if (node_a.tagName == 'BR') return -1;
-    if (node_b.tagName == 'BR') return 1;
 
-    if (node_a.comment) return 1;
+  // Extend defaults.
+  $.extend($.FroalaEditor.DEFAULTS, {
+    toolbarInline: false,
+    toolbarVisibleWithoutSelection: false,
+    toolbarSticky: true,
+    toolbarButtons: ['fullscreen', 'bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', 'fontFamily', 'fontSize', '|', 'color', 'emoticons', 'inlineStyle', 'paragraphStyle', '|', 'paragraphFormat', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'quote', 'insertHR', '-', 'insertLink', 'insertImage', 'insertVideo', 'insertFile', 'insertTable', 'undo', 'redo', 'clearFormatting', 'selectAll', 'html'],
+    toolbarButtonsXS: ['bold', 'italic', 'fontFamily', 'fontSize', 'undo', 'redo'],
+    toolbarButtonsSM: ['fullscreen', 'bold', 'italic', 'underline', 'fontFamily', 'fontSize', 'insertLink', 'insertImage', 'table', 'undo', 'redo'],
+    toolbarButtonsMD: ['fullscreen', 'bold', 'italic', 'underline', 'fontFamily', 'fontSize', 'color', 'paragraphStyle', 'paragraphFormat', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'quote', 'insertHR', 'insertLink', 'insertImage', 'insertVideo', 'insertFile', 'insertTable', 'undo', 'redo', 'clearFormatting', '-', '|'],
+    toolbarStickyOffset: 0
+  });
 
-    var diff_a = node_a.ep - node_a.sp;
-    var diff_b = node_b.ep - node_a.sp;
+  $.FroalaEditor.MODULES.toolbar = function (editor) {
+    var _document, _window;
 
-    if (diff_a === 0 && diff_b === 0) return node_a.idx - node_b.idx;
-
-    if (diff_a === diff_b) return node_b.ci - node_a.ci;
-    return diff_b - diff_a;
-  };
-
-  // Build open tag.
-  $.Editable.prototype.openTag = function (node) {
-    var i;
-    var html = '<' + node.tagName.toLowerCase();
-
-    var attrs = Object.keys(node.attrs).sort();
-    for (i = 0; i < attrs.length; i++) {
-      var attrName = attrs[i];
-      html += ' ' + attrName + '="' + node.attrs[attrName] + '"';
+    /**
+     * Add buttons to the toolbar.
+     */
+    function _addButtons () {
+      var buttons_list = editor.button.buildList(editor.opts.toolbarButtons);
+      editor.$tb.append(buttons_list);
+      editor.button.bindCommands(editor.$tb);
     }
 
-    var style = '';
-    var props = Object.keys(node.styles).sort();
-    for (i = 0; i < props.length; i++) {
-      var prop = props[i];
-      if (node.styles[prop] != null) {
-        style += prop.replace('_', '-') + ': ' + node.styles[prop] + '; ';
-      }
+    /**
+     * Set the buttons visibility based on screen size.
+     */
+    function _setVisibility () {
+      if (editor.opts.toolbarButtonsXS == null) editor.opts.toolbarButtonsXS = editor.opts.toolbarButtons;
+      if (editor.opts.toolbarButtonsSM == null) editor.opts.toolbarButtonsSM = editor.opts.toolbarButtons;
+      if (editor.opts.toolbarButtonsMD == null) editor.opts.toolbarButtonsMD = editor.opts.toolbarButtons;
+
+      editor.$tb.find('> .fr-command').each (function (i, el) {
+        if (editor.opts.toolbarButtonsXS.indexOf($(el).data('cmd')) >= 0) $(el).addClass('fr-visible-xs');
+        if (editor.opts.toolbarButtonsSM.indexOf($(el).data('cmd')) >= 0) $(el).addClass('fr-visible-sm');
+        if (editor.opts.toolbarButtonsMD.indexOf($(el).data('cmd')) >= 0) $(el).addClass('fr-visible-md');
+      });
+
+      if (editor.opts.toolbarButtonsXS.indexOf('-') >=0) editor.$tb.find('.fr-separator.fr-hs').addClass('fr-visible-xs');
+      if (editor.opts.toolbarButtonsSM.indexOf('-') >=0) editor.$tb.find('.fr-separator.fr-hs').addClass('fr-visible-sm');
+      if (editor.opts.toolbarButtonsMD.indexOf('-') >=0) editor.$tb.find('.fr-separator.fr-hs').addClass('fr-visible-md');
+
+      if (editor.opts.toolbarButtonsXS.indexOf('|') >=0) editor.$tb.find('.fr-separator.fr-vs').addClass('fr-visible-xs');
+      if (editor.opts.toolbarButtonsSM.indexOf('|') >=0) editor.$tb.find('.fr-separator.fr-vs').addClass('fr-visible-sm');
+      if (editor.opts.toolbarButtonsMD.indexOf('|') >=0) editor.$tb.find('.fr-separator.fr-vs').addClass('fr-visible-md');
     }
 
-    if (style !== '') {
-      html += ' style="' + style.trim() + '"';
-    }
-
-    html += '>';
-
-    return html;
-  }
-
-  // Build open tag.
-  $.Editable.prototype.commentTag = function (node) {
-    var html = '';
-    if (node.selfClosing) {
-      var i;
-      html = '<' + node.tagName.toLowerCase();
-
-      var attrs = Object.keys(node.attrs).sort();
-      for (i = 0; i < attrs.length; i++) {
-        var attrName = attrs[i];
-        html += ' ' + attrName + '="' + node.attrs[attrName] + '"';
-      }
-
-      var style = '';
-      var props = Object.keys(node.styles).sort();
-      for (i = 0; i < props.length; i++) {
-        var prop = props[i];
-        if (node.styles[prop] != null) {
-          style += prop.replace('_', '-') + ': ' + node.styles[prop] + '; ';
-        }
-      }
-
-      if (style !== '') {
-        html += ' style="' + style.trim() + '"';
-      }
-
-      html += '/>';
-    }
-    else if (node.comment) {
-      html = '<!--' + node.text + '-->';
-    }
-
-    return html;
-  }
-
-  $.Editable.prototype.closeTag = function (node) {
-    return '</' + node.tagName.toLowerCase() + '>';
-  }
-
-  $.Editable.prototype.nodesOpenedAt = function (nodesMap, i) {
-    var nodes = [];
-    var len = nodesMap.length - 1;
-    while (len >= 0 && nodesMap[len].sp == i) {
-      nodes.push(nodesMap.pop());
-      len--;
-    }
-
-    return nodes;
-  }
-
-  $.Editable.prototype.entity = function (ch) {
-    ch_map = {
-      '>': '&gt;',
-      '<': '&lt;',
-      '&': '&amp;'
-    }
-
-    if (ch_map[ch]) return ch_map[ch];
-    return ch;
-  }
-
-  $.Editable.prototype.removeInvisibleWhitespace = function (el) {
-    for (var i = 0; i < el.childNodes.length; i++) {
-      var node = el.childNodes[i];
-
-      if (node.childNodes.length) {
-        this.removeInvisibleWhitespace(node);
+    function showInline (e, force) {
+      if (editor.helpers.isMobile()) {
+        editor.toolbar.show();
       }
       else {
-        node.textContent = node.textContent.replace(/\u200B/gi, '');
+        setTimeout(function () {
+          if (e && e.which == $.FroalaEditor.KEYCODE.ESC) {
+            // Nothing.
+          }
+          else if (editor.selection.inEditor() && editor.core.hasFocus() && !editor.popups.areVisible()) {
+            if (editor.opts.toolbarVisibleWithoutSelection || editor.selection.text() !== '' || force) {
+              // Check if we should actually show the toolbar.
+              if (editor.events.trigger('toolbar.show') == false) return false;
+
+              if (!editor.helpers.isMobile()) {
+                editor.position.forSelection(editor.$tb);
+              }
+
+              editor.$tb.show();
+            }
+          }
+        }, 0);
       }
+    }
+
+    function hide () {
+      // Check if we should actually hide the toolbar.
+      if (editor.events.trigger('toolbar.hide') == false) return false;
+
+      editor.$tb.hide();
+    }
+
+    function show () {
+      // Check if we should actually hide the toolbar.
+      if (editor.events.trigger('toolbar.show') == false) return false;
+
+      editor.$tb.show();
+    }
+
+    /**
+     * Set the events for show / hide toolbar.
+     */
+    function _initInlineBehavior () {
+      // Window mousedown.
+      editor.events.on('window.mousedown', hide);
+
+      // Element keydown.
+      editor.events.on('keydown', hide);
+
+      // Element blur.
+      editor.events.on('blur', hide);
+
+      // Window mousedown.
+      editor.events.on('window.mouseup', showInline);
+      editor.events.on('window.keyup', showInline);
+
+      // Hide editor on ESC.
+      editor.events.on('keydown', function (e) {
+        if (e && e.which == $.FroalaEditor.KEYCODE.ESC) {
+          hide();
+        }
+      });
+
+      editor.$wp.on('scroll.toolbar', showInline);
+      editor.events.on('commands.after', showInline);
+    }
+
+    /**
+     * Set the events for show / hide toolbar when on mobile.
+     */
+    function _initInlineMobileBehavior () {
+      editor.events.on('focus', showInline, true);
+
+      editor.events.on('blur', hide, true)
+    }
+
+    function _initPositioning () {
+      // Toolbar is inline.
+      if (editor.opts.toolbarInline) {
+        editor.$box.addClass('fr-inline');
+
+        // Mobile should handle this as regular.
+        if (!editor.helpers.isMobile()) {
+          $(editor.opts.scrollableContainer).append(editor.$tb);
+
+          // Add toolbar to body.
+          editor.$tb.data('container', $(editor.opts.scrollableContainer));
+
+          // Add inline class.
+          editor.$tb.addClass('fr-inline');
+
+          // Add arrow.
+          editor.$tb.prepend('<span class="fr-arrow"></span>')
+
+          // Init mouse behavior.
+          _initInlineBehavior();
+
+          editor.opts.toolbarBottom = false;
+        }
+        else {
+          if (editor.helpers.isIOS()) {
+            $('body').append(editor.$tb);
+            editor.position.addSticky(editor.$tb);
+          }
+          else {
+            editor.$tb.addClass('fr-bottom');
+            editor.$box.append(editor.$tb);
+            editor.position.addSticky(editor.$tb);
+            editor.opts.toolbarBottom = true;
+          }
+
+          editor.$tb.addClass('fr-inline');
+          _initInlineMobileBehavior();
+
+          editor.opts.toolbarInline = false;
+        }
+      }
+
+      // Toolbar is normal.
+      else {
+        // Won't work on iOS.
+        if (editor.opts.toolbarBottom && !editor.helpers.isIOS()) {
+          editor.$box.append(editor.$tb);
+          editor.$tb.addClass('fr-bottom');
+          editor.$box.addClass('fr-bottom');
+        }
+        else {
+          editor.opts.toolbarBottom = false;
+          editor.$box.prepend(editor.$tb);
+          editor.$tb.addClass('fr-top');
+          editor.$box.addClass('fr-top');
+        }
+
+        editor.$box.addClass('fr-basic');
+        editor.$tb.addClass('fr-basic');
+
+        if (editor.opts.toolbarSticky) {
+          if (editor.opts.toolbarStickyOffset) {
+            if (editor.opts.toolbarBottom) {
+              editor.$tb.css('bottom', editor.opts.toolbarStickyOffset);
+            }
+            else {
+              editor.$tb.css('top', editor.opts.toolbarStickyOffset);
+            }
+          }
+
+          editor.position.addSticky(editor.$tb);
+        }
+      }
+    }
+
+    /**
+     * Destroy.
+     */
+    function _destroy () {
+      editor.$box.removeClass('fr-top fr-bottom fr-inline fr-basic');
+      editor.$box.find('.fr-sticky-dummy').remove();
+      editor.$tb.off(editor._mousedown + ' ' + editor._mouseup);
+      editor.$tb.html('').removeData().remove();
+    }
+
+    /**
+     * Initialize
+     */
+    function _init () {
+      if (!editor.$wp) return false;
+
+      // Create toolbar object.
+      editor.$tb = $('<div class="fr-toolbar"></div>');
+
+      if (editor.opts.theme) {
+        editor.$tb.addClass(editor.opts.theme + '-theme');
+      }
+
+      if (editor.opts.zIndex > 1) {
+        editor.$tb.css('z-index', editor.opts.zIndex + 1);
+      }
+
+      // Set direction.
+      if (editor.opts.direction != 'auto') {
+        editor.$tb.removeClass('fr-ltr fr-rtl').addClass('fr-' + editor.opts.direction);
+      }
+
+      // Mark toolbar for desktop / mobile.
+      if (!editor.helpers.isMobile()) {
+        editor.$tb.addClass('fr-desktop');
+      }
+      else {
+        editor.$tb.addClass('fr-mobile');
+      }
+
+      // Set the toolbar specific position inline / normal.
+      _initPositioning();
+
+      // Set documetn and window for toolbar.
+      _document = editor.$tb.get(0).ownerDocument;
+      _window = 'defaultView' in _document ? _document.defaultView : _document.parentWindow;
+
+      // Add buttons to the toolbar.
+      // Set their visibility for different screens.
+      // Asses commands to the butttons.
+      _addButtons();
+      _setVisibility();
+
+      // Make sure we don't trigger blur.
+      editor.$tb.on(editor._mousedown + ' ' + editor._mouseup, function (e) {
+        var originalTarget = e.originalEvent ? (e.originalEvent.target || e.originalEvent.originalTarget) : null;
+        if (originalTarget && originalTarget.tagName != 'INPUT') {
+          e.stopPropagation();
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Destroy.
+      editor.events.on('destroy', _destroy, true);
+    }
+
+    var disabled = false;
+    function disable () {
+      if (!disabled && editor.$tb) {
+        editor.$tb.find('> .fr-command').addClass('fr-disabled fr-no-refresh');
+        disabled = true;
+      }
+    }
+
+    function enable () {
+      if (disabled && editor.$tb) {
+        editor.$tb.find('> .fr-command').removeClass('fr-disabled fr-no-refresh');
+        disabled = false;
+      }
+
+      editor.button.bulkRefresh();
+    }
+
+    return {
+      _init: _init,
+      hide: hide,
+      show: show,
+      showInline: showInline,
+      disable: disable,
+      enable: enable
+    }
+  };
+
+
+  $.FroalaEditor.SHORTCUTS_MAP = {
+    69: { cmd: 'show' },
+    66: { cmd: 'bold' },
+    73: { cmd: 'italic' },
+    85: { cmd: 'underline' },
+    83: { cmd: 'strikeThrough' },
+    221: { cmd: 'indent' },
+    219: { cmd: 'outdent' },
+    90: { cmd: 'undo' },
+    '-90': { cmd: 'redo' }
+  }
+
+  $.extend($.FroalaEditor.DEFAULTS, {
+    shortcutsEnabled: ['show', 'bold', 'italic', 'underline', 'strikeThrough', 'indent', 'outdent', 'undo', 'redo']
+  });
+
+  $.FroalaEditor.RegisterShortcut = function (key, cmd, val, shift) {
+    $.FroalaEditor.SHORTCUTS_MAP[key * (shift ? -1 : 1)] = {
+      cmd: cmd,
+      val: val
+    }
+
+    $.FroalaEditor.DEFAULTS.shortcutsEnabled.push(cmd);
+  }
+
+  $.FroalaEditor.MODULES.shortcuts = function (editor) {
+
+    /**
+     * Execute shortcut.
+     */
+    function exec (e) {
+      var keycode = e.which;
+
+      // CTRL key.
+      // If SHIFT then check for negative.
+      // If no SHIFT then check normal.
+      if (editor.keys.ctrlKey(e) && ((e.shiftKey && $.FroalaEditor.SHORTCUTS_MAP[-keycode]) ||  (!e.shiftKey && $.FroalaEditor.SHORTCUTS_MAP[keycode]))) {
+        var cmd = $.FroalaEditor.SHORTCUTS_MAP[keycode * (e.shiftKey ? -1 : 1)].cmd;
+
+        // Check if shortcut is enabled.
+        if (cmd && editor.opts.shortcutsEnabled.indexOf(cmd) >= 0) {
+          var val = $.FroalaEditor.SHORTCUTS_MAP[keycode * (e.shiftKey ? -1 : 1)].val;
+
+          // Search for button.
+          var $btn;
+          if (cmd && !val) {
+            $btn = editor.$tb.find('.fr-command[data-cmd="' + cmd + '"]');
+          }
+          else if (cmd && val) {
+            $btn = editor.$tb.find('.fr-command[data-cmd="' + cmd + '"][data-param0="' + val + '"]');
+          }
+
+          // Button found.
+          if ($btn.length) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.type == 'keydown') {
+              editor.button.exec($btn);
+            }
+
+            return false;
+          }
+
+          // Search for command.
+          else if (cmd && editor.commands[cmd]) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.type == 'keydown') {
+              editor.commands[cmd]();
+            }
+
+            return false;
+          }
+        }
+      }
+    }
+
+    /**
+     * Initialize.
+     */
+    function _init () {
+      editor.events.on('keydown', exec, true)
+      editor.events.on('keyup', exec, true)
+    }
+
+    return {
+      _init: _init
     }
   }
 
-  // Clean.
-  $.Editable.prototype.cleanOutput = function (elem, remove_whitespace) {
-    var i;
-    var k;
-    var p;
-    var tag;
 
-    if (remove_whitespace) this.removeInvisibleWhitespace(elem);
+  $.FroalaEditor.MODULES.snapshot = function (editor) {
+    /**
+     * Get the index of a node inside it's parent.
+     */
+    function _getNodeIndex (node) {
+      var childNodes = node.parentNode.childNodes;
+      var idx = 0;
+      var prevNode = null;
+      for (var i = 0; i < childNodes.length; i++) {
+        if (prevNode) {
+          // Current node is text and it is empty.
+          var isEmptyText = (childNodes[i].nodeType === Node.TEXT_NODE && childNodes[i].textContent === '');
 
-    // Get initial mapping.
-    var nodesMap =  this.mapDOM(elem, remove_whitespace).sort(function (a, b) {
-      return b.sp - a.sp;
-    });
+          // Previous node is text, current node is text.
+          var twoTexts = (prevNode.nodeType === Node.TEXT_NODE && childNodes[i].nodeType === Node.TEXT_NODE);
 
-    // Text.
-    var froala_text =  elem.textContent;
-
-    html = '';
-
-    // Those tags that are empty.
-    var simple_nodes = [];
-    var tagNo = -1;
-    var addSimpleNodes = $.proxy(function () {
-      var str = '';
-      while (simple_nodes.length) {
-        var node = simple_nodes.pop();
-
-        if (node.selfClosing || node.comment) {
-          str += this.commentTag(node);
+          if (!isEmptyText && !twoTexts) idx++;
         }
-        else if (!$.isEmptyObject(node.attrs) || this.options.allowedBlankTags.indexOf(node.tagName) >= 0){
-          str = this.openTag(node) + str + this.closeTag(node);
-        }
+
+        if (childNodes[i] == node) return idx;
+
+        prevNode = childNodes[i];
       }
-
-      html += str;
-    }, this);
-
-    var close_at = {};
-    var opened_nodes = [];
-
-    for (i = 0; i <= froala_text.length; i++) {
-      // Close tags first.
-      if (close_at[i]) {
-        for (k = close_at[i].length - 1; k >= 0; k--) {
-          // Last opened tag is the same with the open we want to close.
-          if (opened_nodes[opened_nodes.length - 1].tagName == close_at[i][k].tagName && JSON.stringify(opened_nodes[opened_nodes.length - 1].styles) == JSON.stringify(close_at[i][k].styles)) {
-            html += this.closeTag(close_at[i][k]);
-            opened_nodes.pop();
-          }
-
-          // Close all tags until the one we expect to close and then open them again.
-          else {
-            var to_open_again = [];
-
-            // Close tags that are opened.
-            while (opened_nodes[opened_nodes.length - 1].tagName !== close_at[i][k].tagName || JSON.stringify(opened_nodes[opened_nodes.length - 1].styles) !== JSON.stringify(close_at[i][k].styles)) {
-              tag = opened_nodes.pop();
-              html += this.closeTag(tag);
-              to_open_again.push(tag);
-            }
-
-            // Add the close tag.
-            html += this.closeTag(close_at[i][k]);
-            opened_nodes.pop();
-
-            // Open tags again.
-            while (to_open_again.length) {
-              var o_tag = to_open_again.pop();
-              html += this.openTag(o_tag);
-              opened_nodes.push(o_tag);
-            }
-          }
-        }
-      }
-
-      var openNodes = this.nodesOpenedAt(nodesMap, i).sort(this.sortNodes).reverse();
-      // Open tags.
-      while (openNodes.length) {
-        // Get node.
-        var node = openNodes.pop();
-
-        // SKIP. Dirty node.
-        if (node.dirty) continue;
-
-        // Check if is selfclosing.
-        if (node.selfClosing || node.comment) {
-          // Check if we should add simple tags to HTML that we'll build based on original position.
-          if (node.ci > tagNo || node.tagName == 'BR') {
-            addSimpleNodes();
-            html += this.commentTag(node);
-            tagNo = node.ci;
-          }
-
-          // Store in simple tags only if there are other tags there.
-          else if (simple_nodes.length) {
-            simple_nodes.push(node);
-            tagNo = node.ci;
-          }
-
-          else {
-            html += this.commentTag(node);
-            tagNo = node.ci;
-          }
-        }
-        else {
-          // Has text inside.
-          if (node.ep > node.sp) {
-            if (node.ci > tagNo) addSimpleNodes();
-
-            // Close tags that that should close inside A. We'll open them again at the bottom.
-            var close_inside_a = [];
-            if (node.tagName == 'A') {
-              for (var ai = node.sp + 1; ai < node.ep; ai++) {
-                if (close_at[ai] && close_at[ai].length) {
-                  for (p = 0; p < close_at[ai].length; p++) {
-                    close_inside_a.push(close_at[ai][p]);
-                    html += this.closeTag(close_at[ai][p]);
-                    opened_nodes.pop();
-                  }
-                }
-              }
-            }
-
-            // Transparent BG.
-            var close_inside_t = [];
-            if (node.tagName == 'SPAN' && (node.styles['background-color'] == '#123456' || $.Editable.RGBToHex(node.styles['background-color']) === '#123456' || node.styles.color == '#123456' || $.Editable.RGBToHex(node.styles.color) === '#123456')) {
-              while (opened_nodes.length) {
-                var nd = opened_nodes.pop();
-                html += this.closeTag(nd);
-                close_inside_t.push(nd);
-              }
-            }
-
-            html += this.openTag(node);
-            tagNo = node.ci;
-
-            // Keep track of open nodes.
-            opened_nodes.push(node);
-
-            // Add close info.
-            if (!close_at[node.ep]) close_at[node.ep] = [];
-            close_at[node.ep].push(node);
-
-            // Open tags that we closed because of A tag.
-            while (close_inside_a.length) {
-              node = close_inside_a.pop()
-              html += this.openTag(node);
-              opened_nodes.push(node);
-            }
-
-            // Open tags that we closed because of A tag.
-            while (close_inside_t.length) {
-              node = close_inside_t.pop()
-              html += this.openTag(node);
-              opened_nodes.push(node);
-            }
-          }
-          else if (node.sp == node.ep) {
-            simple_nodes.push(node);
-            tagNo = node.ci;
-          }
-        }
-      }
-
-      // Index is increasing. We should add the simple tags that are left.
-      addSimpleNodes();
-
-      if (i != froala_text.length) html += this.entity(froala_text[i]);
     }
 
-    // Remove whitespace from markers.
-    html = html.replace(/(<span[^>]*? class\s*=\s*["']?f-marker["']?[^>]+>)\u200B(<\/span>)/gi, '$1$2');
+    /**
+     * Determine the location of the node inside the element.
+     */
+    function _getNodeLocation (node) {
+      var loc = [];
+      if (!node.parentNode) return [];
+      while (!editor.node.isElement(node)) {
+        loc.push(_getNodeIndex(node));
+        node = node.parentNode;
+      }
 
-    return html;
+      return loc.reverse();
+    }
+
+    /**
+     * Get the range offset inside the node.
+     */
+    function _getRealNodeOffset (node, offset) {
+      while (node && node.nodeType === Node.TEXT_NODE) {
+        var prevNode = node.previousSibling;
+        if (prevNode && prevNode.nodeType == Node.TEXT_NODE) {
+          offset += prevNode.textContent.length;
+        }
+        node = prevNode;
+      }
+
+      return offset;
+    }
+
+    /**
+     * Codify each range.
+     */
+    function _getRange (range) {
+      return {
+        scLoc: _getNodeLocation(range.startContainer),
+        scOffset: _getRealNodeOffset(range.startContainer, range.startOffset),
+        ecLoc: _getNodeLocation(range.endContainer),
+        ecOffset: _getRealNodeOffset(range.endContainer, range.endOffset)
+      }
+    }
+
+    /**
+     * Get the current snapshot.
+     */
+    function get () {
+      var snapshot = {};
+
+      editor.events.trigger('snapshot.before');
+
+      snapshot.html = editor.$el.html();
+
+      snapshot.ranges = [];
+      if (editor.selection.inEditor() && editor.core.hasFocus()) {
+        var ranges = editor.selection.ranges();
+        for (var i = 0; i < ranges.length; i++) {
+          snapshot.ranges.push(_getRange(ranges[i]));
+        }
+      }
+
+      editor.events.trigger('snapshot.after');
+
+      return snapshot;
+    }
+
+    /**
+     * Determine node by its location in the main element.
+     */
+    function _getNodeByLocation (loc) {
+      var node = editor.$el.get(0);
+      for (var i = 0; i < loc.length; i++) {
+        node = node.childNodes[loc[i]];
+      }
+
+      return node;
+    }
+
+    /**
+     * Restore range from snapshot.
+     */
+    function _restoreRange (sel, range_snapshot) {
+      try {
+        // Get range info.
+        var startNode = _getNodeByLocation(range_snapshot.scLoc);
+        var startOffset = range_snapshot.scOffset;
+        var endNode = _getNodeByLocation(range_snapshot.ecLoc);
+        var endOffset = range_snapshot.ecOffset;
+
+        // Restore range.
+        var range = editor.document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        sel.addRange(range);
+      }
+      catch (ex) {
+        console.warn (ex)
+      }
+    }
+
+    /**
+     * Restore snapshot.
+     */
+    function restore (snapshot) {
+      // Restore HTML.
+      if (editor.$el.html() != snapshot.html) editor.$el.html(snapshot.html);
+
+      // Get selection.
+      var sel = editor.selection.get();
+
+      // Make sure to clear current selection.
+      editor.selection.clear();
+
+      // Focus.
+      editor.events.focus(true);
+
+      // Restore Ranges.
+      for (var i = 0; i < snapshot.ranges.length; i++) {
+        _restoreRange(sel, snapshot.ranges[i]);
+      }
+    }
+
+    /**
+     * Compare two snapshots.
+     */
+    function equal (s1, s2) {
+      if (s1.html != s2.html) return false;
+      if (JSON.stringify(s1.ranges) != JSON.stringify(s2.ranges)) return false;
+
+      return true;
+    }
+
+    return {
+      get: get,
+      restore: restore,
+      equal: equal
+    }
   };
 
-  $.Editable.prototype.wrapDirectContent = function () {
-    if (!this.options.paragraphy) {
-      var $wr = null;
-      var contents = this.$element.contents();
-      for (var i = 0; i < contents.length; i++) {
-        if (contents[i].nodeType != 1 || this.valid_nodes.indexOf(contents[i].tagName) < 0) {
-          if (!$wr) {
-            $wr = $('<div class="fr-wrap">');
-            $(contents[i]).before($wr);
-          }
-          $wr.append(contents[i]);
+
+  $.FroalaEditor.MODULES.undo = function (editor) {
+    /**
+     * Disable the default browser undo.
+     */
+    function _disableBrowserUndo (e) {
+      var keyCode = e.which;
+      var ctrlKey = editor.keys.ctrlKey(e);
+
+      // Ctrl Key.
+      if (ctrlKey) {
+        if (keyCode == 90 && e.shiftKey) {
+          e.preventDefault();
         }
-        else {
-          $wr = null;
+
+        if (keyCode == 90) {
+          e.preventDefault();
         }
       }
     }
+
+    function canDo () {
+      if (editor.undo_stack.length === 0 || editor.undo_index <= 1) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function canRedo () {
+      if (editor.undo_index == editor.undo_stack.length) {
+        return false;
+      }
+
+      return true;
+    }
+
+    var last_html = null;
+    function saveStep (snapshot) {
+      if (!editor.undo_stack || editor.undoing) return false;
+
+      while (editor.undo_stack.length > editor.undo_index) {
+        editor.undo_stack.pop();
+      }
+
+      if (typeof snapshot == 'undefined') {
+        snapshot = editor.snapshot.get();
+
+        if (!editor.undo_stack[editor.undo_index - 1] || !editor.snapshot.equal(editor.undo_stack[editor.undo_index - 1], snapshot)) {
+          editor.undo_stack.push(snapshot);
+          editor.undo_index++;
+
+          if (snapshot.html != last_html) {
+            editor.events.trigger('contentChanged');
+            last_html = snapshot.html;
+          }
+        }
+      }
+      else {
+        if (editor.undo_index > 0) {
+          editor.undo_stack[editor.undo_index - 1] = snapshot;
+        }
+        else {
+          editor.undo_stack.push(snapshot);
+          editor.undo_index++;
+        }
+      }
+    }
+
+    function _do () {
+      if (editor.undo_index > 1) {
+        editor.undoing = true;
+
+        // Get snapshot.
+        var snapshot = editor.undo_stack[--editor.undo_index - 1];
+
+        // Clear any existing content changed timers.
+        clearTimeout(editor._content_changed_timer);
+
+        // Restore snapshot.
+        editor.snapshot.restore(snapshot);
+
+        // Hide popups.
+        editor.popups.hideAll();
+
+        // Enable toolbar.
+        editor.toolbar.enable();
+
+        // Call content changed.
+        editor.events.trigger('contentChanged');
+
+        editor.events.trigger('commands.undo');
+
+        editor.undoing = false;
+      }
+    }
+
+    function _redo () {
+      if (editor.undo_index < editor.undo_stack.length) {
+        editor.undoing = true;
+
+        // Get snapshot.
+        var snapshot = editor.undo_stack[editor.undo_index++];
+
+        // Clear any existing content changed timers.
+        clearTimeout(editor._content_changed_timer)
+
+        // Restore snapshot.
+        editor.snapshot.restore(snapshot);
+
+        // Hide popups.
+        editor.popups.hideAll();
+
+        // Enable toolbar.
+        editor.toolbar.enable();
+
+        // Call content changed.
+        editor.events.trigger('contentChanged');
+
+        editor.events.trigger('commands.redo');
+
+        editor.undoing = false;
+      }
+    }
+
+    function reset () {
+      editor.undo_index = 0;
+      editor.undo_stack = [];
+    }
+
+    /**
+     * Initialize
+     */
+    function _init () {
+      reset();
+      editor.events.on('initialized', function () {
+        last_html = editor.html.get(false, true);
+      });
+
+      editor.events.on('keydown', _disableBrowserUndo);
+    }
+
+    return {
+      _init: _init,
+      run: _do,
+      redo: _redo,
+      canDo: canDo,
+      canRedo: canRedo,
+      reset: reset,
+      saveStep: saveStep
+    }
+  };
+
+
+  $.FroalaEditor.POPUP_TEMPLATES = {
+    'text.edit': '[_EDIT_]'
+  };
+
+  $.FroalaEditor.RegisterTemplate = function (name, template) {
+    $.FroalaEditor.POPUP_TEMPLATES[name] = template;
   }
 
-  $.Editable.prototype.cleanify = function (selection_only, remove_whitespace, save_selection) {
-    if (this.browser.msie && $.Editable.getIEversion() < 9) return false;
+  $.FroalaEditor.MODULES.popups = function (editor) {
+    var popups = {};
 
-    var elements;
-
-    if (this.isHTML) return false;
-    if (selection_only === undefined) selection_only = true;
-    if (save_selection === undefined) save_selection = true;
-
-    this.no_verify = true;
-
-    this.$element.find('span').removeAttr('data-fr-verified');
-
-    if (save_selection) {
-      this.saveSelectionByMarkers();
+    function setContainer(id, $container) {
+      popups[id].data('container', $container);
+      $container.append(popups[id]);
     }
 
-    // Nodes to apply selection on.
-    if (selection_only) {
-      elements = this.getSelectionElements();
+    /**
+     * Show popup at a specific position.
+     */
+    function show (id, left, top, obj_height) {
+      // Restore selection on show if it is there.
+      if (areVisible() && editor.$el.find('.fr-marker').length > 0) {
+        editor.events.disableBlur();
+        editor.selection.restore();
+      }
+
+      hideAll([id]);
+
+      if (!popups[id]) return false;
+
+      var width = popups[id].outerWidth();
+      var height = popups[id].outerHeight();
+      var is_visible = isVisible(id);
+      popups[id].addClass('fr-active');
+
+      var $container = popups[id].data('container');
+
+      // Inline mode when container is toolbar.
+      if (editor.opts.toolbarInline && $container && editor.$tb && $container.get(0) == editor.$tb.get(0)) {
+        setContainer(id, editor.opts.toolbarInline ? $(editor.opts.scrollableContainer) : editor.$box);
+        if (top) top = editor.$tb.offset().top - editor.helpers.getPX(editor.$tb.css('margin-top'));
+        if (left) left = editor.$tb.offset().left + editor.$tb.width() / 2;
+
+        if (editor.$tb.hasClass('fr-above')) {
+          top += editor.$tb.outerHeight();
+        }
+
+        obj_height = 0;
+      }
+
+      // Apply iframe correction.
+      $container = popups[id].data('container');
+      if (editor.opts.iframe && !obj_height && !is_visible) {
+        if (left) left -= editor.$iframe.offset().left;
+        if (top) top -= editor.$iframe.offset().top;
+      }
+
+      // Apply left correction.
+      if (left) left = left - width / 2;
+
+      // Toolbar at the bottom and container is toolbar.
+      if (editor.opts.toolbarBottom && $container && editor.$tb && $container.get(0) == editor.$tb.get(0)) {
+        popups[id].addClass('fr-above');
+        top = top - popups[id].outerHeight();
+      }
+
+      // Position editor.
+      editor.position.at(left, top, popups[id], obj_height || 0);
+
+      // Focus in the first field.
+      var active_popup = popups[id].find('input:visible, textarea:visible').get(0);
+      if (active_popup) {
+        // Save selection if necessary.
+
+        if (editor.$el.find('.fr-marker').length == 0 && editor.core.hasFocus()) {
+          editor.selection.save();
+        }
+
+        editor.events.disableBlur();
+        $(active_popup).select().focus();
+      }
+
+      if (editor.opts.toolbarInline && !editor.helpers.isMobile()) editor.toolbar.hide();
+
+      editor.events.trigger('popups.show.' + id);
     }
-    else {
-      this.wrapDirectContent();
-      elements = this.$element.find(this.valid_nodes.join(','));
-      if (elements.length === 0) elements = [this.$element.get(0)];
+
+    function onShow (id, callback) {
+      editor.events.on('popups.show.' + id, callback);
     }
 
-    var html;
-    var clean_output;
+    /**
+     * Find visible popup.
+     */
+    function isVisible (id) {
+      return (popups[id] && popups[id].hasClass('fr-active')) || false;
+    }
 
-    // Other than the main element.
-    if (elements[0] != this.$element.get(0)) {
-      for (var i = 0; i < elements.length; i++) {
-        var $elem = $(elements[i]);
+    /**
+     * Check if there is any popup visible.
+     */
+    function areVisible () {
+      for (var id in popups) {
+        if (isVisible(id)) return true;
+      }
 
-        if ($elem.find(this.valid_nodes.join(',')).length === 0) {
-          html = $elem.html();
-          clean_output = this.cleanOutput($elem.get(0), remove_whitespace);
+      return false;
+    }
 
-          if (clean_output !== html) {
-            $elem.html(clean_output);
-          }
+    /**
+     * Hide popup.
+     */
+    function hide (id) {
+      if (popups[id] && popups[id].hasClass('fr-active')) {
+        popups[id].removeClass('fr-active fr-above');
+        editor.events.trigger('popups.hide.' + id);
+
+        editor.events.disableBlur();
+        popups[id].find('input, textarea, button, checkbox').filter(':focus').blur();
+      }
+    }
+
+    /**
+     * Assign an event for hiding.
+     */
+    function onHide (id, callback) {
+      editor.events.on('popups.hide.' + id, callback);
+    }
+
+    /**
+     * Get the popup with the specific id.
+     */
+    function get (id) {
+      return popups[id];
+    }
+
+    function onRefresh (id, callback) {
+      editor.events.on('popups.refresh.' + id, callback);
+    }
+
+    /**
+     * Refresh content inside the popup.
+     */
+    function refresh (id) {
+      editor.events.trigger('popups.refresh.' + id);
+
+      var btns = popups[id].find('.fr-command');
+      for (var i = 0; i < btns.length; i++) {
+        var $btn = $(btns[i]);
+        if ($btn.parents('.fr-dropdown-menu').length == 0) {
+          editor.button.refresh($btn);
         }
       }
     }
-    // Main element.
-    else if (this.$element.find(this.valid_nodes.join(',')).length === 0) {
-      html = this.$element.html();
-      clean_output = this.cleanOutput(this.$element.get(0), remove_whitespace);
 
-      if (clean_output !== html) {
-        this.$element.html(clean_output);
+    /**
+     * Hide all popups.
+     */
+    function hideAll (except) {
+      if (typeof except == 'undefined') except = [];
+
+      for (var id in popups) {
+        if (except.indexOf(id) < 0) {
+          hide(id);
+        }
       }
     }
 
-    // Remove idx.
-    this.$element.find('[data-fr-idx]').removeAttr('data-fr-idx');
-    this.$element.find('.fr-wrap').each (function () {
-      $(this).replaceWith($(this).html());
-    })
-
-    this.$element.find('.f-marker').html('');
-    if (save_selection) {
-      this.restoreSelectionByMarkers();
+    var exit_flag = false;
+    function _markExit () {
+      exit_flag = true;
     }
 
-    this.$element.find('span').attr('data-fr-verified', true);
+    function _unmarkExit () {
+      exit_flag = false;
+    }
 
-    this.no_verify = false;
+    function _buildTemplate (id, template) {
+      // Load template.
+      var html = $.FroalaEditor.POPUP_TEMPLATES[id];
+      if (typeof html == 'function') html = html.apply(editor);
+
+      for (var nm in template) {
+        html = html.replace('[_' + nm.toUpperCase() + '_]', template[nm]);
+      }
+
+      return html;
+    }
+
+    /**
+     * Create a popup.
+     */
+    function create (id, template) {
+      var html = _buildTemplate(id, template);
+
+      var $popup = $('<div class="fr-popup' + (editor.helpers.isMobile() ? ' fr-mobile' : ' fr-desktop') +  (editor.opts.toolbarInline ? ' fr-inline' : '') + '"><span class="fr-arrow"></span>' + html + '</div>');
+
+      if (editor.opts.theme) {
+        $popup.addClass(editor.opts.theme + '-theme');
+      }
+
+      if (editor.opts.zIndex > 1) {
+        editor.$tb.css('z-index', editor.opts.zIndex + 2);
+      }
+
+      if (editor.opts.direction != 'auto') {
+        $popup.removeClass('fr-ltr fr-rtl').addClass('fr-' + editor.opts.direction);
+      }
+
+      $popup.find('input, textarea').attr('dir', editor.opts.direction);
+
+      var $container = $('body');
+      $container.append($popup);
+      $popup.data('container', $container);
+
+      popups[id] = $popup;
+
+      // Bind commands from the popup.
+      editor.button.bindCommands($popup, false);
+
+      $(editor.original_window).on('resize.popups' + editor.id, function () {
+        if (!editor.helpers.isMobile()) {
+          editor.events.disableBlur();
+          hide(id);
+          editor.events.enableBlur();
+        }
+      });
+
+      // Make sure we don't trigger blur.
+      $popup.on(editor._mousedown + ' ' + editor._mouseup, function (e) {
+        var originalTarget = e.originalEvent ? (e.originalEvent.target || e.originalEvent.originalTarget) : null;
+        if (originalTarget && originalTarget.tagName != 'INPUT') {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+        else {
+          e.stopPropagation();
+        }
+      });
+
+      // Input blur.
+      $popup.on('focus', 'input, textarea, button, select', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        setTimeout(function () {
+          editor.events.enableBlur();
+        }, 0);
+
+        if (editor.helpers.isMobile()) {
+          var t = $(editor.original_window).scrollTop();
+          setTimeout(function () {
+            $(editor.original_window).scrollTop(t);
+          }, 0);
+        }
+      });
+
+      $popup.on('keydown', 'input, textarea, button, select', function (e) {
+        var key_code = e.which;
+        if ($.FroalaEditor.KEYCODE.TAB == key_code) {
+          e.preventDefault();
+
+          var inputs = $popup.find('input, textarea, button, select').filter(':visible').not(':disabled').toArray();
+          inputs.sort(function (a, b) {
+            if (e.shiftKey) return $(a).attr('tabIndex') < $(b).attr('tabIndex');
+            return $(a).attr('tabIndex') > $(b).attr('tabIndex');
+          });
+
+          editor.events.disableBlur();
+          var idx = inputs.indexOf(this) + 1;
+          if (idx == inputs.length) idx = 0;
+          $(inputs[idx]).focus();
+        }
+
+        if ($.FroalaEditor.KEYCODE.ENTER == key_code) {
+          if ($popup.find('.fr-submit:visible').length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            editor.events.disableBlur();
+            editor.button.exec($popup.find('.fr-submit:visible:first'));
+          }
+        }
+
+        else if ($.FroalaEditor.KEYCODE.ESC == key_code) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (editor.$el.find('.fr-marker')) {
+            editor.events.disableBlur();
+            $(this).data('skip', true);
+            editor.selection.restore();
+            editor.events.enableBlur();
+          }
+
+          if (isVisible(id) && $popup.find('.fr-back:visible').length) {
+            editor.button.exec($popup.find('.fr-back:visible:first'))
+          }
+          else {
+            hide(id);
+          }
+
+          if (editor.opts.toolbarInline) editor.toolbar.showInline(null, true);
+
+          return false;
+        }
+
+        else {
+          e.stopPropagation();
+        }
+      });
+
+      editor.events.on('window.keydown', function (e) {
+        var key_code = e.which;
+        if ($.FroalaEditor.KEYCODE.ESC == key_code) {
+          if (isVisible(id) && editor.opts.toolbarInline) {
+            e.stopPropagation();
+
+            if (isVisible(id) && $popup.find('.fr-back:visible').length) {
+              editor.button.exec($popup.find('.fr-back:visible:first'))
+            }
+            else {
+              hide(id);
+              editor.toolbar.showInline(null, true);
+            }
+            return false;
+          }
+          else {
+            if (isVisible(id) && $popup.find('.fr-back:visible').length) {
+              editor.button.exec($popup.find('.fr-back:visible:first'))
+            }
+            else {
+              hide(id);
+            }
+          }
+        }
+      });
+
+      if (editor.$wp) {
+        editor.events.on('keydown', function (e) {
+          if (!editor.keys.ctrlKey(e) && e.which != $.FroalaEditor.KEYCODE.ESC) {
+            if (isVisible(id) && $popup.find('.fr-back:visible').length) {
+              editor.button.exec($popup.find('.fr-back:visible:first'))
+            }
+            else {
+              hide(id);
+            }
+          }
+        });
+
+        // Blur on inputs.
+        $popup.on('blur', 'input, textarea, button, select', function (e) {
+          // Do not do blur on window change.
+          if (document.activeElement != this && $(this).is(':visible')) {
+            if (editor.events.blurActive()) {
+              editor.events.trigger('blur');
+            }
+
+            editor.events.enableBlur();
+          }
+        });
+      }
+
+      // Mouse down on anything.
+      $popup.on('mousedown touchstart touch', '*', function (e) {
+        if (['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'LABEL'].indexOf(e.currentTarget.tagName) >= 0) {
+          e.stopPropagation();
+        }
+
+        editor.events.disableBlur();
+      });
+
+      // Editor mousedown.
+      editor.events.on('mouseup', function (e) {
+        if ($popup.is(':visible') && exit_flag) {
+          if ($popup.find('input:focus, textarea:focus, button:focus, select:focus').filter(':visible').length > 0) {
+            editor.events.disableBlur();
+          }
+        }
+      }, true);
+
+      // Window mousedown.
+      editor.events.on('window.mouseup', function (e) {
+        if ($popup.is(':visible') && exit_flag) {
+          e.stopPropagation();
+          editor.markers.remove();
+          hide(id);
+        }
+      }, true)
+
+      // Hide everything on blur.
+      editor.events.on('blur', function (e) {
+        hideAll();
+      });
+
+      // Placeholder.
+      $popup.on('keydown keyup change input', 'input, textarea', function (e) {
+        var $span = $(this).next();
+        if ($span.length == 0) {
+          $(this).after('<span>' + $(this).attr('placeholder') + '</span>');
+        }
+
+        $(this).toggleClass('fr-not-empty', $(this).val() != '');
+      });
+
+      // Update the position of the popup.
+      if (editor.$wp && !editor.helpers.isMobile()) {
+        editor.$wp.on('scroll.popup' + id, function (e) {
+          if (isVisible(id) && $popup.parent().get(0) == $(editor.opts.scrollableContainer).get(0)) {
+            var p_top = $popup.offset().top - editor.$wp.offset().top;
+            var w_scroll = editor.$wp.scrollTop();
+            var w_height = editor.$wp.outerHeight();
+
+            if (p_top > w_height || p_top < 0) {
+              $popup.addClass('fr-hidden');
+            }
+            else {
+              $popup.removeClass('fr-hidden');
+            }
+          }
+        });
+      }
+
+      // Toggle checkbox.
+      if (editor.helpers.isIOS()) {
+        $popup.on('touchend', 'label', function () {
+          $('#' + $(this).attr('for')).prop('checked', function (i, val) {
+            return !val;
+          })
+        });
+
+      }
+
+      return $popup;
+    }
+
+    /**
+     * Destroy.
+     */
+    function _destroy () {
+      for (var id in popups) {
+        var $popup = popups[id];
+        $popup.off('mousedown mouseup touchstart touchend');
+        $popup.off('focus', 'input, textarea, button, select');
+        $popup.off('keydown', 'input, textarea, button, select');
+        $popup.off('blur', 'input, textarea, button, select');
+        $popup.off('keydown keyup change', 'input, textarea');
+        $popup.off(editor._mousedown, '*');
+        $popup.html('').removeData().remove();
+        $(editor.original_window).off('resize.popups' + editor.id);
+
+        if (editor.$wp) editor.$wp.off('scroll.popup' + id);
+      }
+    }
+
+    /**
+     * Initialization.
+     */
+    function _init () {
+      editor.events.on('destroy', _destroy, true);
+
+      editor.events.on('window.mousedown', _markExit);
+      editor.events.on('window.touchmove', _unmarkExit);
+
+      editor.events.on('mousedown', function (e) {
+        if (areVisible()) {
+          editor.$el.find('.fr-marker').remove();
+        }
+      })
+
+      editor.events.on('window.mouseup', function () {
+        exit_flag = false;
+      });
+    }
+
+    return {
+      _init: _init,
+      create: create,
+      get: get,
+      show: show,
+      hide: hide,
+      onHide: onHide,
+      hideAll: hideAll,
+      setContainer: setContainer,
+      refresh: refresh,
+      onRefresh: onRefresh,
+      onShow: onShow,
+      isVisible: isVisible,
+      areVisible: areVisible
+    }
   };
 
-})(jQuery);
+
+  $.FroalaEditor.MODULES.refresh = function (editor) {
+    function _default ($btn, cmd) {
+      try {
+        if (editor.document.queryCommandState(cmd) === true) {
+          $btn.addClass('fr-active');
+        }
+      } catch (ex) {
+      }
+    }
+
+    function undo ($btn) {
+      $btn.toggleClass('fr-disabled', !editor.undo.canDo());
+    }
+
+    function redo ($btn) {
+      $btn.toggleClass('fr-disabled', !editor.undo.canRedo());
+    }
+
+    function indent ($btn) {
+      if ($btn.hasClass('fr-no-refresh')) return false;
+
+      var blocks = editor.selection.blocks();
+      for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].tagName == 'LI' && !blocks[i].previousSibling) {
+          $btn.addClass('fr-disabled');
+        }
+        else {
+          $btn.removeClass('fr-disabled');
+          return true;
+        }
+      }
+    }
+
+    function outdent ($btn) {
+      if ($btn.hasClass('fr-no-refresh')) return false;
+
+      var prop = editor.opts.direction == 'rtl' ? 'margin-right' : 'margin-left'
+
+      var blocks = editor.selection.blocks();
+      for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].tagName == 'LI' || blocks[i].parentNode.tagName == 'LI') {
+          $btn.removeClass('fr-disabled');
+          return true;
+        }
+
+        if (editor.helpers.getPX($(blocks[i]).css(prop)) > 0) {
+          $btn.removeClass('fr-disabled');
+          return true;
+        }
+      }
+
+      $btn.addClass('fr-disabled');
+    }
+
+    return {
+      default: _default,
+      undo: undo,
+      redo: redo,
+      outdent: outdent,
+      indent: indent
+    }
+  };
+
+
+  $.extend($.FroalaEditor.DEFAULTS, {
+    editInPopup: false
+  });
+
+  $.FroalaEditor.MODULES.textEdit = function (editor) {
+    function _initPopup () {
+      // Image buttons.
+      var txt = '<div id="fr-text-edit-' + editor.id + '" class="fr-layer fr-text-edit-layer"><div class="fr-input-line"><input type="text" placeholder="' + editor.language.translate('Text') + '" tabIndex="1"></div><div class="fr-action-buttons"><button type="button" class="fr-command fr-submit" data-cmd="updateText" tabIndex="2">' + editor.language.translate('Update') + '</button></div></div>'
+
+      var template = {
+        edit: txt
+      };
+
+      var $popup = editor.popups.create('text.edit', template);
+    }
+
+    function _showPopup () {
+      var $popup = editor.popups.get('text.edit');
+      $popup.find('input').val(editor.$el.text()).trigger('change');
+      editor.popups.setContainer('text.edit', $('body'));
+      editor.popups.show('text.edit', editor.$el.offset().left + editor.$el.outerWidth() / 2, editor.$el.offset().top + editor.$el.outerHeight(), editor.$el.outerHeight());
+    }
+
+    function _initEvents () {
+      // Show edit popup.
+      editor.$el.on(editor._mouseup, function (e) {
+        setTimeout (function () {
+          _showPopup();
+        }, 10);
+      })
+    }
+
+    function update () {
+      var $popup = editor.popups.get('text.edit');
+      editor.$el.text($popup.find('input').val());
+      editor.events.trigger('contentChanged');
+
+      _showPopup();
+    }
+
+    /**
+     * Initialize.
+     */
+    function _init () {
+      if (editor.opts.editInPopup) {
+        _initPopup();
+        _initEvents();
+      }
+    }
+
+    return {
+      _init: _init,
+      update: update
+    }
+  };
+
+  $.FroalaEditor.RegisterCommand('updateText', {
+    focus: false,
+    undo: false,
+    callback: function () {
+      this.textEdit.update();
+    }
+  })
+
+
+
+}));

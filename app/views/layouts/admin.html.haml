@@ -12,8 +12,10 @@
 		= stylesheet_link_tag "swell_media/admin", media: "all", "data-turbolinks-track" => true
 
 		= javascript_include_tag "swell_media/admin"
-
+		:javascript
+			$.FroalaEditor.DEFAULTS.key = '#{SwellMedia.froala_editor_key}';
 	%body
+		= render 'swell_media/assets/s3_json'
 		.wrapper
 			%header.topnavbar-wrapper
 				= render 'admin/navbar'

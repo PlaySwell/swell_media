@@ -51,10 +51,10 @@
 
 				.form-group
 					= f.label :description, 'Summary'
-					= f.text_area :description, class: 'form-control editor-small', rows: 4
+					= f.text_area :description, class: 'form-control wysiwyg', data: { heightmin: 50 }
 
 				.form-group
-					= f.text_area :content, class: 'form-control editor-full', rows: 12
+					= f.text_area :content, class: 'form-control wysiwyg', data: { heightmin: 200 }
 
 
 			.col-xs-4
