@@ -46,12 +46,13 @@ module SwellMedia
 		private
 			def parse_agent
 				browser = Browser.new( ua: self.user_agent )
+				self.human = not( browser.bot? )
 				self.browser_name = browser.name
 				self.browser_version = browser.version
 				self.platform = browser.platform
 				self.device_format = 'tablet_web' if browser.tablet?
 				self.device_format = 'mobile_web' if browser.mobile?
-				self.human = not( browser.bot? )
+				return true
 			end
 
 	end
