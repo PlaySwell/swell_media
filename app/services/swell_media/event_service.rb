@@ -74,7 +74,7 @@ module SwellMedia
 			dup_events = UserEvent.where( name: event.name, guest_session_id: event.guest_session_id ).where( "created_at >= :t", t: window ).order( created_at: :asc )
 
 			if event.activity_obj_id.present?
-				dup_events = dup_events.where( activity_obj_id: activity_obj_id, parent_obj_id: activity_obj_class )
+				dup_events = dup_events.where( activity_obj_id: activity_obj_id, activity_obj_type: activity_obj_class )
 			elsif event.parent_obj_id.present?
 				dup_events = dup_events.by_object( parent_obj )
 			elsif event.name == 'page_view'
