@@ -58,7 +58,8 @@ module SwellMedia
 
 			rate = args[:rate] || UserEvent.rates[ event.name.to_sym ] || UserEvent.rates[ :default ]
 
-			event.publish_at = parent_obj.try( :publish_at ) || args[:publish_at] || Time.zone.now unless args[:unpublished]
+
+			event.publish_at = args[:publish_at] || Time.zone.now unless args[:unpublished]
 
 			# setting owner_type so logging with nill owner doesn't populate owner_type with NilClass
 			event.parent_obj_type = parent_obj.nil? ? nil : parent_obj.class.name
