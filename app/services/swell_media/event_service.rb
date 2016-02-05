@@ -14,6 +14,8 @@ module SwellMedia
 				return false
 			end
 
+			human = args[:guest_session_attributes][:human]
+
 			event = UserEvent.new( name: name.to_s, guest_session_id: args[:guest_session_attributes][:id] )
 
 			event.user_id = args[:user].try( :id )
@@ -55,6 +57,7 @@ module SwellMedia
 			event.category_id = parent_obj.try( :category_id )
 
 			event.content = args[:content]
+			event.human = human if event.respond_to? :human=
 
 			rate = args[:rate] || UserEvent.rates[ event.name.to_sym ] || UserEvent.rates[ :default ]
 
@@ -105,7 +108,7 @@ module SwellMedia
 					end
 				end
 
-				GoogleAnalyticsEventService.log( event, { client_id: args[:ga_client_id] } ) unless !SwellMedia.google_analytics_event_logging || args[:opt_out_google_analytics]
+				GoogleAnalyticsEventService.log( event, { client_id: args[:ga_client_id] } ) unless not( SwellMedia.google_analytics_event_logging ) || args[:opt_out_google_analytics] || SwellMedia.google_analytics_event_logging_white_list.blank? || not( SwellMedia.google_analytics_event_logging_white_list.include?(name.to_s) )
 
 				return event
 			end
