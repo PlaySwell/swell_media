@@ -134,8 +134,9 @@ module SwellMedia
 				common_terms = ["able", "about", "above", "across", "after", "almost", "also", "among", "around", "back", "because", "been", "below", "came", "cannot", "come", "cool", "could", "dear", "does", "down", "each", "either", "else", "ever", "every", "find", "first", "from", "from", "gave", "give", "goodhave", "have", "hers", "however", "inside", "into", "its", "just", "least", "like", "likely", "little", "live", "long", "made", "make", "many", "might", "more", "most", "must", "neither", "number", "often", "only", "other", "our", "outside", "over", "part", "people", "place", "rather", "said", "says", "should", "show", "side", "since", "some", "sound", "take", "than", "that", "the", "their", "them",  "then", "there", "these", "they", "thing", "this", "those", "time", "twas", "under", "upon", "was", "wants", "were", "what", "whatever", "when", "where", "which", "while", "whom", "will", "with", "within", "work", "would", "write", "year", "you", "your"]
 				
 				# auto-tag hashtags
-				unless self.content.blank?
-					hashtags = self.sanitized_content.scan( /#[a-zA-Z_]+/ ).flatten.each{ |tag| tag[0]='' } 
+				unless self.description.blank?
+					# hashtags must start with a # and must contain at least one letter
+					hashtags = self.sanitized_description.scan( /#([a-zA-Z_0-9]*[a-zA-Z][a-zA-Z_0-9]*)/ ).flatten.uniq
 					hashtags.each{ |tag| self.tags << tag unless self.tags.include?( tag ) }
 				end
 
