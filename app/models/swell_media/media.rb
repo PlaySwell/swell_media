@@ -137,11 +137,17 @@ module SwellMedia
 				unless self.description.blank?
 					# hashtags must start with a # and must contain at least one letter
 					hashtags = self.sanitized_description.scan( /#([a-zA-Z_0-9]*[a-zA-Z][a-zA-Z_0-9]*)/ ).flatten.uniq
-					hashtags.each{ |tag| self.tags << tag unless self.tags.include?( tag ) }
+					new_tags = (hashtags + self.tags).uniq.sort
+
+					self.tags = new_tags unless new_tags & (self.tags || []) == new_tags
 				end
 
-				self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
-				self.tags.each{ |tag| self.keywords << tag.to_s unless self.keywords.include?( tag.to_s )}
+				new_keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
+				self.tags.each{ |tag| new_keywords << tag.to_s unless new_keywords.include?( tag.to_s )}
+
+				new_keywords = new_keywords.uniq.sort
+
+				self.keywords = new_keywords unless new_keywords & (self.keywords || []) == new_keywords
 
 			end
 
