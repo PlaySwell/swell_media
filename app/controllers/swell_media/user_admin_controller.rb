@@ -20,6 +20,13 @@ module SwellMedia
 
 			@users = SwellMedia.registered_user_class.constantize.order( "#{sort_by} #{sort_dir}" )
 
+
+			( params[:filters] || [] ).each do |key, value|
+
+				@users = @users.where( key => value ) unless value.blank?
+
+			end
+
 			if params[:q].present?
 				@users = @users.where( "name like :q OR first_name like :q OR last_name like :q OR email like :q", q: "%#{params[:q]}%" )
 			end
