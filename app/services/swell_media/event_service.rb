@@ -102,7 +102,17 @@ module SwellMedia
 				event.save
 				count_cache_field = "cached_#{name}_count"
 
-				if parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
+				if human && parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
+					if event.parent_action == 'destroy'
+						parent_obj.class.name.constantize.decrement_counter( count_cache_field, parent_obj.id )
+					else
+						parent_obj.class.name.constantize.increment_counter( count_cache_field, parent_obj.id )
+					end
+				end
+
+				count_cache_field = "decayed_cached_#{name}_count"
+
+				if human && parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
 					if event.parent_action == 'destroy'
 						parent_obj.class.name.constantize.decrement_counter( count_cache_field, parent_obj.id )
 					else
