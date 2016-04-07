@@ -15,7 +15,7 @@ module SwellMedia
 		def self.create_from_request( request, args={} )
 			# todo -- more
 			session = self.new( user: args[:user],
-								ip: request.ip, 
+								ip: request.remote_ip,
 								user_agent: request.user_agent, 
 								original_http_referrer: request.referrer,
 								last_http_referrer: request.referrer,
