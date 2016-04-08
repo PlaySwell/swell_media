@@ -65,6 +65,11 @@ module SwellMedia
 			self.sanitized_content.size
 		end
 
+		def comments( args = {} )
+			user_posts = SwellSocial::UserPost.where( parent_obj_id: self.id, parent_obj_type: self.class.name.demodulize )
+			user_posts.order( created_at: (args[:order] || :desc) )
+		end
+
 		def page_meta
 			if self.title.present?
 				title = "#{self.title} | #{SwellMedia.app_name}"
