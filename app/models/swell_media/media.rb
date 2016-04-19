@@ -66,7 +66,7 @@ module SwellMedia
 		end
 
 		def comments( args = {} )
-			user_posts = SwellSocial::UserPost.where( parent_obj_id: self.id, parent_obj_type: self.class.name.demodulize )
+			user_posts = SwellSocial::UserPost.where( parent_obj_id: self.id, parent_obj_type: self.class.name )
 			user_posts.order( created_at: (args[:order] || :desc) )
 		end
 
