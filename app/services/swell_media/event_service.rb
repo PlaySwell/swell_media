@@ -103,6 +103,19 @@ module SwellMedia
 
 				count_cache_field = "cached_#{name}_count"
 
+				if human
+
+					# Increment UserEvent Aggregation Stats
+					begin
+
+						SwellMedia::UserEventStat.find_or_create_and_increment_by_user_event( event )
+
+					rescue Exception => e
+						puts e
+					end
+
+				end
+
 				if human && parent_obj.present? && parent_obj.respond_to?( count_cache_field ) && args[:update_caches]
 
 					if event.parent_action == 'destroy'
