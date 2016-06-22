@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -33,7 +34,7 @@
 
   'use strict';
 
-  $.FroalaEditor.PLUGINS.lists = function (editor) {
+  $.FE.PLUGINS.lists = function (editor) {
     function _openFlag(tag_name) {
       return '<span class="fr-open-' + tag_name.toLowerCase() + '"></span>';
     }
@@ -177,7 +178,7 @@
     function format(tag_name) {
       // Wrap.
       editor.selection.save();
-      editor.html.wrap(true, true);
+      editor.html.wrap(true, true, true, true);
       editor.selection.restore();
 
       var blocks = editor.selection.blocks();
@@ -310,7 +311,7 @@
 
       // TAB key in lists.
       editor.events.on('keydown', function (e) {
-        if (e.which == $.FroalaEditor.KEYCODE.TAB) {
+        if (e.which == $.FE.KEYCODE.TAB) {
           var do_indent;
           var blocks = editor.selection.blocks();
           var blks = [];
@@ -346,33 +347,35 @@
   }
 
   // Register the font size command.
-  $.FroalaEditor.RegisterCommand('formatUL', {
+  $.FE.RegisterCommand('formatUL', {
     title: 'Unordered List',
     refresh: function ($btn) {
       this.lists.refresh($btn, 'UL');
     },
     callback: function () {
       this.lists.format('UL');
-    }
+    },
+    plugin: 'lists'
   })
 
   // Register the font size command.
-  $.FroalaEditor.RegisterCommand('formatOL', {
+  $.FE.RegisterCommand('formatOL', {
     title: 'Ordered List',
     refresh: function ($btn) {
       this.lists.refresh($btn, 'OL');
     },
     callback: function () {
       this.lists.format('OL');
-    }
+    },
+    plugin: 'lists'
   })
 
   // Add the list icons.
-  $.FroalaEditor.DefineIcon('formatUL', {
+  $.FE.DefineIcon('formatUL', {
     NAME: 'list-ul'
   });
 
-  $.FroalaEditor.DefineIcon('formatOL', {
+  $.FE.DefineIcon('formatOL', {
     NAME: 'list-ol'
   });
 

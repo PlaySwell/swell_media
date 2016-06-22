@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * Portuguese spoken in Portugal
  */
 
-$.FroalaEditor.LANGUAGE['pt_pt'] = {
+$.FE.LANGUAGE['pt_pt'] = {
   translation: {
     // Place holder
     "Type something": "Digite algo",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['pt_pt'] = {
 
     // Tables
     "Insert Table": "Inserir tabela",
-    "Header": "Cabe\u00e7alho",
+    "Table Header": "Cabe\u00e7alho da tabela",
+    "Remove Table": "Remover mesa",
+    "Table Style": "estilo de tabela",
+    "Horizontal Align": "Alinhamento horizontal",
     "Row": "Linha",
     "Insert row above": "Inserir linha antes",
     "Insert row below": "Inserir linha depois",
@@ -221,7 +224,10 @@ $.FroalaEditor.LANGUAGE['pt_pt'] = {
     // Quote
     "Quote": "Cita\u00e7\u00e3o",
     "Increase": "Aumentar",
-    "Decrease": "Diminuir"
+    "Decrease": "Diminuir",
+
+    // Quick Insert
+    "Quick Insert": "Inser\u00e7\u00e3o r\u00e1pida"
   },
   direction: "ltr"
 };

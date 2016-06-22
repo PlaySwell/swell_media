@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -34,19 +35,19 @@
   'use strict';
 
   // Extend defaults.
-  $.extend($.FroalaEditor.DEFAULTS, {
+  $.extend($.FE.DEFAULTS, {
     charCounterMax: -1,
     charCounterCount: true
   });
 
 
-  $.FroalaEditor.PLUGINS.charCounter = function (editor) {
+  $.FE.PLUGINS.charCounter = function (editor) {
     var $counter;
 
     /**
      * Get the char number.
      */
-    function _charNumber () {
+    function count () {
       return editor.$el.text().length;
     }
 
@@ -58,7 +59,7 @@
       if (editor.opts.charCounterMax < 0) return true;
 
       // Continue if enough characters.
-      if (_charNumber() < editor.opts.charCounterMax) return true;
+      if (count() < editor.opts.charCounterMax) return true;
 
       // Stop if the key will produce a new char.
       var keyCode = e.which;
@@ -79,7 +80,7 @@
       if (editor.opts.charCounterMax < 0) return html;
 
       var len = $('<div>').html(html).text().length;
-      if (len + _charNumber() <= editor.opts.charCounterMax) return html;
+      if (len + count() <= editor.opts.charCounterMax) return html;
 
       editor.events.trigger('charCounter.exceeded');
 
@@ -91,7 +92,7 @@
      */
     function _updateCharNumber () {
       if (editor.opts.charCounterCount) {
-        var chars = _charNumber() + (editor.opts.charCounterMax > 0 ?  '/' + editor.opts.charCounterMax : '');
+        var chars = count() + (editor.opts.charCounterMax > 0 ?  '/' + editor.opts.charCounterMax : '');
 
         $counter.text(chars);
 
@@ -101,7 +102,7 @@
 
         // Scroll size correction.
         var scroll_size = editor.$wp.get(0).offsetWidth - editor.$wp.get(0).clientWidth;
-        if (scroll_size > 0) {
+        if (scroll_size >= 0) {
           if (editor.opts.direction == 'rtl') {
             $counter.css('margin-left', scroll_size);
           }
@@ -121,24 +122,28 @@
       if (!editor.opts.charCounterCount) return false;
 
       $counter = $('<span class="fr-counter"></span>');
+      $counter.css('bottom', editor.$wp.css('border-bottom-width'));
       editor.$box.append($counter);
 
       editor.events.on('keydown', _checkCharNumber, true);
       editor.events.on('paste.afterCleanup', _checkCharNumberOnPaste);
-      editor.events.on('keyup', _updateCharNumber);
-      editor.events.on('contentChanged', _updateCharNumber);
-      editor.events.on('charCounter.update', _updateCharNumber);
+      editor.events.on('keyup contentChanged', function () {
+        editor.events.trigger('charCounter.update');
+      });
 
-      _updateCharNumber();
+      editor.events.on('charCounter.update', _updateCharNumber);
+      editor.events.trigger('charCounter.update');
 
       editor.events.on('destroy', function () {
-        $(editor.original_window).off('resize.char' + editor.id);
+        $(editor.o_win).off('resize.char' + editor.id);
         $counter.removeData().remove();
+        $counter = null;
       });
     }
 
     return {
-      _init: _init
+      _init: _init,
+      count: count
     }
   }
 

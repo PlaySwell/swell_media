@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -33,7 +34,7 @@
 
   'use strict';
 
-  $.extend($.FroalaEditor.DEFAULTS, {
+  $.extend($.FE.DEFAULTS, {
     paragraphFormat: {
       N: 'Normal',
       H1: 'Heading 1',
@@ -45,7 +46,7 @@
     paragraphFormatSelection: false
   })
 
-  $.FroalaEditor.PLUGINS.paragraphFormat = function (editor) {
+  $.FE.PLUGINS.paragraphFormat = function (editor) {
 
     /**
      * Style content inside LI when LI is selected.
@@ -137,7 +138,7 @@
 
       // Wrap.
       editor.selection.save();
-      editor.html.wrap(true, true, true);
+      editor.html.wrap(true, true, true, true);
       editor.selection.restore();
 
       // Get blocks.
@@ -150,7 +151,7 @@
 
       // Go through each block and apply style to it.
       for (var i = 0; i < blocks.length; i++) {
-        if (blocks[i].tagName != val) {
+        if (blocks[i].tagName != val && !editor.node.isList(blocks[i])) {
           var $blk = $(blocks[i]);
 
           // Style the content inside LI when there is selection right in LI.
@@ -159,7 +160,7 @@
           }
 
           // Style the content inside LI when we have other tag in LI.
-          else if (blocks[i].parentNode.tagName == 'LI') {
+          else if (blocks[i].parentNode.tagName == 'LI' && blocks[i]) {
             _styleLiWithBlocks($blk, val);
           }
 
@@ -207,25 +208,27 @@
       }
     }
 
-    function refresh ($btn, $dropdown) {
-      var blocks = editor.selection.blocks();
+    function refresh ($btn) {
+      if (editor.opts.paragraphFormatSelection) {
+        var blocks = editor.selection.blocks();
 
-      if (blocks.length) {
-        var blk = blocks[0];
-        var tag = 'N';
-        var default_tag = editor.html.defaultTag();
-        if (blk.tagName.toLowerCase() != default_tag && blk != editor.$el.get(0)) {
-          tag = blk.tagName;
+        if (blocks.length) {
+          var blk = blocks[0];
+          var tag = 'N';
+          var default_tag = editor.html.defaultTag();
+          if (blk.tagName.toLowerCase() != default_tag && blk != editor.$el.get(0)) {
+            tag = blk.tagName;
+          }
+
+          if (['LI', 'TD', 'TH'].indexOf(tag) >= 0) {
+            tag = 'N';
+          }
+
+          $btn.find('> span').text(editor.opts.paragraphFormat[tag]);
         }
-
-        if (['LI', 'TD', 'TH'].indexOf(tag) >= 0) {
-          tag = 'N';
+        else {
+          $btn.find('> span').text(editor.opts.paragraphFormat.N);
         }
-
-        $btn.find('> span').text($dropdown.find('.fr-command[data-param1="' + tag + '"]').text())
-      }
-      else {
-        $btn.find('> span').text($dropdown.find('.fr-command[data-param1="N"]').text());
       }
     }
 
@@ -237,7 +240,12 @@
   }
 
   // Register the font size command.
-  $.FroalaEditor.RegisterCommand('paragraphFormat', {
+  $.FE.RegisterShortcut($.FE.KEYCODE.ZERO, 'paragraphFormat', 'N', '0', false, true);
+  $.FE.RegisterShortcut($.FE.KEYCODE.ONE, 'paragraphFormat', 'H1', '1', false, true);
+  $.FE.RegisterShortcut($.FE.KEYCODE.TWO, 'paragraphFormat', 'H2', '2', false, true);
+  $.FE.RegisterShortcut($.FE.KEYCODE.THREE, 'paragraphFormat', 'H3', '3', false, true);
+  $.FE.RegisterShortcut($.FE.KEYCODE.FOUR, 'paragraphFormat', 'H4', '4', false, true);
+  $.FE.RegisterCommand('paragraphFormat', {
     type: 'dropdown',
     displaySelection: function (editor) {
       return editor.opts.paragraphFormatSelection;
@@ -248,7 +256,17 @@
       var c = '<ul class="fr-dropdown-list">';
       var options =  this.opts.paragraphFormat;
       for (var val in options) {
-        c += '<li><' + val + ' style="padding: 0 !important; margin: 0 !important;"><a class="fr-command" data-cmd="paragraphFormat" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '">' + this.language.translate(options[val]) + '</a></' + val + '></li>';
+        if (options.hasOwnProperty(val)) {
+          var shortcut = this.shortcuts.get('paragraphFormat.' + val);
+          if (shortcut) {
+            shortcut = '<span class="fr-shortcut">' + shortcut + '</span>';
+          }
+          else {
+            shortcut = '';
+          }
+
+          c += '<li><' + (val == 'N' ? this.html.defaultTag() || 'DIV' : val) + ' style="padding: 0 !important; margin: 0 !important;"><a class="fr-command" data-cmd="paragraphFormat" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '">' + this.language.translate(options[val]) + '</a></' + (val == 'N' ? this.html.defaultTag() || 'DIV' : val) + '></li>';
+        }
       }
       c += '</ul>';
 
@@ -258,16 +276,17 @@
     callback: function (cmd, val) {
       this.paragraphFormat.apply(val);
     },
-    refresh: function ($btn, $dropdown) {
-      this.paragraphFormat.refresh($btn, $dropdown);
+    refresh: function ($btn) {
+      this.paragraphFormat.refresh($btn);
     },
     refreshOnShow: function ($btn, $dropdown) {
       this.paragraphFormat.refreshOnShow($btn, $dropdown);
-    }
+    },
+    plugin: 'paragraphFormat'
   })
 
   // Add the font size icon.
-  $.FroalaEditor.DefineIcon('paragraphFormat', {
+  $.FE.DefineIcon('paragraphFormat', {
     NAME: 'paragraph'
   });
 

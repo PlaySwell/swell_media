@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -34,100 +35,51 @@
   'use strict';
 
   // Extend defaults.
-  $.extend($.FroalaEditor.DEFAULTS, {
+  $.extend($.FE.DEFAULTS, {
     entities: '&amp;&lt;&gt;&quot;&apos;&iexcl;&cent;&pound;&curren;&yen;&brvbar;&sect;&uml;&copy;&ordf;&laquo;&not;&shy;&reg;&macr;&deg;&plusmn;&sup2;&sup3;&acute;&micro;&para;&middot;&cedil;&sup1;&ordm;&raquo;&frac14;&frac12;&frac34;&iquest;&Agrave;&Aacute;&Acirc;&Atilde;&Auml;&Aring;&AElig;&Ccedil;&Egrave;&Eacute;&Ecirc;&Euml;&Igrave;&Iacute;&Icirc;&Iuml;&ETH;&Ntilde;&Ograve;&Oacute;&Ocirc;&Otilde;&Ouml;&times;&Oslash;&Ugrave;&Uacute;&Ucirc;&Uuml;&Yacute;&THORN;&szlig;&agrave;&aacute;&acirc;&atilde;&auml;&aring;&aelig;&ccedil;&egrave;&eacute;&ecirc;&euml;&igrave;&iacute;&icirc;&iuml;&eth;&ntilde;&ograve;&oacute;&ocirc;&otilde;&ouml;&divide;&oslash;&ugrave;&uacute;&ucirc;&uuml;&yacute;&thorn;&yuml;&OElig;&oelig;&Scaron;&scaron;&Yuml;&fnof;&circ;&tilde;&Alpha;&Beta;&Gamma;&Delta;&Epsilon;&Zeta;&Eta;&Theta;&Iota;&Kappa;&Lambda;&Mu;&Nu;&Xi;&Omicron;&Pi;&Rho;&Sigma;&Tau;&Upsilon;&Phi;&Chi;&Psi;&Omega;&alpha;&beta;&gamma;&delta;&epsilon;&zeta;&eta;&theta;&iota;&kappa;&lambda;&mu;&nu;&xi;&omicron;&pi;&rho;&sigmaf;&sigma;&tau;&upsilon;&phi;&chi;&psi;&omega;&thetasym;&upsih;&piv;&ensp;&emsp;&thinsp;&zwnj;&zwj;&lrm;&rlm;&ndash;&mdash;&lsquo;&rsquo;&sbquo;&ldquo;&rdquo;&bdquo;&dagger;&Dagger;&bull;&hellip;&permil;&prime;&Prime;&lsaquo;&rsaquo;&oline;&frasl;&euro;&image;&weierp;&real;&trade;&alefsym;&larr;&uarr;&rarr;&darr;&harr;&crarr;&lArr;&uArr;&rArr;&dArr;&hArr;&forall;&part;&exist;&empty;&nabla;&isin;&notin;&ni;&prod;&sum;&minus;&lowast;&radic;&prop;&infin;&ang;&and;&or;&cap;&cup;&int;&there4;&sim;&cong;&asymp;&ne;&equiv;&le;&ge;&sub;&sup;&nsub;&sube;&supe;&oplus;&otimes;&perp;&sdot;&lceil;&rceil;&lfloor;&rfloor;&lang;&rang;&loz;&spades;&clubs;&hearts;&diams;'
   });
 
 
-  $.FroalaEditor.PLUGINS.entities = function (editor) {
+  $.FE.PLUGINS.entities = function (editor) {
     var _reg_exp;
     var _map;
-    var $iframe;
+
+    function _process(el) {
+      var text = el.textContent;
+      if (text.match(_reg_exp)) {
+        var new_text = '';
+        for (var j = 0; j < text.length; j++) {
+          if (_map[text[j]]) new_text += _map[text[j]];
+          else new_text += text[j];
+        }
+        el.textContent = new_text;
+      }
+    }
 
     function _encode (el) {
-      if (el.nodeType == Node.COMMENT_NODE) return '<!--' + el.nodeValue + '-->';
-      if (el.nodeType != Node.ELEMENT_NODE) return el.outerHTML;
-      if (el.tagName == 'IFRAME') return el.outerHTML;
+      if (el && ['STYLE', 'SCRIPT'].indexOf(el.tagName) >= 0) return true;
 
-      var contents = el.childNodes;
+      var contents = editor.node.contents(el);
 
-      if (contents.length === 0 && (editor.opts.fullPage || el.tagName != 'BODY')) return el.outerHTML;
-
-      var str = '';
       for (var i = 0; i < contents.length; i++) {
         if (contents[i].nodeType == Node.TEXT_NODE) {
-          var text = contents[i].textContent;
-          if (text.match(_reg_exp)) {
-            var new_text = '';
-            for (var j = 0; j < text.length; j++) {
-              if (_map[text[j]]) new_text += _map[text[j]];
-              else new_text += text[j];
-            }
-            str += new_text.replace(/\u00A0/g, '&nbsp;');
-          }
-          else {
-            str += text.replace(/\u00A0/g, '&nbsp;');
-          }
+          _process(contents[i]);
         }
         else {
-          str += _encode(contents[i]);
+          _encode(contents[i]);
         }
       }
 
-      if (editor.opts.fullPage || el.tagName != 'BODY') {
-        return editor.node.openTagString(el) + str + editor.node.closeTagString(el);
-      }
-      else {
-        return str;
-      }
+      if (el.nodeType == Node.TEXT_NODE) _process(el);
     }
 
     /**
      * Encode entities.
      */
     function _encodeEntities (html) {
-      // Replace script tag with comments.
-      var scripts = [];
-      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, function (str) {
-        scripts.push(str);
-        return '<!--[FROALA.EDITOR.SCRIPT ' + (scripts.length - 1) + ']-->';
-      });
+      if (html.length === 0) return '';
 
-      html = html.replace(/<img((?:[\w\W]*?)) src="/g, '<img$1 data-src="');
-
-      if (!editor.opts.fullPage) html = '<html><head></head><body>' + html + '</body></html>';
-
-      $iframe = $('<iframe style="width:0; height:0; position: absolute; left: -2000px; display: none;">');
-      $('body').append($iframe);
-      $iframe.get(0).contentWindow.document.open();
-      $iframe.get(0).contentWindow.document.write(html);
-      $iframe.get(0).contentWindow.document.close();
-
-      var el;
-      if (editor.opts.fullPage) {
-        el = $iframe.contents().find('html').get(0);
-      }
-      else {
-        el = $iframe.get(0).contentDocument.getElementsByTagName('body')[0];
-      }
-
-      var encoded_html = _encode(el);
-      if (editor.opts.fullPage) {
-        var doctype = editor.html.getDoctype($iframe.get(0).contentWindow.document);
-
-        encoded_html = doctype + encoded_html;
-      }
-
-      // Replace script comments with the original script.
-      encoded_html = encoded_html.replace(/<!--\[FROALA\.EDITOR\.SCRIPT ([\d]*)]-->/gi, function (str, a1) {
-        return scripts[parseInt(a1, 10)];
-      });
-
-      encoded_html = encoded_html.replace(/<img((?:[\w\W]*?)) data-src="/g, '<img$1 src="');
-
-      $iframe.remove();
-
-      return encoded_html;
+      return editor.clean.exec(html, _encode);
     }
 
     /*

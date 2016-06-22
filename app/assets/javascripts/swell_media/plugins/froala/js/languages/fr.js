@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * French
  */
 
-$.FroalaEditor.LANGUAGE['fr'] = {
+$.FE.LANGUAGE['fr'] = {
   translation: {
     // Place holder
     "Type something": "Tapez quelque chose",
@@ -84,7 +84,7 @@ $.FroalaEditor.LANGUAGE['fr'] = {
     "Drop image": "D\u00e9posez l'image",
     "or click": "ou cliquez",
     "Manage Images": "Gestion des images",
-    "Loading": "En chargeant",
+    "Loading": "Chargement",
     "Deleting": "Suppression",
     "Tags": "\u00c9tiquettes",
     "Are you sure? Image will be deleted.": "Etes-vous s\u00fbr? Image sera supprim\u00e9e.",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['fr'] = {
 
     // Tables
     "Insert Table": "Ins\u00e9rer un tableau",
-    "Header": "Ent\u00eate",
+    "Table Header": "Ent\u00eate de tableau",
+    "Remove Table": "Effacer le tableau",
+    "Table Style": "Style de tableau",
+    "Horizontal Align": "Aligner horizontale",
     "Row": "Ligne",
     "Insert row above": "Ins\u00e9rer une ligne avant",
     "Insert row below": "Ins\u00e9rer une ligne apr\u00e8s",
@@ -221,7 +224,10 @@ $.FroalaEditor.LANGUAGE['fr'] = {
     // Quote
     "Quote": "Citer",
     "Increase": "Augmentation",
-    "Decrease": "Diminution"
+    "Decrease": "Diminution",
+
+    // Quick Insert
+    "Quick Insert": "Ins\u00e9rez rapide"
   },
   direction: "ltr"
 };

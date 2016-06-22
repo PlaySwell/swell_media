@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * Spanish
  */
 
-$.FroalaEditor.LANGUAGE['es'] = {
+$.FE.LANGUAGE['es'] = {
   translation: {
     // Place holder
     "Type something": "Escriba algo",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['es'] = {
 
     // Tables
     "Insert Table": "Insertar tabla",
-    "Header": "Encabezamiento",
+    "Table Header": "Encabezado de la tabla",
+    "Remove Table": "Retire la tabla",
+    "Table Style": "Estilo de tabla",
+    "Horizontal Align": "Alinear horizontal",
     "Row": "Fila",
     "Insert row above": "Insertar fila antes",
     "Insert row below": "Insertar fila despu\u00e9s",
@@ -120,7 +123,7 @@ $.FroalaEditor.LANGUAGE['es'] = {
     "Horizontal split": "Divisi\u00f3n horizontal",
     "Vertical split": "Divisi\u00f3n vertical",
     "Cell Background": "Fondo de la celda",
-    "Vertical Align": "Alinear Vertical",
+    "Vertical Align": "Alinear vertical",
     "Top": "Cima",
     "Middle": "Medio",
     "Bottom": "Del fondo",
@@ -221,7 +224,10 @@ $.FroalaEditor.LANGUAGE['es'] = {
     // Quote
     "Quote": "Cita",
     "Increase": "Aumentar",
-    "Decrease": "Disminuci\u00f3n"
+    "Decrease": "Disminuci\u00f3n",
+
+    // Quick Insert
+    "Quick Insert": "Inserci\u00f3n r\u00e1pida"
   },
   direction: "ltr"
 };

@@ -1,6 +1,10 @@
 @import '../variables.less';
 @import '../mixins.less';
 
+.fr-element img {
+  cursor: pointer;
+}
+
 .fr-image-resizer {
   position: absolute;
   border: solid 1px @ui-color;
@@ -72,7 +76,7 @@
     border-color: @ui-color;
   }
 
-  form {
+  .fr-form {
     .opacity(0);
     position: absolute;
     top: 0;
@@ -158,6 +162,10 @@
       }
     }
   }
+}
+
+.fr-uploading {
+  .opacity(0.4);
 }
 
 @keyframes loading {

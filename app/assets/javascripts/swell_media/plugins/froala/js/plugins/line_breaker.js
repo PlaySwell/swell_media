@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -34,12 +35,12 @@
   'use strict';
 
   // Extend defaults.
-  $.extend($.FroalaEditor.DEFAULTS, {
-    lineBreakerTags: ['table', 'hr', 'iframe', 'form', 'dl'],
-    lineBreakerOffset: 10
+  $.extend($.FE.DEFAULTS, {
+    lineBreakerTags: ['table', 'hr', 'form', 'dl', 'span.fr-video'],
+    lineBreakerOffset: 15
   });
 
-  $.FroalaEditor.PLUGINS.lineBreaker = function (editor) {
+  $.FE.PLUGINS.lineBreaker = function (editor) {
     var $line_breaker;
     var mouseDownFlag;
     var mouseMoveTimer;
@@ -102,25 +103,27 @@
       }
 
       if (editor.opts.iframe) {
-        breakerLeft += editor.$iframe.offset().left - $(editor.original_window).scrollLeft();
-        breakerTop += editor.$iframe.offset().top - $(editor.original_window).scrollTop();
+        breakerLeft += editor.$iframe.offset().left - $(editor.o_win).scrollLeft();
+        breakerTop += editor.$iframe.offset().top - $(editor.o_win).scrollTop();
       }
 
+      editor.$box.append($line_breaker);
+
       // Set line breaker's top, left and width.
-      $line_breaker.css('top', breakerTop - editor.window.pageYOffset);
-      $line_breaker.css('left', breakerLeft - editor.window.pageXOffset);
+      $line_breaker.css('top', breakerTop - editor.win.pageYOffset);
+      $line_breaker.css('left', breakerLeft - editor.win.pageXOffset);
       $line_breaker.css('width', breakerWidth);
 
       $line_breaker.data('tag1', $tag1);
       $line_breaker.data('tag2', $tag2);
 
       // Show the line breaker.
-      $line_breaker.show();
+      $line_breaker.addClass('fr-visible').data('instance', editor);
     }
 
     /*
      * Check tag siblings.
-     * The line breaker hould apper if there is no sibling or if the sibling is also in the line breaker tags list.
+     * The line breaker hould appear if there is no sibling or if the sibling is also in the line breaker tags list.
      */
     function _checkTagSiblings ($tag, mouseY) {
       // Tag's Y top and bottom coordinate.
@@ -150,12 +153,14 @@
             if ($sibling) {
               // Show line breaker.
               _show($tag, $sibling);
+              return true;
             }
 
           // No next sibling.
           } else {
             // Show line breaker
             _show($tag, null);
+            return true;
           }
         }
 
@@ -167,6 +172,7 @@
           if (!tag.previousSibling) {
             // Show line breaker
             _show(null, $tag);
+            return true;
 
           // Tag has prev sibling.
           } else {
@@ -176,10 +182,13 @@
             if ($sibling) {
               // Show line breaker.
               _show($sibling, $tag);
+              return true;
             }
           }
         }
       }
+
+      $line_breaker.removeClass('fr-visible').removeData('instance');
     }
 
     /*
@@ -194,7 +203,7 @@
         if (editor.$el.find($tag).length === 0) return null;
 
         // Tag is in the line breaker tags list.
-        if (tag.nodeType != Node.TEXT_NODE && editor.opts.lineBreakerTags.indexOf(tag.tagName.toLowerCase()) >= 0) {
+        if (tag.nodeType != Node.TEXT_NODE && $tag.is(editor.opts.lineBreakerTags.join(','))) {
           return $tag;
         }
 
@@ -214,23 +223,22 @@
      */
     function _tagUnder (e) {
       mouseMoveTimer = null;
-      $line_breaker.hide();
 
       // The tag for which the line breaker should be showed.
       var $tag = null;
 
       // The tag under the mouse cursor.
-      var tag_under = editor.document.elementFromPoint(e.pageX - editor.window.pageXOffset, e.pageY - editor.window.pageYOffset);
+      var tag_under = editor.doc.elementFromPoint(e.pageX - editor.win.pageXOffset, e.pageY - editor.win.pageYOffset);
       var i;
       var tag_above;
       var tag_below;
 
       // Tag is the editor element. Look for closest tag above and bellow.
-      if (editor.node.isElement(tag_under)) {
+      if (tag_under && (tag_under.tagName == 'HTML' || tag_under.tagName == 'BODY' || editor.node.isElement(tag_under))) {
         // Look 1px up and 1 down until a tag is found or the line breaker offset is reached.
         for (i = 1; i <= editor.opts.lineBreakerOffset; i++) {
           // Look for tag above.
-          tag_above = editor.document.elementFromPoint(e.pageX - editor.window.pageXOffset, e.pageY - editor.window.pageYOffset - i);
+          tag_above = editor.doc.elementFromPoint(e.pageX - editor.win.pageXOffset, e.pageY - editor.win.pageYOffset - i);
 
           // We found a tag above.
           if (tag_above && !editor.node.isElement(tag_above) && tag_above != editor.$wp.get(0) && $(tag_above).parents(editor.$wp).length) {
@@ -239,7 +247,7 @@
           }
 
           // Look for tag below.
-          tag_below = editor.document.elementFromPoint(e.pageX - editor.window.pageXOffset, e.pageY - editor.window.pageYOffset + i);
+          tag_below = editor.doc.elementFromPoint(e.pageX - editor.win.pageXOffset, e.pageY - editor.win.pageYOffset + i);
 
           // We found a tag bellow.
           if (tag_below && !editor.node.isElement(tag_below) && tag_below != editor.$wp.get(0) && $(tag_below).parents(editor.$wp).length) {
@@ -258,12 +266,22 @@
       if ($tag) {
         _checkTagSiblings($tag, e.pageY);
       }
+      else if (editor.core.sameInstance($line_breaker)) {
+        $line_breaker.removeClass('fr-visible').removeData('instance');
+      }
     }
 
     /*
      * Set mouse timer to improve performance.
      */
     function _mouseTimer (e) {
+      if ($line_breaker.hasClass('fr-visible') && !editor.core.sameInstance($line_breaker)) return false;
+
+      if (editor.popups.areVisible() || editor.$el.get(0).querySelectorAll('.fr-selected-cell').length) {
+        $line_breaker.removeClass('fr-visible');
+        return true;
+      }
+
       if (mouseDownFlag === false) {
         if (mouseMoveTimer) {
           clearTimeout(mouseMoveTimer);
@@ -281,7 +299,9 @@
         clearTimeout(mouseMoveTimer);
       }
 
-      $line_breaker.hide();
+      if ($line_breaker.hasClass('fr-visible')) {
+        $line_breaker.removeClass('fr-visible').removeData('instance');
+      }
     }
 
     /*
@@ -304,10 +324,12 @@
      * Add new line between the tags.
      */
     function _doLineBreak (e) {
+      if (!editor.core.sameInstance($line_breaker)) return true;
+
       e.preventDefault();
 
       // Hide the line breaker.
-      $line_breaker.hide();
+      $line_breaker.removeClass('fr-visible').removeData('instance');
 
       // Tags between which that line break needs to be done.
       var $tag1 = $line_breaker.data('tag1');
@@ -320,21 +342,21 @@
       if ($tag1 == null) {
         // If the tag is in a TD tag then just add <br> no matter what the default_tag is.
         if (default_tag && $tag2.parent().get(0).tagName != 'TD') {
-          $tag2.before('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br>' + '</' + default_tag + '>')
+          $tag2.before('<' + default_tag + '>' + $.FE.MARKERS + '<br></' + default_tag + '>')
         }
         else {
-          $tag2.before($.FroalaEditor.MARKERS + '<br>');
+          $tag2.before($.FE.MARKERS + '<br>');
         }
 
       // The line break needs to be done either after the last element in the editor or between the 2 tags.
       // Either way the line break is after the first tag.
       } else {
         // If the tag is in a TD tag then just add <br> no matter what the default_tag is.
-        if (default_tag && $tag1.parent().get(0).tagName != 'TD') {
-          $tag1.after('<' + default_tag + '>' + $.FroalaEditor.MARKERS + '<br>' + '</' + default_tag + '>')
+        if (default_tag && $tag1.parent().get(0).tagName != 'TD' && $tag1.parents(default_tag).length === 0) {
+          $tag1.after('<' + default_tag + '>' + $.FE.MARKERS + '<br></' + default_tag + '>')
         }
         else {
-          $tag1.after($.FroalaEditor.MARKERS + '<br>');
+          $tag1.after($.FE.MARKERS + '<br>');
         }
       }
 
@@ -347,33 +369,35 @@
      */
     function _initLineBreaker () {
       // Append line breaker HTML to editor wrapper.
-      $line_breaker = $('<div class="fr-line-breaker"><a role="button" tabindex="-1" title="' + editor.language.translate('Break') + '"><i class="fa fa-plus"></i></a></div>');
-      editor.$wp.append($line_breaker);
+      if (!editor.shared.$line_breaker) {
+        editor.shared.$line_breaker = $('<div class="fr-line-breaker"><a class="fr-floating-btn" role="button" tabindex="-1" title="' + editor.language.translate('Break') + '"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="21" y="11" width="2" height="8"/><rect x="14" y="17" width="7" height="2"/><path d="M14.000,14.000 L14.000,22.013 L9.000,18.031 L14.000,14.000 Z"/></svg></a></div>');
+      }
+
+      $line_breaker = editor.shared.$line_breaker;
+
+      // Editor shared destroy.
+      editor.events.on('shared.destroy', function () {
+        $line_breaker.html('').removeData().remove();
+        $line_breaker = null;
+      }, true);
 
       // Editor destroy.
       editor.events.on('destroy', function () {
-        $line_breaker.html('').removeData().remove();
-      }, true);
+        $line_breaker.removeData('instance').removeClass('fr-visible').appendTo('body');
+        clearTimeout(mouseMoveTimer);
+      }, true)
 
-      $line_breaker.on('mouseleave.linebreaker' + editor.id, _hide);
+      editor.events.$on($line_breaker, 'mouseleave', _hide, true);
 
-      $line_breaker.on('mousemove', function (e) {
+      editor.events.$on($line_breaker, 'mousemove', function (e) {
         e.stopPropagation();
-      })
+      }, true)
 
       // Add new line break.
-      $line_breaker.on('mousedown', 'a', function (e) {
+      editor.events.$on($line_breaker, 'mousedown', 'a', function (e) {
         e.stopPropagation();
-      });
-      $line_breaker.on('click', 'a', _doLineBreak);
-
-      // Editor destroy.
-      editor.events.on('destroy', function () {
-        $line_breaker.off('mouseleave.linebreaker');
-        $line_breaker.off('mousedown');
-        $line_breaker.off('mousedown', 'a');
-        $line_breaker.off('click', 'a');
       }, true);
+      editor.events.$on($line_breaker, 'click', 'a', _doLineBreak, true);
     }
 
     /*
@@ -388,24 +412,19 @@
       mouseDownFlag = false;
 
       // Check tags under the mouse to see if the line breaker needs to be shown.
-      editor.$window.on('mousemove.linebreaker' + editor.id, _mouseTimer);
+      editor.events.$on(editor.$win, 'mousemove', _mouseTimer);
 
       // Hide the line breaker if the page is scrolled.
-      $(editor.window).on('scroll.linebreaker' + editor.id, _hide);
+      editor.events.$on($(editor.win), 'scroll', _hide);
+
+      // Hide the line breaker on cell edit.
+      editor.events.on('popups.show.table.edit', _hide);
 
       // Prevent line breaker from showing while selecting text or dragging images.
-      $(editor.window).on('mousedown.linebreaker' + editor.id, _mouseDown);
+      editor.events.$on($(editor.win), 'mousedown', _mouseDown);
 
       // Mouse is not pressed anymore, line breaker may be shown.
-      $(editor.window).on('mouseup.linebreaker' + editor.id, _mouseUp);
-
-      // Editor destroy.
-      editor.events.on('destroy', function () {
-        editor.$window.off('mousemove.linebreaker' + editor.id);
-        $(editor.window).off('scroll.linebreaker' + editor.id);
-        $(editor.window).off('mousedown.linebreaker' + editor.id);
-        $(editor.window).off('mouseup.linebreaker' + editor.id);
-      }, true);
+      editor.events.$on($(editor.win), 'mouseup', _mouseUp);
     }
 
     return {

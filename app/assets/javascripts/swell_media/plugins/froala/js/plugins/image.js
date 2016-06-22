@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -33,19 +34,19 @@
 
   'use strict';
 
-  $.extend($.FroalaEditor.POPUP_TEMPLATES, {
+  $.extend($.FE.POPUP_TEMPLATES, {
     'image.insert': '[_BUTTONS_][_UPLOAD_LAYER_][_BY_URL_LAYER_][_PROGRESS_BAR_]',
     'image.edit': '[_BUTTONS_]',
     'image.alt': '[_BUTTONS_][_ALT_LAYER_]',
     'image.size': '[_BUTTONS_][_SIZE_LAYER_]'
   })
 
-  $.extend($.FroalaEditor.DEFAULTS, {
+  $.extend($.FE.DEFAULTS, {
     imageInsertButtons: ['imageBack', '|', 'imageUpload', 'imageByURL'],
     imageEditButtons: ['imageReplace', 'imageAlign', 'imageRemove', '|', 'imageLink', 'linkOpen', 'linkEdit', 'linkRemove', '-', 'imageDisplay', 'imageStyle', 'imageAlt', 'imageSize'],
     imageAltButtons: ['imageBack', '|'],
     imageSizeButtons: ['imageBack', '|'],
-    imageUploadURL: 'http://i.froala.com/upload',
+    imageUploadURL: 'https://i.froala.com/upload',
     imageUploadParam: 'file',
     imageUploadParams: {},
     imageUploadToS3: false,
@@ -54,24 +55,30 @@
     imageAllowedTypes: ['jpeg', 'jpg', 'png', 'gif', 'svg+xml'],
     imageResize: true,
     imageResizeWithPercent: false,
-    imageMove: true,
+    imageRoundPercent: false,
     imageDefaultWidth: 300,
     imageDefaultAlign: 'center',
     imageDefaultDisplay: 'block',
+    imageSplitHTML: false,
     imageStyles: {
       'fr-rounded': 'Rounded',
       'fr-bordered': 'Bordered'
     },
+    imageMove: true,
     imageMultipleStyles: true,
     imageTextNear: true,
-    imagePaste: true
+    imagePaste: true,
+    imagePasteProcess: false,
+    imageMinWidth: 16,
+    imageOutputSize: false
   });
 
-  $.FroalaEditor.PLUGINS.image = function (editor) {
+  $.FE.PLUGINS.image = function (editor) {
     var $current_image;
     var $image_resizer;
     var $handler;
     var $overlay;
+    var mousedown = false;
 
     var BAD_LINK = 1;
     var MISSING_LINK = 2;
@@ -93,6 +100,7 @@
     /**
      * Refresh the image insert popup.
      */
+
     function _refreshInsertPopup () {
       var $popup = editor.popups.get('image.insert');
 
@@ -109,6 +117,7 @@
     /**
      * Show the image upload popup.
      */
+
     function showInsertPopup () {
       var $btn = editor.$tb.find('.fr-command[data-cmd="insertImage"]');
 
@@ -124,8 +133,7 @@
           var left = $btn.offset().left + $btn.outerWidth() / 2;
           var top = $btn.offset().top + (editor.opts.toolbarBottom ? 10 : $btn.outerHeight() - 10);
           editor.popups.show('image.insert', left, top, $btn.outerHeight());
-        }
-        else {
+        } else {
           editor.position.forSelection($popup);
           editor.popups.show('image.insert');
         }
@@ -135,6 +143,7 @@
     /**
      * Show the image edit popup.
      */
+
     function _showEditPopup () {
       var $popup = editor.popups.get('image.edit');
       if (!$popup) $popup = _initEditPopup();
@@ -150,6 +159,7 @@
     /**
      * Hide image upload popup.
      */
+
     function _hideInsertPopup () {
       hideProgressBar();
     }
@@ -157,33 +167,56 @@
     /**
      * Convert style to classes.
      */
+
     function _convertStyleToClasses ($img) {
       if (!$img.hasClass('fr-dii') && !$img.hasClass('fr-dib')) {
+        // Set float to none.
         var flt = $img.css('float');
         $img.css('float', 'none');
+
+        // Image has display block.
         if ($img.css('display') == 'block') {
+          // Set float to the initial value.
           $img.css('float', flt);
-          if (parseInt($img.css('margin-left'), 10) === 0 && ($img.attr('style') || '').indexOf('margin-right: auto') >= 0) {
-            $img.addClass('fr-fil');
-          }
-          else if (parseInt($img.css('margin-right'), 10) === 0 && ($img.attr('style') || '').indexOf('margin-left: auto') >= 0) {
-            $img.addClass('fr-fir');
+
+          if (editor.opts.imageEditButtons.indexOf('imageAlign') >= 0) {
+            // Margin left is 0.
+            // Margin right is auto.
+            if (parseInt($img.css('margin-left'), 10) === 0 && ($img.attr('style') || '').indexOf('margin-right: auto') >= 0) {
+              $img.addClass('fr-fil');
+            }
+
+            // Margin left is auto.
+            // Margin right is 0.
+            else if (parseInt($img.css('margin-right'), 10) === 0 && ($img.attr('style') || '').indexOf('margin-left: auto') >= 0) {
+              $img.addClass('fr-fir');
+            }
           }
 
           $img.addClass('fr-dib');
         }
+
+        // Display inline.
         else {
+          // Set float.
           $img.css('float', flt);
-          if ($img.css('float') == 'left') {
-            $img.addClass('fr-fil');
-          }
-          else if ($img.css('float') == 'right') {
-            $img.addClass('fr-fir');
+
+          if (editor.opts.imageEditButtons.indexOf('imageAlign') >= 0) {
+            // Float left.
+            if ($img.css('float') == 'left') {
+              $img.addClass('fr-fil');
+            }
+
+            // Float right.
+            else if ($img.css('float') == 'right') {
+              $img.addClass('fr-fir');
+            }
           }
 
           $img.addClass('fr-dii');
         }
 
+        // Reset inline style.
         $img.css('margin', '');
         $img.css('float', '');
         $img.css('display', '');
@@ -192,28 +225,35 @@
         $img.css('overflow', '');
         $img.css('vertical-align', '');
       }
-
-      if ($img.attr('width')) {
-        $img.css('width', $img.width());
-        $img.removeAttr('width');
-      }
-
-      if (!editor.opts.imageTextNear) {
-        $img.removeClass('fr-dii').addClass('fr-dib');
-      }
     }
 
     /**
      * Refresh the image list.
      */
+
     function _refreshImageList () {
       var images = editor.$el.get(0).tagName == 'IMG' ? [editor.$el.get(0)] : editor.$el.get(0).querySelectorAll('img');
 
       for (var i = 0; i < images.length; i++) {
-        _convertStyleToClasses($(images[i]));
+        var $img = $(images[i]);
+
+        if (editor.opts.imageEditButtons.indexOf('imageAlign') >= 0 || editor.opts.imageEditButtons.indexOf('imageDisplay') >= 0) {
+          _convertStyleToClasses($img);
+        }
+
+        // Set width if it has width.
+        if ($img.attr('width')) {
+          $img.css('width', $img.width());
+          $img.removeAttr('width');
+        }
+
+        // Do not allow text near image.
+        if (!editor.opts.imageTextNear) {
+          $img.removeClass('fr-dii').addClass('fr-dib');
+        }
 
         if (editor.opts.iframe) {
-          $(images[i]).on('load', editor.size.syncIframe);
+          $img.on('load', editor.size.syncIframe);
         }
       }
     }
@@ -222,15 +262,20 @@
      * Keep images in sync when content changed.
      */
     var images;
+
     function _syncImages () {
       // Get current images.
-      var c_images =  Array.prototype.slice.call(editor.$el.get(0).querySelectorAll('img'));
+      var c_images = Array.prototype.slice.call(editor.$el.get(0).querySelectorAll('img'));
 
       // Current images src.
       var image_srcs = [];
       var i;
       for (i = 0; i < c_images.length; i++) {
         image_srcs.push(c_images[i].getAttribute('src'));
+
+        $(c_images[i]).toggleClass('fr-draggable', editor.opts.imageMove);
+        if (c_images[i].className === '') c_images[i].removeAttribute('class');
+        if (c_images[i].getAttribute('style') === '') c_images[i].removeAttribute('style');
       }
 
       // Loop previous images and check their src.
@@ -249,27 +294,33 @@
     /**
      * Reposition resizer.
      */
+
     function _repositionResizer () {
-      if (!$image_resizer) {
-        _initImageResizer();
-      }
+      if (!$image_resizer) _initImageResizer();
 
-      var wrap_correction_top = !editor.$wp ? -1 : editor.$wp.scrollTop() - (editor.$wp.offset().top + 1);
-      var wrap_correction_left = !editor.$wp ? -1 : editor.$wp.scrollLeft() - (editor.$wp.offset().left + 1);
+      var $container = editor.$wp || $(editor.opts.scrollableContainer);
 
-      if (editor.$wp) wrap_correction_left -= editor.helpers.getPX(editor.$wp.css('border-left-width'));
+      $container.append($image_resizer);
+      $image_resizer.data('instance', editor);
+
+      var wrap_correction_top = $container.scrollTop() - (($container.css('position') != 'static' ? $container.offset().top : 0));
+      var wrap_correction_left = $container.scrollLeft() - (($container.css('position') != 'static' ? $container.offset().left : 0));
+
+      wrap_correction_left -= editor.helpers.getPX($container.css('border-left-width'));
+      wrap_correction_top -= editor.helpers.getPX($container.css('border-top-width'));
 
       $image_resizer
-        .css('top', editor.opts.iframe ? $current_image.offset().top - 1 : $current_image.offset().top + wrap_correction_top)
-        .css('left', editor.opts.iframe ? $current_image.offset().left - 1 : $current_image.offset().left + wrap_correction_left)
-        .css('width', $current_image.outerWidth())
-        .css('height', $current_image.outerHeight())
+        .css('top', (editor.opts.iframe ? $current_image.offset().top : $current_image.offset().top + wrap_correction_top) - 1)
+        .css('left', (editor.opts.iframe ? $current_image.offset().left : $current_image.offset().left + wrap_correction_left) - 1)
+        .css('width', $current_image.get(0).getBoundingClientRect().width)
+        .css('height', $current_image.get(0).getBoundingClientRect().height)
         .addClass('fr-active')
     }
 
     /**
      * Create resize handler.
      */
+
     function _getHandler (pos) {
       return '<div class="fr-handler fr-h' + pos + '"></div>';
     }
@@ -278,21 +329,50 @@
      * Mouse down to start resize.
      */
     function _handlerMousedown (e) {
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($image_resizer)) return true;
+
       e.preventDefault();
       e.stopPropagation();
 
+      if (editor.$el.find('img.fr-error').left) return false;
+
+      if (!editor.undo.canDo()) editor.undo.saveStep();
+
       $handler = $(this);
       $handler.data('start-x', e.pageX || e.originalEvent.touches[0].pageX);
+      $handler.data('start-width', $current_image.width());
+      $handler.data('start-height', $current_image.height());
+
+      // Set current width.
+      var width = $current_image.width();
+      if (editor.opts.imageResizeWithPercent) {
+        var p_node = $current_image.parentsUntil(editor.$el, editor.html.blockTagsQuery()).get(0) || editor.$el.get(0);
+
+        $current_image.css('width', (width / $(p_node).outerWidth() * 100).toFixed(2) + '%');
+      } else {
+        $current_image.css('width', width);
+      }
+
       $overlay.show();
+
       editor.popups.hideAll();
+
+      _unmarkExit();
     }
 
     /**
      * Do resize.
      */
+
     function _handlerMousemove (e) {
-      if ($handler) {
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($image_resizer)) return true;
+
+      if ($handler && $current_image) {
         e.preventDefault()
+
+        if (editor.$el.find('img.fr-error').left) return false;
 
         var c_x = e.pageX || (e.originalEvent.touches ? e.originalEvent.touches[0].pageX : null);
 
@@ -302,25 +382,28 @@
 
         var s_x = $handler.data('start-x');
 
-        $handler.data('start-x', c_x);
-
         var diff_x = c_x - s_x;
 
-        var width = $current_image.width();
+        var width = $handler.data('start-width');
         if ($handler.hasClass('fr-hnw') || $handler.hasClass('fr-hsw')) {
           diff_x = 0 - diff_x;
         }
 
         if (editor.opts.imageResizeWithPercent) {
-          var p_node = $current_image.parentsUntil(editor.$el, editor.html.blockTagsQuery()).get(0);
+          var p_node = $current_image.parentsUntil(editor.$el, editor.html.blockTagsQuery()).get(0) || editor.$el.get(0);
 
-          $current_image.css('width', ((width + diff_x) / $(p_node).outerWidth() * 100).toFixed(2) + '%');
-        }
-        else {
-          $current_image.css('width', width + diff_x);
-        }
+          width = ((width + diff_x) / $(p_node).outerWidth() * 100).toFixed(2);
+          if (editor.opts.imageRoundPercent) width = Math.round(width);
 
-        $current_image.css('height', '').removeAttr('height');
+          $current_image.css('width', width + '%');
+          $current_image.css('height', '').removeAttr('height');
+        } else {
+          if (width + diff_x >= editor.opts.imageMinWidth) {
+            $current_image.css('width', width + diff_x);
+          }
+
+          $current_image.css('height', $handler.data('start-height') * $current_image.width() / $handler.data('start-width'));
+        }
 
         _repositionResizer();
 
@@ -331,11 +414,15 @@
     /**
      * Stop resize.
      */
+
     function _handlerMouseup (e) {
-      if ($handler) {
-        if (e) {
-          e.stopPropagation();
-        }
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($image_resizer)) return true;
+
+      if ($handler && $current_image) {
+        if (e) e.stopPropagation();
+
+        if (editor.$el.find('img.fr-error').left) return false;
 
         $handler = null;
         $overlay.hide();
@@ -351,23 +438,40 @@
     /**
      * Throw an image error.
      */
+
     function _throwError (code, response) {
       editor.edit.on();
+      if ($current_image) $current_image.addClass('fr-error');
       _showErrorMessage(editor.language.translate('Something went wrong. Please try again.'));
 
       editor.events.trigger('image.error', [{
-        code: code,
-        message: error_messages[code]
-      }, response]);
+          code: code,
+          message: error_messages[code]
+        },
+        response
+      ]);
     }
 
     /**
      * Init the image edit popup.
      */
-    function _initEditPopup () {
+
+    function _initEditPopup (delayed) {
+      if (delayed) {
+        if (editor.$wp) {
+          editor.events.$on(editor.$wp, 'scroll', function () {
+            if ($current_image && editor.popups.isVisible('image.edit')) {
+              _showEditPopup();
+            }
+          });
+        }
+
+        return true;
+      }
+
       // Image buttons.
       var image_buttons = '';
-      if (editor.opts.imageEditButtons.length > 1) {
+      if (editor.opts.imageEditButtons.length > 0) {
         image_buttons += '<div class="fr-buttons">';
         image_buttons += editor.button.buildList(editor.opts.imageEditButtons);
         image_buttons += '</div>';
@@ -379,32 +483,30 @@
 
       var $popup = editor.popups.create('image.edit', template);
 
-      if (editor.$wp) {
-        editor.$wp.on('scroll.image-edit', function () {
-          if ($current_image && editor.popups.isVisible('image.edit')) {
-            _showEditPopup();
-          }
-        });
-
-        editor.events.on('destroy', function () {
-          editor.$wp.off('scroll.image-edit');
-        });
-      }
-
       return $popup;
     }
 
     /**
      * Show progress bar.
      */
-    function showProgressBar () {
+
+    function showProgressBar (no_message) {
       var $popup = editor.popups.get('image.insert');
+      if (!$popup) $popup = _initInsertPopup();
 
-      if ($popup) {
-        $popup.find('.fr-layer.fr-active').removeClass('fr-active').addClass('fr-pactive');
-        $popup.find('.fr-image-progress-bar-layer').addClass('fr-active');
-        $popup.find('.fr-buttons').hide();
+      $popup.find('.fr-layer.fr-active').removeClass('fr-active').addClass('fr-pactive');
+      $popup.find('.fr-image-progress-bar-layer').addClass('fr-active');
+      $popup.find('.fr-buttons').hide();
 
+      if ($current_image) {
+        editor.popups.setContainer('image.insert', $(editor.opts.scrollableContainer));
+        var left = $current_image.offset().left + $current_image.width() / 2;
+        var top = $current_image.offset().top + $current_image.height();
+
+        editor.popups.show('image.insert', left, top, $current_image.outerHeight());
+      }
+
+      if (typeof no_message == 'undefined') {
         _setProgressMessage('Uploading', 0);
       }
     }
@@ -420,8 +522,13 @@
         $popup.find('.fr-image-progress-bar-layer').removeClass('fr-active');
         $popup.find('.fr-buttons').show();
 
-        if (dismiss) {
-          editor.popups.show('image.insert', null, null);
+        // Dismiss error message.
+        if (dismiss || editor.$el.find('img.fr-error').length) {
+          editor.events.focus();
+          editor.$el.find('img.fr-error').remove();
+          editor.undo.saveStep();
+          editor.undo.run();
+          editor.undo.dropRedo();
         }
       }
     }
@@ -429,6 +536,7 @@
     /**
      * Set a progress message.
      */
+
     function _setProgressMessage (message, progress) {
       var $popup = editor.popups.get('image.insert');
 
@@ -441,8 +549,7 @@
         if (progress) {
           $layer.find('div').removeClass('fr-indeterminate');
           $layer.find('div > span').css('width', progress + '%');
-        }
-        else {
+        } else {
           $layer.find('div').addClass('fr-indeterminate');
         }
       }
@@ -451,7 +558,9 @@
     /**
      * Show error message to the user.
      */
+
     function _showErrorMessage (message) {
+      showProgressBar();
       var $popup = editor.popups.get('image.insert');
       var $layer = $popup.find('.fr-image-progress-bar-layer');
       $layer.addClass('fr-error')
@@ -461,6 +570,7 @@
     /**
      * Insert image using URL callback.
      */
+
     function insertByURL () {
       var $popup = editor.popups.get('image.insert');
       var $input = $popup.find('.fr-image-by-url-layer input');
@@ -474,10 +584,32 @@
       }
     }
 
+    function _editImg ($img) {
+      _edit.call($img.get(0));
+    }
+
+    function _loadedCallback () {
+      var $img = $(this);
+
+      editor.popups.hide('image.insert');
+
+      $img.removeClass('fr-uploading');
+
+      // Select the image.
+      if ($img.next().is('br')) {
+        $img.next().remove();
+      }
+
+      _editImg($img);
+
+      editor.events.trigger('image.loaded', [$img]);
+    }
+
     /**
      * Insert image into the editor.
      */
-    function insert(link, sanitize, data, $existing_img, response) {
+
+    function insert (link, sanitize, data, $existing_img, response) {
       editor.edit.off();
       _setProgressMessage('Loading image');
 
@@ -485,10 +617,25 @@
       image.onload = function () {
         var $img;
         var attr;
+
         if ($existing_img) {
-          $img = $existing_img.clone();
-          $existing_img.replaceWith($img);
-          $img.off('load');
+          var old_src = $existing_img.data('fr-old-src');
+
+          if (editor.$wp) {
+            // Clone existing image.
+            $img = $existing_img.clone().removeData('fr-old-src').removeClass('fr-uploading');
+
+            // Remove load event.
+            $img.off('load');
+
+            // Set new SRC.
+            if (old_src) $existing_img.attr('src', old_src);
+
+            // Replace existing image with its clone.
+            $existing_img.replaceWith($img);
+          } else {
+            $img = $existing_img;
+          }
 
           // Remove old data.
           var atts = $img.get(0).attributes;
@@ -502,70 +649,23 @@
           // Set new data.
           if (typeof data != 'undefined') {
             for (attr in data) {
-              if (attr != 'link') {
-                $img.attr('data-' + attr, data[attr]);
+              if (data.hasOwnProperty(attr)) {
+                if (attr != 'link') {
+                  $img.attr('data-' + attr, data[attr]);
+                }
               }
             }
           }
 
-          $img.on('load', function () {
-            editor.popups.hide('image.insert')
-
-            // Select the image.
-            $img.trigger('click').trigger('touchend');
-
-            editor.events.trigger('image.loaded', [$img]);
-          });
-
+          $img.on('load', _loadedCallback);
           $img.attr('src', link);
-
           editor.edit.on();
-
+          _syncImages();
           editor.undo.saveStep();
-
-          editor.events.trigger('image.replaced', [$img, response]);
-        }
-        else {
-          // Build image data string.
-          var data_str = '';
-          if (typeof data != 'undefined') {
-            for (attr in data) {
-              if (attr != 'link') {
-                data_str += ' data-' + attr + '="' + data[attr] + '"';
-              }
-            }
-          }
-
-          var width = editor.opts.imageDefaultWidth;
-          if (width && width != 'auto' && ('' + width).indexOf('px') < 0 && ('' + width).indexOf('%') < 0) {
-            width = width + 'px';
-          }
-
-          // Create image object and set the load event.
-          $img = $('<img class="fr-di' + (editor.opts.imageDefaultDisplay[0]) + (editor.opts.imageDefaultAlign != 'center' ? ' fr-fi' + editor.opts.imageDefaultAlign[0] : '') + '" src="' + link + '"' + data_str + (width ? ' style="width: ' + width + ';"' : '') + '>');
-          $img.on('load', function () {
-            // Select the image.
-            $img.trigger('click').trigger('touchend');
-
-            editor.events.trigger('image.loaded', [$img]);
-          })
-
-          // Make sure we have focus.
-          // Call the event.
-          editor.edit.on();
-          editor.events.focus(true);
-          editor.selection.restore();
-
-          // Collapse selection.
-          if (!editor.selection.isCollapsed()) editor.selection.remove();
-
-          // Insert marker and then replace it with the image.
-          editor.markers.insert();
-          var $marker = editor.$el.find('.fr-marker');
-          $marker.replaceWith($img);
-
-          editor.selection.clear();
-
+          editor.events.trigger(old_src ? 'image.replaced' : 'image.inserted', [$img, response]);
+        } else {
+          $img = _addImage(link, data, _loadedCallback);
+          _syncImages();
           editor.undo.saveStep();
           editor.events.trigger('image.inserted', [$img, response]);
         }
@@ -581,6 +681,7 @@
     /**
      * Parse image response.
      */
+
     function _parseResponse (response) {
       try {
         if (editor.events.trigger('image.uploaded', [response], true) === false) {
@@ -606,6 +707,7 @@
     /**
      * Parse image response.
      */
+
     function _parseXMLResponse (response) {
       try {
         var link = $(response).find('Location').text();
@@ -627,6 +729,7 @@
     /**
      * Image was uploaded to the server and we have a response.
      */
+
     function _imageUploaded ($img) {
       _setProgressMessage('Loading image');
 
@@ -645,15 +748,13 @@
           } else {
             _throwError(BAD_RESPONSE, response || responseXML);
           }
-        }
-        else {
+        } else {
           if (status >= 200 && status < 300) {
             var resp = _parseResponse(responseText);
             if (resp) {
               insert(resp.link, false, resp, $img, response || responseText);
             }
-          }
-          else {
+          } else {
             _throwError(ERROR_DURING_UPLOAD, response || responseText);
           }
         }
@@ -666,6 +767,7 @@
     /**
      * Image upload error.
      */
+
     function _imageUploadError () {
       _throwError(BAD_RESPONSE, this.response || this.responseText || this.responseXML);
     }
@@ -673,6 +775,7 @@
     /**
      * Image upload progress.
      */
+
     function _imageUploadProgress (e) {
       if (e.lengthComputable) {
         var complete = (e.loaded / e.total * 100 | 0);
@@ -680,9 +783,144 @@
       }
     }
 
+    function _addImage (link, data, loadCallback) {
+      // Build image data string.
+      var data_str = '';
+      var attr;
+      if (data && typeof data != 'undefined') {
+        for (attr in data) {
+          if (data.hasOwnProperty(attr)) {
+            if (attr != 'link') {
+              data_str += ' data-' + attr + '="' + data[attr] + '"';
+            }
+          }
+        }
+      }
+
+      var width = editor.opts.imageDefaultWidth;
+      if (width && width != 'auto') {
+        width = width + (editor.opts.imageResizeWithPercent ? '%' : 'px');
+      }
+
+      // Create image object and set the load event.
+      var $img = $('<img class="' + (editor.opts.imageDefaultDisplay ? 'fr-di' + editor.opts.imageDefaultDisplay[0] : '') + (editor.opts.imageDefaultAlign ? (editor.opts.imageDefaultAlign != 'center' ? ' fr-fi' + editor.opts.imageDefaultAlign[0] : '') : '') + '" src="' + link + '"' + data_str + (width ? ' style="width: ' + width + ';"' : '') + '>');
+
+      $img.on('load', loadCallback);
+
+      // Make sure we have focus.
+      // Call the event.
+      editor.edit.on();
+      editor.events.focus(true);
+      editor.selection.restore();
+
+      editor.undo.saveStep();
+
+      // Insert marker and then replace it with the image.
+      if (editor.opts.imageSplitHTML) {
+        editor.markers.split();
+      } else {
+        editor.markers.insert();
+      }
+
+      var $marker = editor.$el.find('.fr-marker');
+      $marker.replaceWith($img);
+
+      editor.html.wrap();
+      editor.selection.clear();
+
+      return $img;
+    }
+
+    /**
+     * Image upload aborted.
+     */
+    function _imageUploadAborted () {
+      editor.edit.on();
+      hideProgressBar(true);
+    }
+
+    /**
+     * Start the uploading process.
+     */
+    function _startUpload (xhr, form_data, image) {
+      function _sendRequest () {
+        var $img = $(this);
+
+        $img.off('load');
+
+        $img.addClass('fr-uploading');
+
+        if ($img.next().is('br')) {
+          $img.next().remove();
+        }
+
+        editor.placeholder.refresh();
+
+        // Select the image.
+        if (!$img.is($current_image)) _editImg($img);
+
+        _repositionResizer();
+        showProgressBar();
+
+        editor.edit.off();
+
+        // Set upload events.
+        xhr.onload = function () {
+          _imageUploaded.call(xhr, $img);
+        };
+        xhr.onerror = _imageUploadError;
+        xhr.upload.onprogress = _imageUploadProgress;
+        xhr.onabort = _imageUploadAborted;
+
+        // Set abort event.
+        $img.off('abortUpload').on('abortUpload', function () {
+          if (xhr.readyState != 4) {
+            xhr.abort();
+          }
+        });
+
+        // Send data.
+        xhr.send(form_data);
+      }
+
+      var reader = new FileReader();
+      var $img;
+      reader.addEventListener('load', function () {
+        var link = reader.result;
+
+        if (reader.result.indexOf('svg+xml') < 0) {
+          // Convert image to local blob.
+          var binary = atob(reader.result.split(',')[1]);
+          var array = [];
+          for (var i = 0; i < binary.length; i++) {
+            array.push(binary.charCodeAt(i));
+          }
+
+          // Get local image link.
+          link = window.URL.createObjectURL(new Blob([new Uint8Array(array)], {
+            type: 'image/jpeg'
+          }));
+        }
+
+        // No image.
+        if (!$current_image) {
+          $img = _addImage(link, null, _sendRequest);
+        } else {
+          $current_image.on('load', _sendRequest);
+          editor.edit.on();
+          editor.undo.saveStep();
+          $current_image.data('fr-old-src', $current_image.attr('src'));
+          $current_image.attr('src', link);
+        }
+      }, false);
+
+      reader.readAsDataURL(image);
+    }
+
     /**
      * Do image upload.
      */
+
     function upload (images) {
       // Check if we should cancel the image upload.
       if (editor.events.trigger('image.beforeUpload', [images]) === false) {
@@ -700,7 +938,7 @@
         }
 
         // Check image types.
-        if (editor.opts.imageAllowedTypes.indexOf(image.type.replace(/image\//g,'')) < 0) {
+        if (editor.opts.imageAllowedTypes.indexOf(image.type.replace(/image\//g, '')) < 0) {
           _throwError(BAD_FILE_TYPE);
           return false;
         }
@@ -723,13 +961,17 @@
             form_data.append('Content-Type', image.type);
 
             for (key in editor.opts.imageUploadToS3.params) {
-              form_data.append(key, editor.opts.imageUploadToS3.params[key]);
+              if (editor.opts.imageUploadToS3.params.hasOwnProperty(key)) {
+                form_data.append(key, editor.opts.imageUploadToS3.params[key]);
+              }
             }
           }
 
           // Add upload params.
           for (key in editor.opts.imageUploadParams) {
-            form_data.append(key, editor.opts.imageUploadParams[key]);
+            if (editor.opts.imageUploadParams.hasOwnProperty(key)) {
+              form_data.append(key, editor.opts.imageUploadParams[key]);
+            }
           }
 
           // Set the image in the request.
@@ -742,20 +984,7 @@
           }
           var xhr = editor.core.getXHR(url, editor.opts.imageUploadMethod);
 
-          var $img = $current_image;
-
-          // Set upload events.
-          xhr.onload = function () {
-            _imageUploaded.call(xhr, $img);
-          };
-          xhr.onerror = _imageUploadError;
-          xhr.upload.onprogress = _imageUploadProgress;
-
-          showProgressBar();
-          editor.edit.off();
-
-          // Send data.
-          xhr.send(form_data);
+          _startUpload(xhr, form_data, image);
         }
       }
     }
@@ -763,21 +992,22 @@
     /**
      * Image drop inside the upload zone.
      */
+
     function _bindInsertEvents ($popup) {
       // Drag over the dropable area.
-      $popup.on('dragover dragenter', '.fr-image-upload-layer', function () {
+      editor.events.$on($popup, 'dragover dragenter', '.fr-image-upload-layer', function () {
         $(this).addClass('fr-drop');
         return false;
       });
 
       // Drag end.
-      $popup.on('dragleave dragend', '.fr-image-upload-layer', function () {
+      editor.events.$on($popup, 'dragleave dragend', '.fr-image-upload-layer', function () {
         $(this).removeClass('fr-drop');
         return false;
       });
 
       // Drop.
-      $popup.on('drop', '.fr-image-upload-layer', function (e) {
+      editor.events.$on($popup, 'drop', '.fr-image-upload-layer', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -785,26 +1015,125 @@
 
         var dt = e.originalEvent.dataTransfer;
         if (dt && dt.files) {
-          upload(dt.files);
+          var inst = $popup.data('instance') || editor;
+          inst.events.disableBlur();
+          inst.image.upload(dt.files);
+          inst.events.enableBlur();
         }
       });
 
-      $popup.on('change', '.fr-image-upload-layer input[type="file"]', function () {
+      editor.events.$on($popup, 'change', '.fr-image-upload-layer input[type="file"]', function () {
         if (this.files) {
-          upload(this.files);
+          var inst = $popup.data('instance') || editor;
+          inst.events.disableBlur();
+          $popup.find('input:focus').blur();
+          inst.events.enableBlur();
+          inst.image.upload(this.files);
         }
         // Else IE 9 case.
 
         // Chrome fix.
         $(this).val('');
-        $(this).blur();
       });
+    }
+
+    function _drop (e) {
+      // Check if we are dropping files.
+      var dt = e.originalEvent.dataTransfer;
+      if (dt && dt.files && dt.files.length) {
+        var img = dt.files[0];
+        if (img && img.type) {
+          // Dropped file is an image that we allow.
+          if (editor.opts.imageAllowedTypes.indexOf(img.type.replace(/image\//g, '')) >= 0) {
+            editor.markers.remove();
+            editor.markers.insertAtPoint(e.originalEvent);
+            editor.$el.find('.fr-marker').replaceWith($.FE.MARKERS);
+
+            // Hide popups.
+            editor.popups.hideAll();
+
+            // Show the image insert popup.
+            var $popup = editor.popups.get('image.insert');
+            if (!$popup) $popup = _initInsertPopup();
+
+            editor.popups.setContainer('image.insert', $(editor.opts.scrollableContainer));
+            editor.popups.show('image.insert', e.originalEvent.pageX, e.originalEvent.pageY);
+            showProgressBar();
+
+            // Upload images.
+            upload(dt.files);
+
+            // Cancel anything else.
+            e.preventDefault();
+            e.stopPropagation();
+
+            return false;
+          }
+        }
+      }
+    }
+
+    function _placeCursor () {
+      var t;
+      var p_node;
+      var r = editor.selection.ranges(0);
+      if (r.collapsed && r.startContainer.nodeType == Node.ELEMENT_NODE) {
+        // Click after image.
+        if (r.startContainer.childNodes.length == r.startOffset) {
+          t = r.startContainer.childNodes[r.startOffset - 1];
+          if (t && t.tagName == 'IMG' && $(t).css('display') == 'block') {
+            // Check if image is last node.
+            p_node = editor.node.blockParent(t);
+            if (p_node && editor.html.defaultTag()) {
+              if (!p_node.nextSibling) {
+                if (['TD', 'TH'].indexOf(p_node.tagName) < 0) {
+                  $(p_node).after('<' + editor.html.defaultTag() + '><br>' + $.FE.MARKERS + '</' + editor.html.defaultTag() + '>');
+                }
+                else {
+                  $(img).after('<br>' + $.FE.MARKERS);
+                }
+                editor.selection.restore();
+              }
+            }
+            else if (!p_node) {
+              $(t).after('<br>' + $.FE.MARKERS);
+              editor.selection.restore();
+            }
+          }
+        }
+        else if (r.startOffset === 0 && r.startContainer.childNodes.length > r.startOffset) {
+          t = r.startContainer.childNodes[r.startOffset];
+          if (t && t.tagName == 'IMG' && $(t).css('display') == 'block') {
+            // Check if image is last node.
+            p_node = editor.node.blockParent(t);
+            if (p_node && editor.html.defaultTag()) {
+              if (!p_node.previousSibling) {
+                if (['TD', 'TH'].indexOf(p_node.tagName) < 0) {
+                  $(p_node).before('<' + editor.html.defaultTag() + '><br>' + $.FE.MARKERS + '</' + editor.html.defaultTag() + '>');
+                }
+                else {
+                  $(img).before('<br>' + $.FE.MARKERS);
+                }
+                editor.selection.restore();
+              }
+            }
+            else if (!p_node) {
+              $(t).before($.FE.MARKERS + '<br>');
+              editor.selection.restore();
+            }
+          }
+        }
+      }
     }
 
     function _initEvents () {
       // Mouse down on image. It might start move.
-      editor.$el.on(editor._mousedown, editor.$el.get(0).tagName == 'IMG' ? null : 'img', function (e) {
+      editor.events.$on(editor.$el, editor._mousedown, editor.$el.get(0).tagName == 'IMG' ? null : 'img:not([contenteditable="false"])', function (e) {
+        if ($(this).parents('[contenteditable="false"]:not(.fr-element):not(body)').length) return true;
+
         editor.selection.clear();
+
+        mousedown = true;
 
         // Prevent the image resizing.
         if (editor.browser.msie) {
@@ -812,183 +1141,80 @@
           editor.$el.attr('contenteditable', false);
         }
 
-        if (!editor.opts.imageMove) {
-          e.preventDefault();
-        }
+        if (!editor.draggable) e.preventDefault();
 
         e.stopPropagation();
-
-        // Add moving class.
-        if (editor.opts.imageMove) {
-          if (editor.opts.toolbarInline) editor.toolbar.hide();
-          $(this).addClass('fr-img-move');
-        }
       });
 
       // Mouse up on an image prevent move.
-      editor.$el.on(editor._mouseup, editor.$el.get(0).tagName == 'IMG' ? null : 'img', function (e) {
-        // Remove moving class.
-        e.stopPropagation();
+      editor.events.$on(editor.$el, editor._mouseup, editor.$el.get(0).tagName == 'IMG' ? null : 'img:not([contenteditable="false"])', function (e) {
+        if ($(this).parents('[contenteditable="false"]:not(.fr-element):not(body)').length) return true;
 
-        if (editor.browser.msie) {
-          editor.$el.attr('contenteditable', true);
-          editor.events.enableBlur();
-        }
+        if (mousedown) {
+          mousedown = false;
 
-        $(this).removeClass('fr-img-move');
-      });
-
-      var cancelDrag = function (e) {
-        var img = editor.$document.find('img.fr-img-move').get(0);
-        if (img) {
-          return typeof editor.browser.msie != 'undefined' || typeof editor.browser.edge != 'undefined';
-        }
-        else {
-          e.preventDefault();
-        }
-      }
-
-      var preventDefault = function (e) {
-        e.preventDefault();
-      }
-
-      editor.events.on('dragenter', preventDefault, true);
-      editor.events.on('dragover', cancelDrag, true);
-
-      // Drop inside the editor.
-      editor.events.on('drop', function (e) {
-        // Check if we have a moving image.
-        var img;
-        var inst;
-        for (var i = 0; i < $.FroalaEditor.INSTANCES.length; i++) {
-          img = $.FroalaEditor.INSTANCES[i].$el.find('img.fr-img-move').get(0);
-          if (img) {
-            inst = $.FroalaEditor.INSTANCES[i];
-            break;
-          }
-        }
-
-        if (img) {
-          // Cancel anything else.
-          e.preventDefault();
+          // Remove moving class.
           e.stopPropagation();
 
-          // Close current edit.
-          _exitEdit(true);
-          if (inst != editor && inst.image) {
-            inst.image.exitEdit(true);
-            inst.popups.hide('image.edit');
+          if (editor.browser.msie) {
+            editor.$el.attr('contenteditable', true);
+            editor.events.enableBlur();
           }
-
-          // Create a clone of the image.
-          var $ref;
-          var $old_ref;
-          if (img.parentNode.tagName == 'A' && img.parentNode.textContent.length === 0) {
-            $old_ref = $(img.parentNode);
-            $ref = $(img.parentNode).clone();
-            $ref.find('img')
-              .removeClass('fr-img-move')
-              .on('load', _edit);
-          }
-          else {
-            $old_ref = $(img);
-            $ref = $(img).clone();
-            $ref
-              .removeClass('fr-img-move')
-              .on('load', _edit);
-          }
-
-          // Insert image a the current position.
-          editor.markers.insertAtPoint(e.originalEvent);
-          var $marker = editor.$el.find('.fr-marker');
-          $marker.replaceWith($ref);
-
-          // Remove old image.
-          $old_ref.remove();
-
-          editor.undo.saveStep();
-
-          return false;
         }
-        else {
-          _exitEdit(true);
-          editor.popups.hideAll();
+      });
 
-          // Check if we are dropping files.
-          var dt = e.originalEvent.dataTransfer;
-          if (dt && dt.files && dt.files.length) {
-            img = dt.files[0];
-            if (img && img.type) {
-              // Dropped file is an image that we allow.
-              if (editor.opts.imageAllowedTypes.indexOf(img.type.replace(/image\//g,'')) >= 0) {
-                editor.markers.insertAtPoint(e.originalEvent);
-                editor.markers.remove();
-
-                // Hide popups.
-                editor.popups.hideAll();
-
-                // Show the image insert popup.
-                var $popup = editor.popups.get('image.insert');
-                if (!$popup) $popup = _initInsertPopup();
-                editor.popups.setContainer('image.insert', $(editor.opts.scrollableContainer));
-                editor.popups.show('image.insert', e.originalEvent.pageX, e.originalEvent.pageY);
-                showProgressBar();
-
-                // Upload images.
-                upload(dt.files);
-
-                // Cancel anything else.
-                e.preventDefault();
-                e.stopPropagation();
-
-                return false;
-              }
-            }
+      // Show image popup when it was selected.
+      editor.events.on('keyup', function (e) {
+        if (e.shiftKey && editor.selection.text().replace(/\n/g, '') === '') {
+          var s_el = editor.selection.element();
+          var e_el = editor.selection.endElement();
+          if (s_el && s_el.tagName == 'IMG') {
+            _editImg($(s_el));
+          }
+          else if (e_el && e_el.tagName == 'IMG') {
+            _editImg($(e_el));
           }
         }
       }, true);
 
-      // Document drop. Remove moving class.
-      editor.events.on('document.drop', function (e) {
-        if (editor.$el.find('img.fr-img-move').length) {
-          e.preventDefault();
-          e.stopPropagation();
-          editor.$el.find('img.fr-img-move').removeClass('fr-img-move');
-        }
-      })
+      // Drop inside the editor.
+      editor.events.on('drop', _drop);
 
-      editor.events.on('mousedown', _markExit);
-      editor.events.on('window.mousedown', _markExit);
-
+      editor.events.on('mousedown window.mousedown', _markExit);
       editor.events.on('window.touchmove', _unmarkExit);
 
-      editor.events.on('mouseup', _exitEdit);
-      editor.events.on('window.mouseup', _exitEdit);
+      editor.events.on('mouseup window.mouseup', function () {
+        if ($current_image) {
+          _exitEdit();
+          return false;
+        }
+      });
       editor.events.on('commands.mousedown', function ($btn) {
         if ($btn.parents('.fr-toolbar').length > 0) {
           _exitEdit();
         }
       });
 
-      editor.events.on('image.hideResizer', function () {
-        _exitEdit(true);
-      });
-      editor.events.on('commands.undo', function () {
-        _exitEdit(true);
-      });
-      editor.events.on('commands.redo', function () {
-        _exitEdit(true);
-      });
+      editor.events.on('mouseup', _placeCursor);
 
-      editor.events.on('destroy', function () {
-        editor.$el.off(editor._mouseup, 'img');
-      }, true);
+      editor.events.on('blur image.hideResizer commands.undo commands.redo element.dropped', function () {
+        mousedown = false;
+        _exitEdit(true);
+      });
     }
 
     /**
      * Init the image upload popup.
      */
-    function _initInsertPopup () {
+
+    function _initInsertPopup (delayed) {
+      if (delayed) {
+        editor.popups.onRefresh('image.insert', _refreshInsertPopup);
+        editor.popups.onHide('image.insert', _hideInsertPopup);
+
+        return true;
+      }
+
       var active;
 
       // Image buttons.
@@ -1008,7 +1234,7 @@
           active = '';
         }
 
-        upload_layer = '<div class="fr-image-upload-layer' + active + ' fr-layer" id="fr-image-upload-layer-' + editor.id + '"><strong>' + editor.language.translate('Drop image') + '</strong><br>(' + editor.language.translate('or click') + ')<form><input type="file" name="' + editor.opts.imageUploadParam + '" accept="image/*" tabIndex="-1"></form></div>'
+        upload_layer = '<div class="fr-image-upload-layer' + active + ' fr-layer" id="fr-image-upload-layer-' + editor.id + '"><strong>' + editor.language.translate('Drop image') + '</strong><br>(' + editor.language.translate('or click') + ')<div class="fr-form"><input type="file" accept="image/' + editor.opts.imageAllowedTypes.join(', image/').toLowerCase() + '" tabIndex="-1"></div></div>'
       }
 
       // Image by url layer.
@@ -1035,24 +1261,13 @@
       // Set the template in the popup.
       var $popup = editor.popups.create('image.insert', template);
 
-      editor.popups.onRefresh('image.insert', _refreshInsertPopup);
-      editor.popups.onHide('image.insert', _hideInsertPopup);
-
       if (editor.$wp) {
-        editor.$wp.on('scroll.image-insert', function () {
+        editor.events.$on(editor.$wp, 'scroll', function () {
           if ($current_image && editor.popups.isVisible('image.insert')) {
             replace();
           }
         });
       }
-
-      editor.events.on('destroy', function () {
-        if (editor.$wp) editor.$wp.off('scroll.image-insert');
-        $popup.off('dragover dragenter', '.fr-image-upload-layer');
-        $popup.off('dragleave dragend', '.fr-image-upload-layer');
-        $popup.off('drop', '.fr-image-upload-layer');
-        $popup.off('change', '.fr-image-upload-layer input[type="file"]');
-      });
 
       _bindInsertEvents($popup);
 
@@ -1062,6 +1277,7 @@
     /**
      * Refresh the ALT popup.
      */
+
     function _refreshAltPopup () {
       if ($current_image) {
         var $popup = editor.popups.get('image.alt');
@@ -1072,6 +1288,7 @@
     /**
      * Show the ALT popup.
      */
+
     function showAltPopup () {
       var $popup = editor.popups.get('image.alt');
       if (!$popup) $popup = _initAltPopup();
@@ -1088,7 +1305,13 @@
     /**
      * Init the image upload popup.
      */
-    function _initAltPopup () {
+
+    function _initAltPopup (delayed) {
+      if (delayed) {
+        editor.popups.onRefresh('image.alt', _refreshAltPopup);
+        return true;
+      }
+
       // Image buttons.
       var image_buttons = '';
       image_buttons = '<div class="fr-buttons">' + editor.button.buildList(editor.opts.imageAltButtons) + '</div>';
@@ -1105,17 +1328,11 @@
       // Set the template in the popup.
       var $popup = editor.popups.create('image.alt', template);
 
-      editor.popups.onRefresh('image.alt', _refreshAltPopup);
-
       if (editor.$wp) {
-        editor.$wp.on('scroll.image-alt', function () {
+        editor.events.$on(editor.$wp, 'scroll.image-alt', function () {
           if ($current_image && editor.popups.isVisible('image.alt')) {
             showAltPopup();
           }
-        });
-
-        editor.events.on('destroy', function () {
-          editor.$wp.off('scroll.image-alt');
         });
       }
 
@@ -1125,20 +1342,20 @@
     /**
      * Set ALT based on the values from the popup.
      */
+
     function setAlt (alt) {
       if ($current_image) {
         var $popup = editor.popups.get('image.alt');
         $current_image.attr('alt', alt || $popup.find('input').val() || '');
-        $popup.find('input').blur();
-        setTimeout(function () {
-          $current_image.trigger('click').trigger('touchend');
-        }, editor.helpers.isAndroid() ? 50 : 0);
+        $popup.find('input:focus').blur();
+        _editImg($current_image);
       }
     }
 
     /**
      * Refresh the size popup.
      */
+
     function _refreshSizePopup () {
       if ($current_image) {
         var $popup = editor.popups.get('image.size');
@@ -1150,6 +1367,7 @@
     /**
      * Show the size popup.
      */
+
     function showSizePopup () {
       var $popup = editor.popups.get('image.size');
       if (!$popup) $popup = _initSizePopup();
@@ -1166,7 +1384,14 @@
     /**
      * Init the image upload popup.
      */
-    function _initSizePopup () {
+
+    function _initSizePopup (delayed) {
+      if (delayed) {
+        editor.popups.onRefresh('image.size', _refreshSizePopup);
+
+        return true;
+      }
+
       // Image buttons.
       var image_buttons = '';
       image_buttons = '<div class="fr-buttons">' + editor.button.buildList(editor.opts.imageSizeButtons) + '</div>';
@@ -1183,17 +1408,11 @@
       // Set the template in the popup.
       var $popup = editor.popups.create('image.size', template);
 
-      editor.popups.onRefresh('image.size', _refreshSizePopup);
-
       if (editor.$wp) {
-        editor.$wp.on('scroll.image-size', function () {
+        editor.events.$on(editor.$wp, 'scroll.image-size', function () {
           if ($current_image && editor.popups.isVisible('image.size')) {
             showSizePopup();
           }
-        });
-
-        editor.events.on('destroy', function () {
-          editor.$wp.off('scroll.image-size');
         });
       }
 
@@ -1203,22 +1422,22 @@
     /**
      * Set size based on the current image size.
      */
+
     function setSize (width, height) {
       if ($current_image) {
         var $popup = editor.popups.get('image.size');
         $current_image.css('width', width || $popup.find('input[name="width"]').val());
         $current_image.css('height', height || $popup.find('input[name="height"]').val());
 
-        $popup.find('input').blur();
-        setTimeout(function () {
-          $current_image.trigger('click').trigger('touchend');
-        }, editor.helpers.isAndroid() ? 50 : 0);
+        $popup.find('input:focus').blur();
+        _editImg($current_image);
       }
     }
 
     /**
      * Show the image upload layer.
      */
+
     function showLayer (name) {
       var $popup = editor.popups.get('image.insert');
 
@@ -1259,6 +1478,7 @@
     /**
      * Refresh the upload image button.
      */
+
     function refreshUploadButton ($btn) {
       var $popup = editor.popups.get('image.insert');
       if ($popup.find('.fr-image-upload-layer').hasClass('fr-active')) {
@@ -1269,6 +1489,7 @@
     /**
      * Refresh the insert by url button.
      */
+
     function refreshByURLButton ($btn) {
       var $popup = editor.popups.get('image.insert');
       if ($popup.find('.fr-image-by-url-layer').hasClass('fr-active')) {
@@ -1279,50 +1500,81 @@
     /**
      * Init image resizer.
      */
-    function _initImageResizer() {
-      $image_resizer = $('<div class="fr-image-resizer"></div>');
-      (editor.$wp || $(editor.opts.scrollableContainer)).append($image_resizer);
 
-      $image_resizer.on('mousedown', function (e) {
-        e.stopPropagation();
-      })
+    function _initImageResizer () {
+      var doc;
 
-      $(editor.original_window).on('resize.image' + editor.id, function () {
-        if (!editor.helpers.isMobile()) {
-          _exitEdit(true);
+      // No shared image resizer.
+      if (!editor.shared.$image_resizer) {
+        // Create shared image resizer.
+        editor.shared.$image_resizer = $('<div class="fr-image-resizer"></div>');
+        $image_resizer = editor.shared.$image_resizer;
+
+        // Bind mousedown event shared.
+        editor.events.$on($image_resizer, 'mousedown', function (e) {
+          e.stopPropagation();
+        }, true);
+
+        // Image resize is enabled.
+        if (editor.opts.imageResize) {
+          $image_resizer.append(_getHandler('nw') + _getHandler('ne') + _getHandler('sw') + _getHandler('se'));
+
+          // Add image resizer overlay and set it.
+          editor.shared.$img_overlay = $('<div class="fr-image-overlay"></div>');
+          $overlay = editor.shared.$img_overlay;
+          doc = $image_resizer.get(0).ownerDocument;
+          $(doc).find('body').append($overlay);
         }
-      });
-
-      editor.events.on('destroy', function () {
-        $image_resizer.html('').removeData().remove();
-        $(editor.original_window).off('resize.image' + editor.id);
-      }, true);
-
-      if (editor.opts.imageResize) {
-        $image_resizer.append(_getHandler('nw') + _getHandler('ne') + _getHandler('sw') + _getHandler('se'))
-
-        var doc = $image_resizer.get(0).ownerDocument;
-        $image_resizer.on(editor._mousedown + '.imgresize' + editor.id, '.fr-handler', _handlerMousedown);
-        $(doc).on(editor._mousemove + '.imgresize' + editor.id, _handlerMousemove);
-        $(doc.defaultView || doc.parentWindow).on(editor._mouseup + '.imgresize' + editor.id, _handlerMouseup);
-
-        $overlay = $('<div class="fr-image-overlay"></div>');
-        $(doc).find('body').append($overlay);
-
-        $overlay.on('mouseleave', _handlerMouseup)
+      } else {
+        $image_resizer = editor.shared.$image_resizer;
+        $overlay = editor.shared.$img_overlay;
 
         editor.events.on('destroy', function () {
-          $image_resizer.off(editor._mousedown + '.imgresize' + editor.id);
-          $(doc).off(editor._mousemove + '.imgresize' + editor.id);
-          $(doc.defaultView || doc.parentWindow).off(editor._mouseup + '.imgresize' + editor.id);
-          $overlay.off('mouseleave').remove();
+          $image_resizer.removeClass('fr-active').appendTo($('body'));
         }, true);
+      }
+
+      // Shared destroy.
+      editor.events.on('shared.destroy', function () {
+        $image_resizer.html('').removeData().remove();
+        $image_resizer = null;
+
+        if (editor.opts.imageResize) {
+          $overlay.remove();
+          $overlay = null;
+        }
+      }, true);
+
+      // Window resize. Exit from edit.
+      if (!editor.helpers.isMobile()) {
+        editor.events.$on($(editor.o_win), 'resize', function () {
+          if ($current_image && !$current_image.hasClass('fr-uploading')) {
+            _exitEdit(true);
+          }
+          else if ($current_image) {
+            _repositionResizer();
+            replace();
+            showProgressBar(false);
+          }
+        });
+      }
+
+      // Image resize is enabled.
+      if (editor.opts.imageResize) {
+        doc = $image_resizer.get(0).ownerDocument;
+
+        editor.events.$on($image_resizer, editor._mousedown, '.fr-handler', _handlerMousedown);
+        editor.events.$on($(doc), editor._mousemove, _handlerMousemove);
+        editor.events.$on($(doc.defaultView || doc.parentWindow), editor._mouseup, _handlerMouseup);
+
+        editor.events.$on($overlay, 'mouseleave', _handlerMouseup);
       }
     }
 
     /**
      * Remove the current image.
      */
+
     function remove ($img) {
       $img = $img || $current_image;
       if ($img) {
@@ -1332,20 +1584,17 @@
 
           if ($img.get(0) == editor.$el.get(0)) {
             $img.removeAttr('src');
-          }
-          else {
+          } else {
             if ($img.get(0).parentNode.tagName == 'A') {
-              editor.selection.setBefore($img.get(0).parentNode) || editor.selection.setAfter($img.get(0).parentNode);
+              editor.selection.setBefore($img.get(0).parentNode) || editor.selection.setAfter($img.get(0).parentNode) || $img.parent().after($.FE.MARKERS);
               $($img.get(0).parentNode).remove();
-            }
-            else {
-              editor.selection.setBefore($img.get(0)) || editor.selection.setAfter($img.get(0));
+            } else {
+              editor.selection.setBefore($img.get(0)) || editor.selection.setAfter($img.get(0)) || $img.after($.FE.MARKERS);
               $img.remove();
             }
 
+            editor.html.fillEmptyBlocks();
             editor.selection.restore();
-
-            editor.html.fillEmptyBlocks(true);
           }
 
           editor.undo.saveStep();
@@ -1356,31 +1605,41 @@
     /**
      * Initialization.
      */
+
     function _init () {
       _initEvents();
 
-      editor.$el.on(editor.helpers.isMobile() ? 'touchend' : 'click', editor.$el.get(0).tagName == 'IMG' ? null : 'img', _edit);
+      // Init on image.
+      if (editor.$el.get(0).tagName == 'IMG') {
+        editor.$el.addClass('fr-view');
+      }
+
+      editor.events.$on(editor.$el, editor.helpers.isMobile() && !editor.helpers.isWindowsPhone() ? 'touchend' : 'click', editor.$el.get(0).tagName == 'IMG' ? null : 'img:not([contenteditable="false"])', _edit);
 
       if (editor.helpers.isMobile()) {
-        editor.$el.on('touchstart', editor.$el.get(0).tagName == 'IMG' ? null : 'img', function () {
+        editor.events.$on(editor.$el, 'touchstart', editor.$el.get(0).tagName == 'IMG' ? null : 'img:not([contenteditable="false"])', function () {
           touchScroll = false;
         })
 
-        editor.$el.on('touchmove', function () {
+        editor.events.$on(editor.$el, 'touchmove', function () {
           touchScroll = true;
         });
       }
 
-      editor.events.on('keydown', function (e) {
+      editor.events.on('window.keydown keydown', function (e) {
         var key_code = e.which;
-        if ($current_image && (key_code == $.FroalaEditor.KEYCODE.BACKSPACE || key_code == $.FroalaEditor.KEYCODE.DELETE)) {
+        if ($current_image && (key_code == $.FE.KEYCODE.BACKSPACE || key_code == $.FE.KEYCODE.DELETE)) {
           e.preventDefault();
+          e.stopPropagation();
           remove();
           return false;
         }
 
-        if ($current_image && key_code == $.FroalaEditor.KEYCODE.ESC) {
+        if ($current_image && key_code == $.FE.KEYCODE.ESC) {
+          var $img = $current_image;
           _exitEdit(true);
+          editor.selection.setAfter($img.get(0));
+          editor.selection.restore();
           e.preventDefault();
           return false;
         }
@@ -1391,12 +1650,84 @@
         }
       }, true);
 
+      // Copy/cut image.
+      editor.events.on('window.cut window.copy', function (e) {
+        _selectImage();
+        $.FE.copied_text = '\n';
+        $.FE.copied_html = $current_image.get(0).outerHTML;
+
+        if (e.type == 'copy') {
+          setTimeout(function () {
+            _editImg($current_image);
+          })
+        }
+        else {
+          _exitEdit(true);
+          editor.undo.saveStep();
+          setTimeout(function () {
+            editor.undo.saveStep();
+          }, 0);
+        }
+      }, true);
+
+      // Do not leave page while uploading.
+      editor.events.$on($(editor.o_win), 'keydown', function (e) {
+        var key_code = e.which;
+        if ($current_image && key_code == $.FE.KEYCODE.BACKSPACE) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Check if image is uploading to abort it.
+      editor.events.$on(editor.$win, 'keydown', function (e) {
+        var key_code = e.which;
+        if ($current_image && $current_image.hasClass('fr-uploading') && key_code == $.FE.KEYCODE.ESC) {
+          $current_image.trigger('abortUpload');
+        }
+      });
+
+      editor.events.on('destroy', function () {
+        if ($current_image && $current_image.hasClass('fr-uploading')) {
+          $current_image.trigger('abortUpload');
+        }
+      });
+
       editor.events.on('paste.before', _clipboardPaste);
       editor.events.on('paste.beforeCleanup', _clipboardPasteCleanup);
       editor.events.on('paste.after', _uploadPastedImages);
 
       editor.events.on('html.set', _refreshImageList);
+      editor.events.on('html.inserted', _refreshImageList);
       _refreshImageList();
+      editor.events.on('destroy', function () {
+        images = [];
+      })
+
+      editor.events.on('html.get', function (html) {
+        html = html.replace(/<(img)((?:[\w\W]*?))class="([\w\W]*?)(fr-uploading|fr-error)([\w\W]*?)"((?:[\w\W]*?))>/g, '');
+
+        return html;
+      });
+
+      if (editor.opts.imageOutputSize) {
+        var imgs;
+
+        editor.events.on('html.beforeGet', function () {
+          imgs = editor.$el.get(0).querySelectorAll('img')
+          for (var i = 0; i < imgs.length; i++) {
+            imgs[i].setAttribute('width', $(imgs[i]).width());
+            imgs[i].setAttribute('height', $(imgs[i]).height());
+          }
+        });
+
+        editor.events.on('html.afterGet', function () {
+          for (var i = 0; i < imgs.length; i++) {
+            imgs[i].removeAttribute('width');
+            imgs[i].removeAttribute('height');
+          }
+        });
+      }
 
       if (editor.opts.iframe) {
         editor.events.on('image.loaded', editor.size.syncIframe);
@@ -1407,22 +1738,19 @@
         editor.events.on('contentChanged', _syncImages);
       }
 
-      $(editor.original_window).on('orientationchange.image.' + editor.id, function () {
+      editor.events.$on($(editor.o_win), 'orientationchange.image', function () {
         setTimeout(function () {
           var $current_image = get();
           if ($current_image) {
-            $current_image.trigger('click').trigger('touchend');
+            _editImg($current_image);
           }
         }, 0);
-      })
+      });
 
-      // Editor destroy.
-      editor.events.on('destroy', function () {
-        editor.$el.off('click touchstart touchend touchmove', 'img');
-        editor.$el.off('load', 'img.fr-img-dirty');
-        editor.$el.off('error', 'img.fr-img-dirty');
-        $(editor.original_window).off('orientationchange.image.' + editor.id);
-      }, true);
+      _initEditPopup(true);
+      _initInsertPopup(true);
+      _initSizePopup(true);
+      _initAltPopup(true);
 
       editor.events.on('node.remove', function ($node) {
         if ($node.get(0).tagName == 'IMG') {
@@ -1435,23 +1763,26 @@
     function _uploadPastedImages () {
       if (!editor.opts.imagePaste) {
         editor.$el.find('img[data-fr-image-pasted]').remove();
-      }
-      else {
+      } else {
         // Safari won't work https://bugs.webkit.org/show_bug.cgi?id=49141
-        editor.$el.find('img[data-fr-image-pasted]').each (function (index, img) {
+        editor.$el.find('img[data-fr-image-pasted]').each(function (index, img) {
+          if (editor.opts.imagePasteProcess) {
+            var width = editor.opts.imageDefaultWidth;
+            if (width && width != 'auto') {
+              width = width + (editor.opts.imageResizeWithPercent ? '%' : 'px');
+            }
+            $(img).css('width', width);
+
+            $(img)
+              .removeClass('fr-dii fr-dib fr-fir fr-fil')
+              .addClass((editor.opts.imageDefaultDisplay ? 'fr-di' + editor.opts.imageDefaultDisplay[0] : '') + (editor.opts.imageDefaultAlign ? (editor.opts.imageDefaultAlign != 'center' ? ' fr-fi' + editor.opts.imageDefaultAlign[0] : '') : ''));
+          }
+
           // Data images.
           if (img.src.indexOf('data:') === 0) {
             if (editor.events.trigger('image.beforePasteUpload', [img]) === false) {
               return false;
             }
-
-            var width = editor.opts.imageDefaultWidth;
-            if (width != 'auto') {
-              width = width + (editor.opts.imageResizeWithPercent ? '%' : 'px');
-            }
-            $(img).css('width', width);
-
-            $(img).addClass('fr-dib');
 
             // Show the progress bar.
             $current_image = $(img);
@@ -1467,7 +1798,9 @@
             for (var i = 0; i < binary.length; i++) {
               array.push(binary.charCodeAt(i));
             }
-            var upload_img = new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+            var upload_img = new Blob([new Uint8Array(array)], {
+              type: 'image/jpeg'
+            });
 
             upload([upload_img]);
 
@@ -1479,9 +1812,7 @@
             editor.selection.save();
             $(img).remove();
             editor.selection.restore();
-          }
-
-          else {
+          } else {
             $(img).removeAttr('data-fr-image-pasted');
           }
         });
@@ -1499,7 +1830,13 @@
             reader.onload = function (e) {
               var result = e.target.result;
 
-              editor.html.insert('<img data-fr-image-pasted="true" src="' + result + '" />');
+              // Default width.
+              var width = editor.opts.imageDefaultWidth;
+              if (width && width != 'auto') {
+                width = width + (editor.opts.imageResizeWithPercent ? '%' : 'px');
+              }
+
+              editor.html.insert('<img data-fr-image-pasted="true" class="' + (editor.opts.imageDefaultDisplay ? 'fr-di' + editor.opts.imageDefaultDisplay[0] : '') + (editor.opts.imageDefaultAlign ? (editor.opts.imageDefaultAlign != 'center' ? ' fr-fi' + editor.opts.imageDefaultAlign[0] : '') : '') + '" src="' + result + '"' + (width ? ' style="width: ' + width + ';"' : '') + '>');
 
               editor.events.trigger('paste.after');
             };
@@ -1521,20 +1858,33 @@
      * Start edit.
      */
     var touchScroll;
+
     function _edit (e) {
+      if ($(this).parents('[contenteditable="false"]:not(.fr-element):not(body)').length) return true;
+
       if (e && e.type == 'touchend' && touchScroll) {
         return true;
       }
 
-      if (editor.edit.isDisabled()) {
+      if (e && editor.edit.isDisabled()) {
         e.stopPropagation();
         e.preventDefault();
         return false;
       }
 
+      // Hide resizer for other instances.
+      for (var i = 0; i < $.FE.INSTANCES.length; i++) {
+        if ($.FE.INSTANCES[i] != editor) {
+          $.FE.INSTANCES[i].events.trigger('image.hideResizer');
+        }
+      }
+
       editor.toolbar.disable();
-      e.stopPropagation();
-      e.preventDefault();
+
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
 
       // Hide keyboard.
       if (editor.helpers.isMobile()) {
@@ -1548,6 +1898,7 @@
       }
 
       $current_image = $(this);
+      _selectImage();
       _repositionResizer();
       _showEditPopup();
 
@@ -1555,21 +1906,14 @@
       editor.button.bulkRefresh();
 
       editor.events.trigger('video.hideResizer');
-
-      for (var i = 0; i < $.FroalaEditor.INSTANCES.length; i++) {
-        if ($.FroalaEditor.INSTANCES[i] != editor) {
-          $.FroalaEditor.INSTANCES[i].events.trigger('image.hideResizer');
-        }
-      }
     }
 
     /**
      * Exit edit.
      */
-    function _exitEdit (force_exit) {
-      if (force_exit === true) exit_flag = true;
 
-      if ($current_image && exit_flag) {
+    function _exitEdit (force_exit) {
+      if ($current_image && (_canExit() || force_exit === true)) {
         editor.toolbar.enable();
 
         $image_resizer.removeClass('fr-active');
@@ -1577,29 +1921,34 @@
         editor.popups.hide('image.edit');
 
         $current_image = null;
-      }
 
-      exit_flag = false;
+        _unmarkExit();
+      }
     }
 
-    var exit_flag = false;
+    var img_exit_flag = false;
+
     function _markExit () {
-      exit_flag = true;
+      img_exit_flag = true;
     }
 
     function _unmarkExit () {
-      exit_flag = false;
+      img_exit_flag = false;
+    }
+
+    function _canExit () {
+      return img_exit_flag;
     }
 
     /**
      * Align image.
      */
+
     function align (val) {
       $current_image.removeClass('fr-fir fr-fil');
       if (val == 'left') {
         $current_image.addClass('fr-fil');
-      }
-      else if (val == 'right') {
+      } else if (val == 'right') {
         $current_image.addClass('fr-fir');
       }
 
@@ -1610,16 +1959,15 @@
     /**
      * Refresh the align icon.
      */
+
     function refreshAlign ($btn) {
       if ($current_image) {
         if ($current_image.hasClass('fr-fil')) {
-          $btn.find('> i').attr('class', 'fa fa-align-left');
-        }
-        else if ($current_image.hasClass('fr-fir')) {
-          $btn.find('> i').attr('class', 'fa fa-align-right');
-        }
-        else {
-          $btn.find('> i').attr('class', 'fa fa-align-justify');
+          $btn.find('> *:first').replaceWith(editor.icon.create('align-left'));
+        } else if ($current_image.hasClass('fr-fir')) {
+          $btn.find('> *:first').replaceWith(editor.icon.create('align-right'));
+        } else {
+          $btn.find('> *:first').replaceWith(editor.icon.create('align-justify'));
         }
       }
     }
@@ -1627,14 +1975,14 @@
     /**
      * Refresh the align option from the dropdown.
      */
+
     function refreshAlignOnShow ($btn, $dropdown) {
       if ($current_image) {
         var alignment = 'justify';
 
         if ($current_image.hasClass('fr-fil')) {
           alignment = 'left';
-        }
-        else if ($current_image.hasClass('fr-fir')) {
+        } else if ($current_image.hasClass('fr-fir')) {
           alignment = 'right';
         }
 
@@ -1645,12 +1993,12 @@
     /**
      * Align image.
      */
+
     function display (val) {
       $current_image.removeClass('fr-dii fr-dib');
       if (val == 'inline') {
         $current_image.addClass('fr-dii');
-      }
-      else if (val == 'block') {
+      } else if (val == 'block') {
         $current_image.addClass('fr-dib');
       }
 
@@ -1661,6 +2009,7 @@
     /**
      * Refresh the image display selected option.
      */
+
     function refreshDisplayOnShow ($btn, $dropdown) {
       var d = 'block';
       if ($current_image.hasClass('fr-dii')) {
@@ -1673,6 +2022,7 @@
     /**
      * Show the replace popup.
      */
+
     function replace () {
       var $popup = editor.popups.get('image.insert');
       if (!$popup) $popup = _initInsertPopup();
@@ -1680,7 +2030,7 @@
       if (!editor.popups.isVisible('image.insert')) {
         hideProgressBar();
         editor.popups.refresh('image.insert');
-        editor.popups.setContainer('image.insert',  $(editor.opts.scrollableContainer));
+        editor.popups.setContainer('image.insert', $(editor.opts.scrollableContainer));
       }
 
       var left = $current_image.offset().left + $current_image.width() / 2;
@@ -1690,13 +2040,30 @@
     }
 
     /**
+     * Place selection around current image.
+     */
+    function _selectImage () {
+      if ($current_image) {
+        editor.selection.clear();
+        var range = editor.doc.createRange();
+        range.selectNode($current_image.get(0));
+        var selection = editor.selection.get();
+        selection.addRange(range);
+      }
+    }
+
+    /**
      * Get back to the image main popup.
      */
     function back () {
       if ($current_image) {
-        $current_image.trigger('click').trigger('touchend');
-      }
-      else {
+        $('.fr-popup input:focus').blur();
+        _editImg($current_image);
+      } else {
+        editor.events.disableBlur();
+        editor.selection.restore();
+        editor.events.enableBlur();
+
         editor.popups.hide('image.insert');
         editor.toolbar.showInline();
       }
@@ -1705,6 +2072,7 @@
     /**
      * Get the current image.
      */
+
     function get () {
       return $current_image;
     }
@@ -1712,19 +2080,23 @@
     /**
      * Apply specific style.
      */
-    function applyStyle (val) {
+
+    function applyStyle (val, imageStyles, multipleStyles) {
+      if (typeof imageStyles == 'undefined') imageStyles = editor.opts.imageStyles;
+      if (typeof multipleStyles == 'undefined') multipleStyles = editor.opts.imageMultipleStyles;
+
       if (!$current_image) return false;
 
       // Remove multiple styles.
-      if (!editor.opts.imageMultipleStyles) {
-        var styles = Object.keys(editor.opts.imageStyles);
+      if (!multipleStyles) {
+        var styles = Object.keys(imageStyles);
         styles.splice(styles.indexOf(val), 1);
         $current_image.removeClass(styles.join(' '));
       }
 
       $current_image.toggleClass(val);
 
-      $current_image.trigger('click').trigger('touchend');
+      _editImg($current_image);
     }
 
     return {
@@ -1752,36 +2124,41 @@
       showSizePopup: showSizePopup,
       setAlt: setAlt,
       setSize: setSize,
-      exitEdit: _exitEdit
+      exitEdit: _exitEdit,
+      edit: _editImg
     }
   }
 
   // Insert image button.
-  $.FroalaEditor.DefineIcon('insertImage', { NAME: 'image' });
-  $.FroalaEditor.RegisterShortcut(80, 'insertImage');
-  $.FroalaEditor.RegisterCommand('insertImage', {
+  $.FE.DefineIcon('insertImage', {
+    NAME: 'image'
+  });
+  $.FE.RegisterShortcut($.FE.KEYCODE.P, 'insertImage', null, 'P');
+  $.FE.RegisterCommand('insertImage', {
     title: 'Insert Image',
     undo: false,
     focus: true,
-    refershAfterCallback: false,
+    refreshAfterCallback: false,
     popup: true,
     callback: function () {
       if (!this.popups.isVisible('image.insert')) {
         this.image.showInsertPopup();
-      }
-      else {
+      } else {
         if (this.$el.find('.fr-marker')) {
           this.events.disableBlur();
           this.selection.restore();
         }
         this.popups.hide('image.insert');
       }
-    }
+    },
+    plugin: 'image'
   });
 
   // Image upload button inside the insert image popup.
-  $.FroalaEditor.DefineIcon('imageUpload', { NAME: 'upload' });
-  $.FroalaEditor.RegisterCommand('imageUpload', {
+  $.FE.DefineIcon('imageUpload', {
+    NAME: 'upload'
+  });
+  $.FE.RegisterCommand('imageUpload', {
     title: 'Upload Image',
     undo: false,
     focus: false,
@@ -1794,8 +2171,10 @@
   });
 
   // Image by URL button inside the insert image popup.
-  $.FroalaEditor.DefineIcon('imageByURL', { NAME: 'link' });
-  $.FroalaEditor.RegisterCommand('imageByURL', {
+  $.FE.DefineIcon('imageByURL', {
+    NAME: 'link'
+  });
+  $.FE.RegisterCommand('imageByURL', {
     title: 'By URL',
     undo: false,
     focus: false,
@@ -1808,7 +2187,7 @@
   })
 
   // Insert image button inside the insert by URL layer.
-  $.FroalaEditor.RegisterCommand('imageInsertByURL', {
+  $.FE.RegisterCommand('imageInsertByURL', {
     title: 'Insert Image',
     undo: true,
     refreshAfterCallback: false,
@@ -1819,16 +2198,17 @@
       var $current_image = this.image.get();
       if (!$current_image) {
         $btn.text(this.language.translate('Insert'));
-      }
-      else {
-        $btn.text('Replace');
+      } else {
+        $btn.text(this.language.translate('Replace'));
       }
     }
   })
 
   // Image display.
-  $.FroalaEditor.DefineIcon('imageDisplay', { NAME: 'star' })
-  $.FroalaEditor.RegisterCommand('imageDisplay', {
+  $.FE.DefineIcon('imageDisplay', {
+    NAME: 'star'
+  })
+  $.FE.RegisterCommand('imageDisplay', {
     title: 'Display',
     type: 'dropdown',
     options: {
@@ -1847,8 +2227,10 @@
   })
 
   // Image align.
-  $.FroalaEditor.DefineIcon('imageAlign', { NAME: 'align-center' })
-  $.FroalaEditor.RegisterCommand('imageAlign', {
+  $.FE.DefineIcon('imageAlign', {
+    NAME: 'align-center'
+  })
+  $.FE.RegisterCommand('imageAlign', {
     type: 'dropdown',
     title: 'Align',
     options: {
@@ -1858,9 +2240,11 @@
     },
     html: function () {
       var c = '<ul class="fr-dropdown-list">';
-      var options =  $.FroalaEditor.COMMANDS.imageAlign.options;
+      var options = $.FE.COMMANDS.imageAlign.options;
       for (var val in options) {
-        c += '<li><a class="fr-command fr-title" data-cmd="imageAlign" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '"><i class="fa fa-align-' + val + '"></i></a></li>';
+        if (options.hasOwnProperty(val)) {
+          c += '<li><a class="fr-command fr-title" data-cmd="imageAlign" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '">' + this.icon.create('align-' + val) + '</a></li>';
+        }
       }
       c += '</ul>';
 
@@ -1878,8 +2262,10 @@
   })
 
   // Image replace.
-  $.FroalaEditor.DefineIcon('imageReplace', { NAME: 'exchange' })
-  $.FroalaEditor.RegisterCommand('imageReplace', {
+  $.FE.DefineIcon('imageReplace', {
+    NAME: 'exchange'
+  })
+  $.FE.RegisterCommand('imageReplace', {
     title: 'Replace',
     undo: false,
     focus: false,
@@ -1890,8 +2276,10 @@
   })
 
   // Image remove.
-  $.FroalaEditor.DefineIcon('imageRemove', { NAME: 'trash' })
-  $.FroalaEditor.RegisterCommand('imageRemove', {
+  $.FE.DefineIcon('imageRemove', {
+    NAME: 'trash'
+  })
+  $.FE.RegisterCommand('imageRemove', {
     title: 'Remove',
     callback: function () {
       this.image.remove();
@@ -1899,8 +2287,10 @@
   })
 
   // Image back.
-  $.FroalaEditor.DefineIcon('imageBack', { NAME: 'arrow-left' });
-  $.FroalaEditor.RegisterCommand('imageBack', {
+  $.FE.DefineIcon('imageBack', {
+    NAME: 'arrow-left'
+  });
+  $.FE.RegisterCommand('imageBack', {
     title: 'Back',
     undo: false,
     focus: false,
@@ -1913,31 +2303,35 @@
       if (!$current_image && !this.opts.toolbarInline) {
         $btn.addClass('fr-hidden');
         $btn.next('.fr-separator').addClass('fr-hidden');
-      }
-      else {
+      } else {
         $btn.removeClass('fr-hidden');
         $btn.next('.fr-separator').removeClass('fr-hidden');
       }
     }
   });
 
-  $.FroalaEditor.RegisterCommand('imageDismissError', {
+  $.FE.RegisterCommand('imageDismissError', {
     title: 'OK',
+    undo: false,
     callback: function () {
       this.image.hideProgressBar(true);
     }
   })
 
   // Image styles.
-  $.FroalaEditor.DefineIcon('imageStyle', { NAME: 'magic' })
-  $.FroalaEditor.RegisterCommand('imageStyle', {
+  $.FE.DefineIcon('imageStyle', {
+    NAME: 'magic'
+  })
+  $.FE.RegisterCommand('imageStyle', {
     title: 'Style',
     type: 'dropdown',
     html: function () {
       var c = '<ul class="fr-dropdown-list">';
-      var options =  this.opts.imageStyles;
+      var options = this.opts.imageStyles;
       for (var cls in options) {
-        c += '<li><a class="fr-command" data-cmd="imageStyle" data-param1="' + cls + '">' + this.language.translate(options[cls]) + '</a></li>';
+        if (options.hasOwnProperty(cls)) {
+          c += '<li><a class="fr-command" data-cmd="imageStyle" data-param1="' + cls + '">' + this.language.translate(options[cls]) + '</a></li>';
+        }
       }
       c += '</ul>';
 
@@ -1950,7 +2344,7 @@
       var $current_image = this.image.get();
 
       if ($current_image) {
-        $dropdown.find('.fr-command').each (function () {
+        $dropdown.find('.fr-command').each(function () {
           var cls = $(this).data('param1');
           $(this).toggleClass('fr-active', $current_image.hasClass(cls));
         })
@@ -1959,8 +2353,10 @@
   })
 
   // Image alt.
-  $.FroalaEditor.DefineIcon('imageAlt', { NAME: 'info' })
-  $.FroalaEditor.RegisterCommand('imageAlt', {
+  $.FE.DefineIcon('imageAlt', {
+    NAME: 'info'
+  })
+  $.FE.RegisterCommand('imageAlt', {
     undo: false,
     focus: false,
     title: 'Alternate Text',
@@ -1969,7 +2365,7 @@
     }
   });
 
-  $.FroalaEditor.RegisterCommand('imageSetAlt', {
+  $.FE.RegisterCommand('imageSetAlt', {
     undo: true,
     focus: false,
     title: 'Update',
@@ -1980,8 +2376,10 @@
   });
 
   // Image size.
-  $.FroalaEditor.DefineIcon('imageSize', { NAME: 'arrows-alt' })
-  $.FroalaEditor.RegisterCommand('imageSize', {
+  $.FE.DefineIcon('imageSize', {
+    NAME: 'arrows-alt'
+  })
+  $.FE.RegisterCommand('imageSize', {
     undo: false,
     focus: false,
     title: 'Change Size',
@@ -1990,12 +2388,14 @@
     }
   });
 
-  $.FroalaEditor.RegisterCommand('imageSetSize', {
+  $.FE.RegisterCommand('imageSetSize', {
     undo: true,
     focus: false,
+    title: 'Update',
+    refreshAfterCallback: false,
     callback: function () {
       this.image.setSize();
     }
-  })
+  });
 
 }));

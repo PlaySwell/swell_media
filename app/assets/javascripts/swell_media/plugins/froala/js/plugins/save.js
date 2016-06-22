@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -34,8 +35,8 @@
   'use strict';
 
   // Extend defaults.
-  $.extend($.FroalaEditor.DEFAULTS, {
-    saveInterval: 1000,
+  $.extend($.FE.DEFAULTS, {
+    saveInterval: 10000,
     saveURL: null,
     saveParams: {},
     saveParam: 'body',
@@ -43,7 +44,7 @@
   });
 
 
-  $.FroalaEditor.PLUGINS.save = function (editor) {
+  $.FE.PLUGINS.save = function (editor) {
     var _timeout = null;
     var _last_html = null;
     var _force = false;
@@ -74,11 +75,13 @@
       if (editor.opts.saveURL) {
         var params = {};
         for (var key in editor.opts.saveParams) {
-          var param = editor.opts.saveParams[key];
-          if (typeof(param) == 'function') {
-            params[key] = param.call(this);
-          } else {
-            params[key] = param;
+          if (editor.opts.saveParams.hasOwnProperty(key)) {
+            var param = editor.opts.saveParams[key];
+            if (typeof(param) == 'function') {
+              params[key] = param.call(this);
+            } else {
+              params[key] = param;
+            }
           }
         }
 
@@ -158,15 +161,16 @@
     }
   }
 
-  $.FroalaEditor.DefineIcon('save', { NAME: 'floppy-o' });
-  $.FroalaEditor.RegisterCommand('save', {
+  $.FE.DefineIcon('save', { NAME: 'floppy-o' });
+  $.FE.RegisterCommand('save', {
     title: 'Save',
     undo: false,
     focus: false,
     refreshAfterCallback: false,
     callback: function () {
       this.save.save();
-    }
+    },
+    plugin: 'save'
   });
 
 }));

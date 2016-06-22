@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * Estonian
  */
 
-$.FroalaEditor.LANGUAGE['et'] = {
+$.FE.LANGUAGE['et'] = {
   translation: {
     // Place holder
     "Type something": "Kirjuta midagi",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['et'] = {
 
     // Tables
     "Insert Table": "Sisesta tabel",
-    "Header": "P\u00e4ise kaudu",
+    "Table Header": "Tabel p\u00e4ise kaudu",
+    "Remove Table": "Eemalda tabel",
+    "Table Style": "Tabel stiili",
+    "Horizontal Align": "Horisontaalne joonda",
     "Row": "Rida",
     "Insert row above": "Sisesta rida \u00fcles",
     "Insert row below": "Sisesta rida alla",
@@ -221,7 +224,10 @@ $.FroalaEditor.LANGUAGE['et'] = {
     // Quote
     "Quote": "Tsitaat",
     "Increase": "Suurendama",
-    "Decrease": "V\u00e4henda"
+    "Decrease": "V\u00e4henda",
+
+    // Quick Insert
+    "Quick Insert": "Kiire sisestada"
   },
   direction: "ltr"
 };

@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * English spoken in Great Britain
  */
 
-$.FroalaEditor.LANGUAGE['en_gb'] = {
+$.FE.LANGUAGE['en_gb'] = {
   translation: {
     // Place holder
     "Type something": "Type something",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['en_gb'] = {
 
     // Tables
     "Insert Table": "Insert Table",
-    "Header": "Header",
+    "Table Header": "Table Header",
+    "Remove Table": "Remove Table",
+    "Table Style": "Table Style",
+    "Horizontal Align": "Horizontal Align",
     "Row": "Row",
     "Insert row above": "Insert row above",
     "Insert row below": "Insert row below",
@@ -165,7 +168,10 @@ $.FroalaEditor.LANGUAGE['en_gb'] = {
     // Quote
     "Quote": "Quote",
     "Increase": "Increase",
-    "Decrease": "Decrease"
+    "Decrease": "Decrease",
+
+    // Quick Insert
+    "Quick Insert": "Quick Insert"
   },
   direction: "ltr"
 };

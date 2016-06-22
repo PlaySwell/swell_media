@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -33,28 +34,30 @@
 
   'use strict';
 
-  $.extend($.FroalaEditor.POPUP_TEMPLATES, {
+  $.extend($.FE.POPUP_TEMPLATES, {
     'video.insert': '[_BUTTONS_][_BY_URL_LAYER_][_EMBED_LAYER_]',
     'video.edit': '[_BUTTONS_]',
     'video.size': '[_BUTTONS_][_SIZE_LAYER_]'
   })
 
-  $.extend($.FroalaEditor.DEFAULTS, {
+  $.extend($.FE.DEFAULTS, {
     videoInsertButtons: ['videoBack', '|', 'videoByURL', 'videoEmbed'],
     videoEditButtons: ['videoDisplay', 'videoAlign', 'videoSize', 'videoRemove'],
     videoResize: true,
     videoSizeButtons: ['videoBack', '|'],
+    videoSplitHTML: false,
     videoTextNear: true,
     videoDefaultAlign: 'center',
-    videoDefaultDisplay: 'block'
+    videoDefaultDisplay: 'block',
+    videoMove: true
   });
 
-  $.FroalaEditor.VIDEO_PROVIDERS = [
+  $.FE.VIDEO_PROVIDERS = [
     {
-      test_regex: /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#\&\?]*).*/,
+      test_regex: /^.*((youtu.be)|(youtube.com))\/((v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))?\??v?=?([^#\&\?]*).*/,
       url_regex: /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/)?([0-9a-zA-Z_\-]+)(.+)?/g,
       url_text: '//www.youtube.com/embed/$1',
-      html: '<iframe width="640" height="360" src="{url}" frameborder="0" allowfullscreen></iframe>'
+      html: '<iframe width="640" height="360" src="{url}?wmode=opaque" frameborder="0" allowfullscreen></iframe>'
     },
     {
       test_regex: /^.*(vimeo\.com\/)((channels\/[A-z]+\/)|(groups\/[A-z]+\/videos\/))?([0-9]+)/,
@@ -82,7 +85,9 @@
     }
   ];
 
-  $.FroalaEditor.PLUGINS.video = function (editor) {
+  $.FE.VIDEO_EMBED_REGEX = /^\W*((<iframe.*><\/iframe>)|(<embed.*>))\W*$/i;
+
+  $.FE.PLUGINS.video = function (editor) {
     var $overlay;
     var $handler;
     var $video_resizer;
@@ -137,7 +142,13 @@
       editor.popups.show('video.edit', left, top, $video_obj.outerHeight());
     }
 
-    function _initInsertPopup () {
+    function _initInsertPopup (delayed) {
+      if (delayed) {
+        editor.popups.onRefresh('video.insert', _refreshInsertPopup);
+
+        return true;
+      }
+
       // Image buttons.
       var video_buttons = '';
       if (editor.opts.videoInsertButtons.length > 1) {
@@ -164,9 +175,6 @@
 
       // Set the template in the popup.
       var $popup = editor.popups.create('video.insert', template);
-
-      editor.popups.onRefresh('video.insert', _refreshInsertPopup);
-      editor.popups.onHide('video.insert', _hideInsertPopup);
 
       return $popup;
     }
@@ -223,12 +231,6 @@
     }
 
     /**
-     * Hide video insert popup.
-     */
-    function _hideInsertPopup () {
-    }
-
-    /**
      * Insert video embedded object.
      */
     function insert (embedded_code) {
@@ -236,12 +238,14 @@
       editor.events.focus(true);
       editor.selection.restore();
 
-      editor.html.insert('<span contenteditable="false" class="fr-jiv fr-video fr-dv' + (editor.opts.videoDefaultDisplay[0]) + (editor.opts.videoDefaultAlign != 'center' ? ' fr-fv' + editor.opts.videoDefaultAlign[0] : '') + '">' + embedded_code + '<span>');
+      editor.html.insert('<span contenteditable="false" draggable="true" class="fr-jiv fr-video fr-dv' + (editor.opts.videoDefaultDisplay[0]) + (editor.opts.videoDefaultAlign != 'center' ? ' fr-fv' + editor.opts.videoDefaultAlign[0] : '') + '">' + embedded_code + '</span>', false, editor.opts.videoSplitHTML);
 
       editor.popups.hide('video.insert');
 
       var $video = editor.$el.find('.fr-jiv');
       $video.removeClass('fr-jiv');
+
+      $video.toggleClass('fr-draggable', editor.opts.videoMove);
 
       editor.events.trigger('video.inserted', [$video]);
     }
@@ -257,8 +261,8 @@
 
       var video = null;
       if (editor.helpers.isURL(link)) {
-        for (var i = 0; i < $.FroalaEditor.VIDEO_PROVIDERS.length; i++) {
-          var vp = $.FroalaEditor.VIDEO_PROVIDERS[i];
+        for (var i = 0; i < $.FE.VIDEO_PROVIDERS.length; i++) {
+          var vp = $.FE.VIDEO_PROVIDERS[i];
           if (vp.test_regex.test(link)) {
             video = link.replace(vp.url_regex, vp.url_text);
             video = vp.html.replace(/\{url\}/, video);
@@ -284,7 +288,7 @@
         code = $popup.find('.fr-video-embed-layer textarea').val() || '';
       }
 
-      if (code.length === 0) {
+      if (code.length === 0 || !$.FE.VIDEO_EMBED_REGEX.test(code)) {
         editor.events.trigger('video.codeError', [code]);
       }
       else {
@@ -296,6 +300,9 @@
      * Mouse down to start resize.
      */
     function _handlerMousedown (e) {
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($video_resizer)) return true;
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -306,17 +313,24 @@
         return false;
       }
 
+      if (!editor.undo.canDo()) editor.undo.saveStep();
+
       $handler = $(this);
       $handler.data('start-x', c_x);
       $handler.data('start-y', c_y);
       $overlay.show();
       editor.popups.hideAll();
+
+      _unmarkExit();
     }
 
     /**
      * Do resize.
      */
     function _handlerMousemove (e) {
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($video_resizer)) return true;
+
       if ($handler) {
         e.preventDefault()
 
@@ -361,12 +375,17 @@
      * Stop resize.
      */
     function _handlerMouseup (e) {
-      if ($handler) {
-        if (e) e.preventDefault();
+      // Check if resizer belongs to current instance.
+      if (!editor.core.sameInstance($video_resizer)) return true;
+
+      if ($handler && $current_video) {
+        if (e) e.stopPropagation();
         $handler = null;
         $overlay.hide();
         _repositionResizer();
         _showEditPopup();
+
+        editor.undo.saveStep();
       }
     }
 
@@ -380,36 +399,66 @@
     /**
      * Init video resizer.
      */
-    function _initResizer() {
-      $video_resizer = $('<div class="fr-video-resizer"></div>');
-      editor.$wp.append($video_resizer);
+    function _initResizer () {
+      var doc;
 
-      $(editor.original_window).on('resize.video' + editor.id, _exitEdit);
+      // No shared video resizer.
+      if (!editor.shared.$video_resizer) {
+        // Create shared video resizer.
+        editor.shared.$video_resizer = $('<div class="fr-video-resizer"></div>');
+        $video_resizer = editor.shared.$video_resizer;
 
-      editor.events.on('destroy', function () {
-        $video_resizer.html('').removeData().remove();
-        $(editor.original_window).off('resize.video' + editor.id);
-      }, true);
+        // Bind mousedown event shared.
+        editor.events.$on($video_resizer, 'mousedown', function (e) {
+          e.stopPropagation();
+        }, true);
 
-      if (editor.opts.videoResize) {
-        $video_resizer.append(_getHandler('nw') + _getHandler('ne') + _getHandler('sw') + _getHandler('se'))
+        // video resize is enabled.
+        if (editor.opts.videoResize) {
+          $video_resizer.append(_getHandler('nw') + _getHandler('ne') + _getHandler('sw') + _getHandler('se'));
 
-        var doc = $video_resizer.get(0).ownerDocument;
-        $video_resizer.on(editor._mousedown + '.vidresize' + editor.id, '.fr-handler', _handlerMousedown);
-        $(doc).on(editor._mousemove + '.vidresize' + editor.id, _handlerMousemove);
-        $(doc.defaultView || doc.parentWindow).on(editor._mouseup + '.vidresize' + editor.id, _handlerMouseup);
-
-        $overlay = $('<div class="fr-video-overlay"></div>');
-        $(doc).find('body').append($overlay);
-
-        $overlay.on('mouseleave', _handlerMouseup);
+          // Add video resizer overlay and set it.
+          editor.shared.$vid_overlay = $('<div class="fr-video-overlay"></div>');
+          $overlay = editor.shared.$vid_overlay;
+          doc = $video_resizer.get(0).ownerDocument;
+          $(doc).find('body').append($overlay);
+        }
+      } else {
+        $video_resizer = editor.shared.$video_resizer;
+        $overlay = editor.shared.$vid_overlay;
 
         editor.events.on('destroy', function () {
-          $video_resizer.off(editor._mousedown + '.vidresize' + editor.id);
-          $(doc).off(editor._mousemove + '.vidresize' + editor.id);
-          $(doc.defaultView || doc.parentWindow).off(editor._mouseup + '.vidresize' + editor.id);
-          $overlay.off('mouseleave').remove();
+          $video_resizer.removeClass('fr-active').appendTo($('body'));
         }, true);
+      }
+
+      // Shared destroy.
+      editor.events.on('shared.destroy', function () {
+        $video_resizer.html('').removeData().remove();
+        $video_resizer = null;
+
+        if (editor.opts.videoResize) {
+          $overlay.remove();
+          $overlay = null;
+        }
+      }, true);
+
+      // Window resize. Exit from edit.
+      if (!editor.helpers.isMobile()) {
+        editor.events.$on($(editor.o_win), 'resize.video', function () {
+          _exitEdit(true);
+        });
+      }
+
+      // video resize is enabled.
+      if (editor.opts.videoResize) {
+        doc = $video_resizer.get(0).ownerDocument;
+
+        editor.events.$on($video_resizer, editor._mousedown, '.fr-handler', _handlerMousedown);
+        editor.events.$on($(doc), editor._mousemove, _handlerMousemove);
+        editor.events.$on($(doc.defaultView || doc.parentWindow), editor._mouseup, _handlerMouseup);
+
+        editor.events.$on($overlay, 'mouseleave', _handlerMouseup);
       }
     }
 
@@ -418,6 +467,9 @@
      */
     function _repositionResizer () {
       if (!$video_resizer) _initResizer();
+
+      (editor.$wp || $(editor.opts.scrollableContainer)).append($video_resizer);
+      $video_resizer.data('instance', editor);
 
       var $video_obj = $current_video.find('iframe, embed, video');
 
@@ -445,7 +497,13 @@
         return false;
       }
 
-      e.stopPropagation();
+      // Hide resizer for other instances.
+      for (var i = 0; i < $.FE.INSTANCES.length; i++) {
+        if ($.FE.INSTANCES[i] != editor) {
+          $.FE.INSTANCES[i].events.trigger('video.hideResizer');
+        }
+      }
+
       editor.toolbar.disable();
 
       // Hide keyboard.
@@ -459,7 +517,7 @@
       $(this).addClass('fr-active');
 
       if (editor.opts.iframe) {
-        editor.height.syncIframe();
+        editor.size.syncIframe();
       }
 
       _repositionResizer();
@@ -475,51 +533,46 @@
      * Exit edit.
      */
     function _exitEdit (force_exit) {
-      if (force_exit === true) exit_flag = true;
-
-      if ($current_video && exit_flag) {
+      if ($current_video && (_canExit() || force_exit === true)) {
         $video_resizer.removeClass('fr-active');
 
         editor.toolbar.enable();
 
         $current_video.removeClass('fr-active');
         $current_video = null;
-      }
 
-      exit_flag = false;
+        _unmarkExit();
+      }
     }
 
-    var exit_flag = false;
+    editor.shared.vid_exit_flag = false;
     function _markExit () {
-      exit_flag = true;
+      editor.shared.vid_exit_flag = true;
     }
 
     function _unmarkExit () {
-      exit_flag = false;
+      editor.shared.vid_exit_flag = false;
+    }
+
+    function _canExit () {
+      return editor.shared.vid_exit_flag;
     }
 
     /**
      * Init the video events.
      */
     function _initEvents () {
-      editor.events.on('mousedown', _markExit);
-      editor.events.on('window.mousedown', _markExit);
+      editor.events.on('mousedown window.mousedown', _markExit);
       editor.events.on('window.touchmove', _unmarkExit);
-      editor.events.on('mouseup', _exitEdit);
-      editor.events.on('window.mouseup', _exitEdit);
+      editor.events.on('mouseup window.mouseup', _exitEdit);
+
       editor.events.on('commands.mousedown', function ($btn) {
         if ($btn.parents('.fr-toolbar').length > 0) {
           _exitEdit();
         }
       });
 
-      editor.events.on('video.hideResizer', function () {
-        _exitEdit(true);
-      });
-      editor.events.on('commands.undo', function () {
-        _exitEdit(true);
-      });
-      editor.events.on('commands.redo', function () {
+      editor.events.on('blur video.hideResizer commands.undo commands.redo element.dropped', function () {
         _exitEdit(true);
       });
     }
@@ -530,7 +583,7 @@
     function _initEditPopup () {
       // Image buttons.
       var video_buttons = '';
-      if (editor.opts.videoEditButtons.length > 1) {
+      if (editor.opts.videoEditButtons.length >= 1) {
         video_buttons += '<div class="fr-buttons">';
         video_buttons += editor.button.buildList(editor.opts.videoEditButtons);
         video_buttons += '</div>';
@@ -542,14 +595,10 @@
 
       var $popup = editor.popups.create('video.edit', template);
 
-      editor.$wp.on('scroll.video-edit', function () {
+      editor.events.$on(editor.$wp, 'scroll.video-edit', function () {
         if ($current_video && editor.popups.isVisible('video.edit')) {
           _showEditPopup();
         }
-      });
-
-      editor.events.on('destroy', function () {
-        editor.$wp.off('scroll.video-edit');
       });
 
       return $popup;
@@ -586,7 +635,13 @@
     /**
      * Init the image upload popup.
      */
-    function _initSizePopup () {
+    function _initSizePopup (delayed) {
+      if (delayed) {
+        editor.popups.onRefresh('video.size', _refreshSizePopup);
+
+        return true;
+      }
+
       // Image buttons.
       var video_buttons = '';
       video_buttons = '<div class="fr-buttons">' + editor.button.buildList(editor.opts.videoSizeButtons) + '</div>';
@@ -603,16 +658,10 @@
       // Set the template in the popup.
       var $popup = editor.popups.create('video.size', template);
 
-      editor.popups.onRefresh('video.size', _refreshSizePopup);
-
-      editor.$wp.on('scroll.video-size', function () {
+      editor.events.$on(editor.$wp, 'scroll', function () {
         if ($current_video && editor.popups.isVisible('video.size')) {
           showSizePopup();
         }
-      });
-
-      editor.events.on('destroy', function () {
-        editor.$wp.off('scroll.video-size');
       });
 
       return $popup;
@@ -638,14 +687,16 @@
      * Refresh the align icon.
      */
     function refreshAlign ($btn) {
+      if (!$current_video) return false;
+
       if ($current_video.hasClass('fr-fvl')) {
-        $btn.find('> i').attr('class', 'fa fa-align-left');
+        $btn.find('> *:first').replaceWith(editor.icon.create('align-left'));
       }
       else if ($current_video.hasClass('fr-fvr')) {
-        $btn.find('> i').attr('class', 'fa fa-align-right');
+        $btn.find('> *:first').replaceWith(editor.icon.create('align-right'));
       }
       else {
-        $btn.find('> i').attr('class', 'fa fa-align-justify');
+        $btn.find('> *:first').replaceWith(editor.icon.create('align-justify'));
       }
     }
 
@@ -706,7 +757,7 @@
           $video.remove();
           editor.selection.restore();
 
-          editor.html.fillEmptyBlocks(true);
+          editor.html.fillEmptyBlocks();
 
           editor.events.trigger('video.removed', [$video]);
         }
@@ -774,8 +825,8 @@
         if ($(this).parents('span.fr-video').length > 0) return false;
 
         var link = $(this).attr('src');
-        for (var i = 0; i < $.FroalaEditor.VIDEO_PROVIDERS.length; i++) {
-          var vp = $.FroalaEditor.VIDEO_PROVIDERS[i];
+        for (var i = 0; i < $.FE.VIDEO_PROVIDERS.length; i++) {
+          var vp = $.FE.VIDEO_PROVIDERS[i];
           if (vp.test_regex.test(link)) {
             return true;
           }
@@ -789,17 +840,19 @@
       for (var i = 0; i < videos.length; i++) {
         _convertStyleToClasses($(videos[i]));
       }
+
+      videos.toggleClass('fr-draggable', editor.opts.videoMove);
     }
 
     function _init () {
       _initEvents();
 
       if (editor.helpers.isMobile()) {
-        editor.$el.on('touchstart', 'span.fr-video', function () {
+        editor.events.$on(editor.$el, 'touchstart', 'span.fr-video', function () {
           touchScroll = false;
         })
 
-        editor.$el.on('touchmove', function () {
+        editor.events.$on(editor.$el, 'touchmove', function () {
           touchScroll = true;
         });
       }
@@ -807,20 +860,20 @@
       editor.events.on('html.set', _refreshVideoList);
       _refreshVideoList();
 
-      editor.$el.on('mousedown', 'span.fr-video', function (e) {
+      editor.events.$on(editor.$el, 'mousedown', 'span.fr-video', function (e) {
         e.stopPropagation();
       })
-      editor.$el.on('click touchend', 'span.fr-video', _edit);
+      editor.events.$on(editor.$el, 'click touchend', 'span.fr-video', _edit);
 
       editor.events.on('keydown', function (e) {
         var key_code = e.which;
-        if ($current_video && (key_code == $.FroalaEditor.KEYCODE.BACKSPACE || key_code == $.FroalaEditor.KEYCODE.DELETE)) {
+        if ($current_video && (key_code == $.FE.KEYCODE.BACKSPACE || key_code == $.FE.KEYCODE.DELETE)) {
           e.preventDefault();
           remove();
           return false;
         }
 
-        if ($current_video && key_code == $.FroalaEditor.KEYCODE.ESC) {
+        if ($current_video && key_code == $.FE.KEYCODE.ESC) {
           _exitEdit(true);
           e.preventDefault();
           return false;
@@ -836,6 +889,9 @@
       editor.events.on('keydown', function () {
         editor.$el.find('span.fr-video:empty').remove();
       })
+
+      _initInsertPopup(true);
+      _initSizePopup(true);
     }
 
     /**
@@ -846,6 +902,10 @@
         $current_video.trigger('click');
       }
       else {
+        editor.events.disableBlur();
+        editor.selection.restore();
+        editor.events.enableBlur();
+
         editor.popups.hide('video.insert');
         editor.toolbar.showInline();
       }
@@ -898,7 +958,7 @@
   }
 
   // Register the font size command.
-  $.FroalaEditor.RegisterCommand('insertVideo', {
+  $.FE.RegisterCommand('insertVideo', {
     title: 'Insert Video',
     undo: false,
     focus: true,
@@ -915,17 +975,18 @@
         }
         this.popups.hide('video.insert');
       }
-    }
+    },
+    plugin: 'video'
   })
 
   // Add the font size icon.
-  $.FroalaEditor.DefineIcon('insertVideo', {
+  $.FE.DefineIcon('insertVideo', {
     NAME: 'video-camera'
   });
 
   // Image by URL button inside the insert image popup.
-  $.FroalaEditor.DefineIcon('videoByURL', { NAME: 'link' });
-  $.FroalaEditor.RegisterCommand('videoByURL', {
+  $.FE.DefineIcon('videoByURL', { NAME: 'link' });
+  $.FE.RegisterCommand('videoByURL', {
     title: 'By URL',
     undo: false,
     focus: false,
@@ -938,8 +999,8 @@
   })
 
   // Image by URL button inside the insert image popup.
-  $.FroalaEditor.DefineIcon('videoEmbed', { NAME: 'code' });
-  $.FroalaEditor.RegisterCommand('videoEmbed', {
+  $.FE.DefineIcon('videoEmbed', { NAME: 'code' });
+  $.FE.RegisterCommand('videoEmbed', {
     title: 'Embedded Code',
     undo: false,
     focus: false,
@@ -951,7 +1012,7 @@
     }
   })
 
-  $.FroalaEditor.RegisterCommand('videoInsertByURL', {
+  $.FE.RegisterCommand('videoInsertByURL', {
     undo: true,
     focus: true,
     callback: function () {
@@ -959,7 +1020,7 @@
     }
   })
 
-  $.FroalaEditor.RegisterCommand('videoInsertEmbed', {
+  $.FE.RegisterCommand('videoInsertEmbed', {
     undo: true,
     focus: true,
     callback: function () {
@@ -968,8 +1029,8 @@
   })
 
   // Image display.
-  $.FroalaEditor.DefineIcon('videoDisplay', { NAME: 'star' })
-  $.FroalaEditor.RegisterCommand('videoDisplay', {
+  $.FE.DefineIcon('videoDisplay', { NAME: 'star' })
+  $.FE.RegisterCommand('videoDisplay', {
     title: 'Display',
     type: 'dropdown',
     options: {
@@ -988,8 +1049,8 @@
   })
 
   // Image align.
-  $.FroalaEditor.DefineIcon('videoAlign', { NAME: 'align-center' })
-  $.FroalaEditor.RegisterCommand('videoAlign', {
+  $.FE.DefineIcon('videoAlign', { NAME: 'align-center' })
+  $.FE.RegisterCommand('videoAlign', {
     type: 'dropdown',
     title: 'Align',
     options: {
@@ -999,9 +1060,11 @@
     },
     html: function () {
       var c = '<ul class="fr-dropdown-list">';
-      var options =  $.FroalaEditor.COMMANDS.videoAlign.options;
+      var options =  $.FE.COMMANDS.videoAlign.options;
       for (var val in options) {
-        c += '<li><a class="fr-command fr-title" data-cmd="videoAlign" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '"><i class="fa fa-align-' + val + '"></i></a></li>';
+        if (options.hasOwnProperty(val)) {
+          c += '<li><a class="fr-command fr-title" data-cmd="videoAlign" data-param1="' + val + '" title="' + this.language.translate(options[val]) + '">' + this.icon.create('align-' + val) + '</a></li>';
+        }
       }
       c += '</ul>';
 
@@ -1019,8 +1082,8 @@
   })
 
   // Video remove.
-  $.FroalaEditor.DefineIcon('videoRemove', { NAME: 'trash' })
-  $.FroalaEditor.RegisterCommand('videoRemove', {
+  $.FE.DefineIcon('videoRemove', { NAME: 'trash' })
+  $.FE.RegisterCommand('videoRemove', {
     title: 'Remove',
     callback: function () {
       this.video.remove();
@@ -1028,8 +1091,8 @@
   })
 
   // Video size.
-  $.FroalaEditor.DefineIcon('videoSize', { NAME: 'arrows-alt' })
-  $.FroalaEditor.RegisterCommand('videoSize', {
+  $.FE.DefineIcon('videoSize', { NAME: 'arrows-alt' })
+  $.FE.RegisterCommand('videoSize', {
     undo: false,
     focus: false,
     title: 'Change Size',
@@ -1039,8 +1102,8 @@
   });
 
   // Video back.
-  $.FroalaEditor.DefineIcon('videoBack', { NAME: 'arrow-left' });
-  $.FroalaEditor.RegisterCommand('videoBack', {
+  $.FE.DefineIcon('videoBack', { NAME: 'arrow-left' });
+  $.FE.RegisterCommand('videoBack', {
     title: 'Back',
     undo: false,
     focus: false,
@@ -1061,7 +1124,7 @@
     }
   });
 
-  $.FroalaEditor.RegisterCommand('videoSetSize', {
+  $.FE.RegisterCommand('videoSetSize', {
     undo: true,
     focus: false,
     callback: function () {

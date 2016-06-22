@@ -1,14 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 /**
  * Finnish
  */
 
-$.FroalaEditor.LANGUAGE['fi'] = {
+$.FE.LANGUAGE['fi'] = {
   translation: {
     // Place holder
     "Type something": "Kirjoita jotain",
@@ -106,7 +106,10 @@ $.FroalaEditor.LANGUAGE['fi'] = {
 
     // Tables
     "Insert Table": "Lis\u00e4\u00e4 taulukko",
-    "Header": "Yl\u00e4tunniste",
+    "Table Header": "Taulukko yl\u00e4tunniste",
+    "Remove Table": "Poista taulukko",
+    "Table Style": "Taulukko tyyli",
+    "Horizontal Align": "Vaakasuora tasaa",
     "Row": "Rivi",
     "Insert row above": "Lis\u00e4\u00e4 rivi ennen",
     "Insert row below": "Lis\u00e4\u00e4 rivi j\u00e4lkeen",
@@ -127,7 +130,7 @@ $.FroalaEditor.LANGUAGE['fi'] = {
     "Align Top": "Tasaa alkuun",
     "Align Middle": "Tasaa keskimm\u00e4inen",
     "Align Bottom": "Tasaa pohja",
-    "Cell Style": "",
+    "Cell Style": "Solun tyyli",
 
     // Files
     "Upload File": "Lataa tiedosto",
@@ -221,7 +224,10 @@ $.FroalaEditor.LANGUAGE['fi'] = {
     // Quote
     "Quote": "Lainaus",
     "Increase": "Lis\u00e4t\u00e4",
-    "Decrease": "Pienenn\u00e4"
+    "Decrease": "Pienenn\u00e4",
+
+    // Quick Insert
+    "Quick Insert": "Nopea insertti"
   },
   direction: "ltr"
 };

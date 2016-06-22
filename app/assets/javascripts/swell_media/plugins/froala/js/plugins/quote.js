@@ -1,13 +1,14 @@
 /*!
- * froala_editor v2.0.1 (https://www.froala.com/wysiwyg-editor)
- * License https://froala.com/wysiwyg-editor/terms
- * Copyright 2014-2015 Froala Labs
+ * froala_editor v2.3.3 (https://www.froala.com/wysiwyg-editor)
+ * License https://froala.com/wysiwyg-editor/terms/
+ * Copyright 2014-2016 Froala Labs
  */
 
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
         // Node/CommonJS
         module.exports = function( root, jQuery ) {
             if ( jQuery === undefined ) {
@@ -33,7 +34,7 @@
 
   'use strict';
 
-  $.FroalaEditor.PLUGINS.quote = function (editor) {
+  $.FE.PLUGINS.quote = function (editor) {
     function _deepestParent(node) {
       while (node.parentNode && node.parentNode != editor.$el.get(0)) {
         node = node.parentNode;
@@ -95,7 +96,7 @@
     function apply (val) {
       // Wrap.
       editor.selection.save();
-      editor.html.wrap(true, true);
+      editor.html.wrap(true, true, true, true);
       editor.selection.restore();
 
       if (val == 'increase') {
@@ -114,9 +115,9 @@
   }
 
   // Register the quote command.
-  $.FroalaEditor.RegisterShortcut(222, 'quote', 'increase');
-  $.FroalaEditor.RegisterShortcut(222, 'quote', 'decrease', true);
-  $.FroalaEditor.RegisterCommand('quote', {
+  $.FE.RegisterShortcut($.FE.KEYCODE.SINGLE_QUOTE, 'quote', 'increase', '\'');
+  $.FE.RegisterShortcut($.FE.KEYCODE.SINGLE_QUOTE, 'quote', 'decrease', '\'', true);
+  $.FE.RegisterCommand('quote', {
     title: 'Quote',
     type: 'dropdown',
     options: {
@@ -125,11 +126,12 @@
     },
     callback: function (cmd, val) {
       this.quote.apply(val);
-    }
+    },
+    plugin: 'quote'
   })
 
   // Add the quote icon.
-  $.FroalaEditor.DefineIcon('quote', {
+  $.FE.DefineIcon('quote', {
     NAME: 'quote-left'
   });
 
