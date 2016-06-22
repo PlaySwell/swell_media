@@ -1,5 +1,5 @@
 module SwellMedia
-	class RootController < ApplicationController
+	class RootController < ( SwellMedia::Engine.root_controller_parent_class || ApplicationController )
 		before_filter :get_media
 
 		def show
@@ -23,6 +23,8 @@ module SwellMedia
 
 			set_page_meta( @media.page_meta )
 
+			self.before_render if self.respond_to? :before_render
+
 			begin
 				begin
 					render "#{@media.class.name.underscore.pluralize}/show+#{@guest_session.device_format}", layout: layout
@@ -32,6 +34,8 @@ module SwellMedia
 			rescue ActionView::MissingTemplate
 				render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
 			end
+
+			self.after_render if self.respond_to? :after_render
 
 		end
 

@@ -36,6 +36,8 @@ module SwellMedia
 		mattr_accessor :reserved_words
 		mattr_accessor :require_email_collector
 
+		mattr_accessor :root_controller_parent_class
+
 		mattr_accessor :froala_editor_key
 
 		mattr_accessor :contact_email_to
