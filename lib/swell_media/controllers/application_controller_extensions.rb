@@ -93,7 +93,7 @@ module SwellMedia
 
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
-			session = GuestSession.where( id: cookies.signed[:guest] ).first
+			session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
 
 			session ||= GuestSession.create_from_request( request, params: params, user: current_user )
 
