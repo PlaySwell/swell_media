@@ -5,6 +5,8 @@ SwellMedia::Engine.routes.draw do
 
 	resources :admin, only: :index
 
+	resources :api_access_token, only: [:create]
+
 	resources :articles, path: 'blog'
 	resources :article_admin, path: 'blog_admin' do
 		get :preview, on: :member

@@ -86,6 +86,7 @@ module SwellMedia
 
 
 		def set_guest_session
+			session = GuestSession.find_by( access_token: params[:api_access_token] ) if params[:api_access_token].present?
 
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.
@@ -93,25 +94,25 @@ module SwellMedia
 
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
-			session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
+			unless session.present?
 
-			session ||= GuestSession.create_from_request( request, params: params, user: current_user )
+				session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
 
-			session.traffic_source ||= params[:utm_source] 
-			session.traffic_medium ||= params[:utm_medium] 
-			session.traffic_campaign ||= params[:utm_campaign] 
+				session ||= GuestSession.create_from_request( request, params: params, user: current_user )
 
-			if params[:src].present?
-				session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
+				session.traffic_source ||= params[:utm_source]
+				session.traffic_medium ||= params[:utm_medium]
+				session.traffic_campaign ||= params[:utm_campaign]
+
+				if params[:src].present?
+					session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
+				end
+
+				session.last_http_referrer = request.referrer
+
+				session.save
+
 			end
-
-			session.last_http_referrer = request.referrer
-
-			session.save
-			
-			# unless session.save
-			# 	NewRelic::Agent.notice_error( Exception.new( session.errors.full_messages ), custom_params: { session: session.to_json } ) if defined?(NewRelic::Agent)
-			# end
 
 			cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
 
