@@ -86,7 +86,7 @@ module SwellMedia
 
 
 		def set_guest_session
-			session = GuestSession.find_by( access_token: params[:api_access_token] ) if params[:api_access_token].present?
+			session = GuestSession.find_by( access_token: params[:api_access_token], device_id: params[:api_access_device_id] ) if params[:api_access_token].present?
 
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.

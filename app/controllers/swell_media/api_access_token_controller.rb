@@ -27,7 +27,11 @@ module SwellMedia
 
 		end
 
-		def new
+		def show
+
+			session = GuestSession.find_by( access_token: params[:id], device_id: params[:api_access_device_id] )
+
+			render json: { access_token: session.access_token, user_id: session.user_id }
 
 		end
 
