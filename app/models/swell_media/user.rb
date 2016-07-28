@@ -49,8 +49,10 @@ module SwellMedia
 				user.update( response.user_fields )
 				user.status = SwellMedia.default_user_status || 'pending' if user.unregistered?
 
-				credential = user.oauth_credentials.where( provider: response.provider, uid: response.uid ).first_or_initialize
-				credential.update( response.credential_fields )
+				unless response.provider == 'email'
+					credential = user.oauth_credentials.where( provider: response.provider, uid: response.uid ).first_or_initialize
+					credential.update( response.credential_fields )
+				end
 
 				return user
 
