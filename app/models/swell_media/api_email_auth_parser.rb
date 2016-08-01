@@ -4,16 +4,29 @@ module SwellMedia
 
 		def parse( params )
 
-
+			@login = params[:login]
 			@email = params[:email]
 			@username = params[:username]
 			@password = params[:password]
+
+			login_user = SwellMedia.registered_user_class.constantize.where( 'email = :login OR username = :login', login: @login ).first if @login.present?
+
+			if @login.present? && ( login_user.nil? || not( login_user.valid_password?( @password ) ) )
+
+				notice 'Invalid username and password.'
+
+			elsif @login.present? && login_user.valid_password?( @password )
+
+				@user 		= login_user
+				@email 		= @user.email
+				@username	= @user.name
+
+			end
 
 			self
 		end
 
 		def user
-			@user = SwellMedia.registered_user_class.constantize.where( email: self.email ).first
 
 			unless @user.present?
 				@new_user = true
@@ -21,6 +34,10 @@ module SwellMedia
 			end
 
 			@user
+		end
+
+		def registration?
+			@new_user || false
 		end
 
 		def first_name
