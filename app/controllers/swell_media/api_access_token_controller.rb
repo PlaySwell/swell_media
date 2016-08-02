@@ -37,7 +37,7 @@ module SwellMedia
 				@guest_session.device_id = params[:device_id]
 				@guest_session.save
 
-				render json: { status: :success, access_token: @guest_session.access_token }
+				render json: { status: :success, username: @guest_session.user.slug, access_token: @guest_session.access_token }
 
 			elsif auth.present?
 
