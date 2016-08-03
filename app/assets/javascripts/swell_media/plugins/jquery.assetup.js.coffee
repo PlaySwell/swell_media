@@ -147,7 +147,7 @@ jQuery.fn.assetup = (args) ->
 
 $(document).ready ->
 
-	$('body').on(
+	$(document).on(
 		'click'
 		'[data-toggle=assetup]',
 		(e)->
@@ -155,7 +155,7 @@ $(document).ready ->
 			$(this).assetup()
 	)
 
-	$('body').on(
+	$(document).on(
 		'click'
 		'.asset-direct',
 	(e)->

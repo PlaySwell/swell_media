@@ -61,7 +61,7 @@ $(document).ready ->
 
 		);
 
-	$('body').on(
+	$(document).on(
 		'click'
 		'a[data-user-event]',
 		(event) ->

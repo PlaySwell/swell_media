@@ -3,7 +3,7 @@
 $(document).ready ->
 
 
-	$('body').onFirst(
+	$(document).onFirst(
 		'click'
 		'a[data-passthru!="false"]',
 	(e)->
@@ -41,7 +41,7 @@ $(document).ready ->
 
 
 
-	$('body').on(
+	$(document).on(
 		'submit'
 		'form[data-passthru!="false"]',
 	(e)->
@@ -65,7 +65,7 @@ $(document).ready ->
 		top = (screen.height/2)-(height/2);
 		return window.open(url, name, "menubar=no,toolbar=no,status=no,width="+width+",height="+height+",toolbar=no,left="+left+",top="+top);
 
-	$('body').on(
+	$(document).on(
 		'click',
 		'a.auth-pop',
 	(e) ->
