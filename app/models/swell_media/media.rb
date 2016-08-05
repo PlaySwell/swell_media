@@ -62,7 +62,7 @@ module SwellMedia
 
 		def char_count
 			return 0 if self.content.blank?
-			self.sanitized_content.size
+			self.sanitized_content.gsub(URI.regexp(['http', 'https']), '').size
 		end
 
 		def comments( args = {} )
@@ -114,7 +114,7 @@ module SwellMedia
 
 		def word_count
 			return 0 if self.content.blank?
-			self.sanitized_content.scan(/[\w-]+/).size
+			self.sanitized_content.gsub(URI.regexp(['http', 'https']), '').scan(/[\w-]+/).size
 		end
 
 
