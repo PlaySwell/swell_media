@@ -49,11 +49,25 @@ module SwellMedia
 
 		end
 
-		def show
+		def info
 
-			session = GuestSession.find_by( access_token: params[:id], device_id: params[:api_access_device_id] )
+			auth = ApiAuthParser.parse( params )
 
-			render json: { access_token: session.access_token, user_id: session.user_id }
+			if auth.nil?
+
+				#invalid auth
+				render json: { status: :invalid_arguments, message: 'Invalid Arguments' }
+
+			elsif auth.errors?
+
+				#handle auth errors
+				render json: { status: :authentication_error, message: auth.errors }
+
+			else
+
+				render json: { status: :success, registration: auth.registration?, name: auth.user.try(:slug), full_name: auth.user.try(:full_name), email: auth.user.try(:email) }
+
+			end
 
 		end
 
