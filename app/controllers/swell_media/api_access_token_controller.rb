@@ -2,7 +2,7 @@ module SwellMedia
 
 	class ApiAccessTokenController < ApplicationController
 
-		protect_from_forgery :except => [:create]
+		protect_from_forgery :except => [:create, :info]
 
 		def create
 
