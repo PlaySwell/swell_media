@@ -37,6 +37,10 @@ module SwellMedia
 				@guest_session.device_id = params[:device_id]
 				@guest_session.save
 
+				# session.delete('devise.twitter_data')
+				# session.delete('devise.facebook_data')
+				session.delete('warden.user.User.key')
+
 				render json: { status: :success, name: @guest_session.user.slug, full_name: @guest_session.user.full_name, email: @guest_session.user.email, token: @guest_session.access_token }
 
 			elsif auth.present?
