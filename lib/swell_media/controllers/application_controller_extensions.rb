@@ -86,7 +86,14 @@ module SwellMedia
 
 
 		def set_guest_session
-			session = GuestSession.find_by( access_token: params[:api_access_token], device_id: params[:api_access_device_id] ) if params[:api_access_token].present?
+			guest_session = GuestSession.find_by( access_token: params[:api_access_token], device_id: params[:api_access_device_id] ) if params[:api_access_token].present?
+
+			if guest_session.present? && guest_session.user.present?
+
+				sign_in( 'User', guest_session.user )
+				session.delete('warden.user.User.key')
+
+			end
 
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.
@@ -94,29 +101,29 @@ module SwellMedia
 
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
-			unless session.present?
+			unless guest_session.present?
 
-				session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
+				guest_session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
 
-				session ||= GuestSession.create_from_request( request, params: params, user: current_user )
+				guest_session ||= GuestSession.create_from_request( request, params: params, user: current_user )
 
-				session.traffic_source ||= params[:utm_source]
-				session.traffic_medium ||= params[:utm_medium]
-				session.traffic_campaign ||= params[:utm_campaign]
+				guest_session.traffic_source ||= params[:utm_source]
+				guest_session.traffic_medium ||= params[:utm_medium]
+				guest_session.traffic_campaign ||= params[:utm_campaign]
 
 				if params[:src].present?
-					session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
+					guest_session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
 				end
 
-				session.last_http_referrer = request.referrer
+				guest_session.last_http_referrer = request.referrer
 
-				session.save
+				guest_session.save
 
 			end
 
-			cookies.signed[:guest] = { value: session.id, expires: 1.year.from_now }
+			cookies.signed[:guest] = { value: guest_session.id, expires: 1.year.from_now }
 
-			return session
+			return guest_session
 
 		end
 

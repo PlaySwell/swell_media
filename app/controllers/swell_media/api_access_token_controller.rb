@@ -31,6 +31,7 @@ module SwellMedia
 				end
 
 				sign_in( 'User', auth.user )
+				session.delete('warden.user.User.key')
 
 				@guest_session.user = auth.user
 				@guest_session.access_token = SecureRandom.uuid
