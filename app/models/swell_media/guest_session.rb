@@ -6,8 +6,6 @@ module SwellMedia
 
 		enum device_format: { 'desktop_web' => 0, 'tablet_web' => 1, 'mobile_web' => 2, 'desktop_app' => 3, 'mobile_app' => 4 }
 
-		before_save 	:parse_agent
-
 		belongs_to	:user, class_name: SwellMedia.registered_user_class
 		
 		has_many 	:user_events
@@ -31,7 +29,9 @@ module SwellMedia
 					session.params[k] = v
 				end
 			end
-			
+
+			session.parse_agent
+
 			session.save
 			
 			return session
@@ -42,18 +42,16 @@ module SwellMedia
 			"#{self.id}:#{self.platform}_#{self.browser_name}#{self.browser_version}_#{self.language}"
 		end
 
-
-		private
-			def parse_agent
-				browser = Browser.new( ua: self.user_agent )
-				self.human = not( browser.bot? )
-				self.browser_name = browser.name
-				self.browser_version = browser.version
-				self.platform = browser.platform
-				self.device_format = 'tablet_web' if browser.tablet?
-				self.device_format = 'mobile_web' if browser.mobile?
-				return true
-			end
+		def parse_agent
+			browser = Browser.new( ua: self.user_agent )
+			self.human = not( browser.bot? )
+			self.browser_name = browser.name
+			self.browser_version = browser.version
+			self.platform = browser.platform
+			self.device_format = 'tablet_web' if browser.tablet?
+			self.device_format = 'mobile_web' if browser.mobile?
+			return true
+		end
 
 	end
 
