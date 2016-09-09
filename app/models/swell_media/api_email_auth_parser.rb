@@ -9,7 +9,7 @@ module SwellMedia
 			@username = params[:username]
 			@password = params[:password]
 
-			login_user = SwellMedia.registered_user_class.constantize.where( 'email = :login OR name = :login', login: @login ).first if @login.present?
+			login_user = SwellMedia.registered_user_class.constantize.where( 'lower(email) = :login OR lower(name) = :login', login: @login.downcase ).first if @login.present?
 
 			if @login.present? && ( login_user.nil? || not( login_user.valid_password?( @password ) ) )
 
