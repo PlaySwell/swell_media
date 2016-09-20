@@ -86,42 +86,62 @@ module SwellMedia
 
 
 		def set_guest_session
-			guest_session = GuestSession.find_by( access_token: params[:api_access_token], device_id: params[:api_access_device_id] ) if params[:api_access_token].present?
 
-			if guest_session.present? && guest_session.user.present?
+			#load guest session via access token, if present
+			access_token_guest_session = guest_session = GuestSession.find_by( access_token: params[:api_access_token], device_id: params[:api_access_device_id] ) if params[:api_access_token].present?
+
+
+			if access_token_guest_session.present? && params[:dvar].present? && access_token_guest_session.device_format.to_s != params[:dvar].to_s
+
+				# if api token yields guest session, but the format is different, then create a new session
+				guest_session = GuestSession.create_from_request( request, params: params, user: current_user )
+
+			else
+
+				# load guest session by cookied session id, if present
+				guest_session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
+
+				# create new session, if one wasn't found
+				guest_session ||= GuestSession.create_from_request( request, params: params, user: current_user )
+
+			end
+
+
+			# update data
+			guest_session.traffic_source ||= params[:utm_source]
+			guest_session.traffic_medium ||= params[:utm_medium]
+			guest_session.traffic_campaign ||= params[:utm_campaign]
+			if params[:src].present?
+				guest_session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
+			end
+			guest_session.last_http_referrer = request.referrer
+
+
+			# inherit user from access token guest session if one exists
+			guest_session.user = access_token_guest_session.user if access_token_guest_session.present?
+
+
+			# save changes to session
+			guest_session.save
+
+
+			# if access token session present, log in user
+			if access_token_guest_session.present? && access_token_guest_session.user.present?
 
 				sign_in( 'User', guest_session.user )
 				session.delete('warden.user.User.key')
 
 			end
 
+			# reference guest session in cookie
+			cookies.signed[:guest] = { value: guest_session.id, expires: 1.year.from_now }
+
 			#place cookie, which tracks the start time of a session.  A session being any period of activity, ending with a
 			#period of at least 30 minutes of inactivity... hence the cookie length.
 			@session_cluster_created_at = Time.at( cookies.signed[:session_cluster] || Time.zone.now.to_i )
-
 			cookies.signed[:session_cluster] = { value: @session_cluster_created_at.to_i, expires: SwellMedia.max_session_inactivity.from_now }
 
-			unless guest_session.present?
 
-				guest_session = GuestSession.where( id: cookies.signed[:guest] ).first if cookies.signed[:guest].present?
-
-				guest_session ||= GuestSession.create_from_request( request, params: params, user: current_user )
-
-				guest_session.traffic_source ||= params[:utm_source]
-				guest_session.traffic_medium ||= params[:utm_medium]
-				guest_session.traffic_campaign ||= params[:utm_campaign]
-
-				if params[:src].present?
-					guest_session.traffic_src_user = params[:src] #User.find_by( slug: params[:src] ).try( :slug )
-				end
-
-				guest_session.last_http_referrer = request.referrer
-
-				guest_session.save
-
-			end
-
-			cookies.signed[:guest] = { value: guest_session.id, expires: 1.year.from_now }
 
 			return guest_session
 
