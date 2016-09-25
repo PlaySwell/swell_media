@@ -729,6 +729,22 @@
       }
     }
 
+    &[dir="rtl"] {
+
+      blockquote {
+        border-right: solid 2px @blockquote-level1-color;
+        margin-right: 0;
+
+        blockquote {
+          border-color: @blockquote-level2-color;
+
+          blockquote {
+            border-color: @blockquote-level3-color;
+          }
+        }
+      }
+    }
+
     blockquote {
       border-left: solid 2px @blockquote-level1-color;
       margin-left: 0;
