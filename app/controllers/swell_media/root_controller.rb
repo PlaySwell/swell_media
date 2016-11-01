@@ -18,6 +18,7 @@ module SwellMedia
 			record_user_event( event: 'page_view', on: @media, content: "landed on <a href='#{@media.url}'>#{@media.to_s}</a>" )
 
 			layout = @media.slug == 'homepage' ? 'swell_media/homepage' : "#{@media.class.name.underscore.pluralize}"
+			layout = @media.try(:layout) if @media.try(:layout).present?
 
 			layout = @media.layout if @media.layout.present?
 

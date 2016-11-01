@@ -85,6 +85,9 @@ class SwellMediaMigration < ActiveRecord::Migration
 			t.string		:slug
 			t.string		:redirect_url
 
+			t.string		:layout
+			t.string		:template
+
 			t.boolean 		:is_commentable, 				default: true
 			t.boolean		:is_sticky,						default: false 		# for forum topics
 			t.boolean		:show_title,					default: true
