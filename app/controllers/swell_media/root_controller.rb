@@ -24,7 +24,10 @@ module SwellMedia
 
 			set_page_meta( @media.page_meta )
 
-			self.before_render if self.respond_to? :before_render
+			puts "testing #{self.class.name} < #{( SwellMedia.root_controller_parent_class || ApplicationController ).name}; #{self.respond_to? :before_render}"
+			if self.respond_to? :before_render
+				return false if self.before_render() == false
+			end
 
 			begin
 				begin
@@ -36,8 +39,9 @@ module SwellMedia
 				render "#{@media.class.name.underscore.pluralize}/show", layout: 'application'
 			end
 
-			self.after_render if self.respond_to? :after_render
-
+			if self.respond_to? :after_render
+				return false if self.after_render() == false
+			end
 		end
 
 		private
