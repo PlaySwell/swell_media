@@ -1,0 +1,52 @@
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					%strong
+						Category Admin
+		.col-xs-2
+			%a.btn.btn-success{ data: { toggle: :modal, target: '#new_category' } }
+				%i.fa.fa-plus-square
+				New
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th
+					%th URL
+					%th Status
+					%th
+				%tbody
+					- @categories.each do |category|
+						%tr
+							%td
+								= link_to category.name, edit_category_admin_path( category.id )
+							%td
+								= category.slug
+
+							%td
+								.badge{ class: category.status }
+									= category.status
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_category_admin_path( category.id ) }
+												%i.fa.fa-pencil
+												Edit
+										%li.divider
+										%li
+											%a{ href: category_admin_path( category ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!
+
+
+
+
+= render 'new_modal'

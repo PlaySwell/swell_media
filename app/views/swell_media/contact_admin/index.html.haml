@@ -1,0 +1,62 @@
+
+.container-fluid
+	.row
+		.col-xs-8
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', contact_admin_index_path
+				%li
+					%strong
+						Contact Admin
+						= pluralize @contact_count, 'Contact'
+		.col-xs-4
+			%a.btn.btn-success{ data: { toggle: :modal, target: '#import_contacts' } }
+				%i.fa.fa-plus-square
+				Import
+			%a.btn.btn-success{ href: swell_media.export_contact_admin_index_path( :csv ) }
+				%i.fa.fa-download
+				Download CSV
+	
+	.row
+		.col-xs-6
+			= raw paginate @contacts
+		.col-xs-6
+			= form_tag contact_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= select_tag :status, options_from_collection_for_select( SwellMedia::Contact.statuses, :first, :first, params[:status] ), { prompt: "-- All --", class: 'form-control' }
+				= text_field_tag :q, params[:q], class: 'form-control'
+				= submit_tag 'Search', class: 'btn btn-primary'
+				= link_to 'Clear', contact_admin_index_path, class: 'btn btn-default btn-xs'
+
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th Type
+					%th Email
+					%th Date
+					%th
+				%tbody
+					- @contacts.each do |contact|
+						%tr
+							%td
+								= contact.type || 'contact'
+							%td
+								= link_to contact.email, edit_contact_admin_path( contact )
+							%td
+								= contact.created_at.to_s( :long )
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_contact_admin_path( contact ) }
+												%i.fa.fa-pencil
+												Edit
+										%li.divider
+										%li
+											%a{ href: contact_admin_path( contact ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!
+= render 'import_modal.html.haml'

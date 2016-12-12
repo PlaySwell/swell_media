@@ -1,0 +1,38 @@
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					= link_to 'Contact Admin', contact_admin_index_path
+				%li
+					%strong
+						= @contact.to_s
+
+		.col-xs-2
+			.pull-right
+				= link_to 'Delete', contact_admin_path( @contact ), method: :delete, confirm: 'Are You Sure', class: 'btn btn-danger'
+				
+	= form_for @contact, url: contact_admin_path( @contact ) do |f|
+		.row
+			.col-xs-8
+				%fieldset{ disabled: true }
+					.form-group
+						= f.text_field :email, class: 'form-control disabled'
+
+					.form-group
+						.input-group
+							= f.label :subject
+							= f.text_field :subject, class: 'form-control disabled'
+
+					.form-group
+						= f.label :message
+						= f.text_area :message, class: 'form-control disabled', rows: 4
+			.col-xs-4
+				.form-group
+					= f.label :status
+					= f.collection_select :status, SwellMedia::Contact.statuses, :first, :first, {}, class: 'form-control'
+				.form-group
+					= f.submit 'Enter', class: 'btn btn-primary'

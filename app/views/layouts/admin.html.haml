@@ -5,27 +5,32 @@
 //[if gt IE 8] <html class="no-js">
 %html{ lang: :en }
 	%head
+		= render 'application/fb_login_popup_closer'
 		= render 'application/html_head', args: {}
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-		= stylesheet_link_tag "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"
+		= stylesheet_link_tag "//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"
+		= stylesheet_link_tag 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.6/themes/smoothness/jquery-ui.css'
 		= stylesheet_link_tag "swell_media/admin", media: "all", "data-turbolinks-track" => true
-		= stylesheet_link_tag 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/themes/smoothness/jquery-ui.css'
-
 
 		= javascript_include_tag "swell_media/admin"
-		= javascript_include_tag '//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'
-
-	
+		:javascript
+			$.FroalaEditor.DEFAULTS.key = '#{SwellMedia.froala_editor_key}';
 	%body
-	
-		%header#header
-			= render 'admin/navbar'
+		= render 'swell_media/assets/s3_json'
+		.wrapper
+			%header.topnavbar-wrapper
+				= render 'admin/navbar'
 
-		%section#main{ style: 'margin-top:4em;' }
-			= render 'application/flash'
-			= yield
-		%br
-		%br
+			%aside.aside
+				= render 'admin/sidebar'
 
-		%footer#footer
-			= render 'application/footer'
+			%section
+				.content-wrapper
+					= render 'application/flash'
+					= yield
+			%br
+			%br
+
+			%footer
+				= render 'application/footer'
+
+		

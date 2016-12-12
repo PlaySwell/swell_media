@@ -9,19 +9,23 @@ module SwellMedia
 			user.admin?
 		end
 
-		def create?
+		def admin_create?
 			user.admin?
 		end
 
-		def destroy?
+		def admin_destroy?
 			user.admin?
 		end
 
-		def edit?
+		def admin_edit?
 			user.admin?
 		end
 
-		def update?
+		def admin_empty_trash?
+			user.admin?
+		end
+
+		def admin_update?
 			user.admin?
 		end
 	end

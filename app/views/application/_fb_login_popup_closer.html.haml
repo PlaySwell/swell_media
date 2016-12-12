@@ -1,0 +1,22 @@
+:javascript
+	function load_location(url)
+	{
+		window.location.href = url
+		window.onbeforeunload = function(){ window.unloading = 1 };
+		setTimeout(function(){ if ( window.unloading == undefined ) window.location.reload(); },10)
+	}
+	try {
+		if(window.opener) {
+			if ( window.opener['load_location'] )
+			{
+				var url = ""+window.location
+				window.opener.load_location(url.replace('no-flash-messages=1',''));
+				window.close()
+			}
+		}
+		else if (window.parent) {
+			if ( window.parent.login_action ) window.parent.login_action()
+		}
+	} catch(e) {
+		// error message here
+	}

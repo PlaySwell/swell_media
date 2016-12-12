@@ -1,0 +1,35 @@
+
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					%strong
+						Stats
+		.col-xs-2
+			
+	
+	.row
+		.col-xs-4
+			
+		.col-xs-8
+			= form_tag stats_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= select_tag :stat, options_for_select( SwellMedia::UserEvent.uniq.pluck( :name ), @stat ), { prompt: "-- All --", class: 'form-control' }
+
+				= text_field_tag :start_date, @start_date, class: 'form-control datepicker'
+				= text_field_tag :end_date, @end_date, class: 'form-control datepicker'
+				= submit_tag 'View', class: 'btn btn-primary'
+
+
+	.row
+		.col-xs-12
+			#stats_chart.flot-chart
+				
+
+			
+
+
+= render 'chart_data', data: @chart_data

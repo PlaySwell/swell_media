@@ -1,0 +1,81 @@
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					%strong
+						UserAdmin
+
+		.col-xs-2
+			-#%a.btn.btn-success{ data: { toggle: :modal, target: '#new_user' } }
+				%i.fa.fa-plus-square
+				New
+	.row
+		.col-xs-6
+			= raw paginate @users
+		.col-xs-6
+			= form_tag user_admin_index_path, method: :get, class: 'pull-right form-inline' do
+				= text_field_tag :q, params[:q], class: 'form-control'
+				= submit_tag 'Search', class: 'btn btn-primary'
+				= link_to 'Clear', user_admin_index_path, class: 'btn btn-default btn-xs'
+
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th
+					%th
+						Name
+						%a{ href: user_admin_index_path( sort_by: 'name', sort_dir: 'asc' ) }
+							%i.fa.fa-arrow-up
+						%a{ href: user_admin_index_path( sort_by: 'name', sort_dir: 'desc' ) }
+							%i.fa.fa-arrow-down
+					%th
+						Email
+						%a{ href: user_admin_index_path( sort_by: 'email', sort_dir: 'asc' ) }
+							%i.fa.fa-arrow-up
+						%a{ href: user_admin_index_path( sort_by: 'email', sort_dir: 'desc' ) }
+							%i.fa.fa-arrow-down
+					%th Status
+					%th
+						Joined
+						%a{ href: user_admin_index_path( sort_by: 'created_at', sort_dir: 'asc' ) }
+							%i.fa.fa-arrow-up
+						%a{ href: user_admin_index_path( sort_by: 'created_at', sort_dir: 'desc' ) }
+							%i.fa.fa-arrow-down
+					%th
+				%tbody
+					- @users.each do |user|
+						%tr
+							%td
+								= user.avatar_tag width: 50, class: 'img img-rounded'
+							%td
+								= link_to user.to_s, edit_user_admin_path( user.id )
+							%td
+								= link_to user.email, edit_user_admin_path( user.id )
+
+							%td
+								.badge{ class: user.status }
+									= user.status
+
+							%td
+								= user.created_at.to_s( :slashed_time )
+	
+							%td
+								.btn-group
+									%button.btn.btn-mini.btn-default.dropdown-toggle{ data: { toggle: :dropdown } }
+										%i.fa.fa-cog
+										%b.caret
+									%ul.dropdown-menu
+										%li
+											%a{ href: edit_user_admin_path( user.id ) }
+												%i.fa.fa-pencil
+												Edit
+										%li.divider
+										%li
+											%a{ href: user_admin_path( user ), data: { method: 'delete', confirm: 'Are you sure?' } }
+												%i.fa.fa-trash-o
+												Delete!

@@ -1,94 +1,56 @@
+.content-heading
+   = SwellMedia.app_name
+   Admin
+   %small
+      = "Hi There #{current_user}!"
 
+.row
+   .col-md-4
+      %ul.list-group
+         %li.list-group-item
+            .row.row-table.pv-lg
+               .col-xs-6
+                  %p.m0.lead
+                     1000
+                  %p.m0
+                     %small
+                        Chart Something Cool
+               .col-xs-6.text-center
+                  %div{ data: { sparkline: '', 'bar-color' => '#23b7e5', height: 60, 'bar-width' => 10, 'bar-spacing' => 6, 'chart-range-min' => 0, values: "5, 3, 6, 2, 4, 3, 10" } }
+         %li.list-group-item
+            .row.row-table.pv-lg
+               .col-xs-6
+                  %p.m0.lead
+                     234
+                  %p.m0
+                     %small
+                        Chart Something Else
+               .col-xs-6.text-center
+                  %div{ data: { sparkline: '', type: :line, 'line-color' => '#7266ba', height: 60, width: '60%', 'line-width' => 2, 'chart-range-min' => 0, 'spot-color' => '#888', 'min-spot-color' => '#7266ba', 'max-spot-color' => '#7266ba', 'fill-color' => '', 'highlight-line-color' => '#fff', 'spot-radius' => 3, resize: true, values: "7,3,4,7,5,9,4,4,7,5,9,6,4" } }
+         %li.list-group-item
+            .row.row-table.pv-lg
+               .col-xs-6
+                  %p.m0.lead
+                     2
+                  %p.m0
+                     %small
+                        New Users
+               .col-xs-6
+                  %ul.list-inline.text-center
+                     %li
+                        %a{ href: '#', tooltip: 'J.D.' }
+                           %img.img-responsive.img-circle.thumb24{ src: 'http://www.phootoscelebrities.com/wp-content/uploads/2014/08/Johnny-Depp-newest-photos.jpg' }
+   .col-md-8
+      .panel
+         .panel-heading
+            .panel-title
+               Hello
+         .panel-wrapper
+            .panel-body
+               .indicator.show
+                  %span.spinner
+               .chart-bar-stackedv2.flot-chart
 
-.container-fluid
-	.row
-		.col-sm-6
-			.panel.panel-default
-				.panel-heading
-					.pull-left
-						%h3.panel-title
-							= link_to 'Blog', swell_media.admin_articles_path
-					.pull-right
-						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_article' } }
-							%i.fa.fa-plus-square
-							New
-					.clearfix
-				.panel-body
-					%table.table
-						- @articles.each do |article|
-							%tr
-								%td
-									%a{ href: swell_media.edit_article_path( article ) }
-										= article.slug
-								%td{ style: 'width:20px;'}
-									%a{ href: swell_media.edit_article_path( article ) }
-										%i.fa.fa-pencil
-								%td{ style: 'width:20px;'}
-									%a{ href: swell_media.preview_article_path( article ) }
-										%i.fa.fa-eye
-						- if @articles.empty?
-							%tr
-								%td
-									No Articles Yet
-				.panel-footer
-
-
-		.col-sm-6
-			.panel.panel-default
-				.panel-heading
-					.pull-left
-						%h3.panel-title
-							= link_to 'Pages', swell_media.admin_pages_path
-					.pull-right
-						.btn.btn-sm.btn-success{ data: { toggle: :modal, target: '#new_page' } }
-							%i.fa.fa-plus-square
-							New
-					.clearfix
-				.panel-body
-					%table.table
-						- @pages.each do |page|
-							%tr
-								%td
-									%a{ href: swell_media.edit_page_path( page ) }
-										= page.slug
-								%td{ style: 'width:20px;'}
-									%a{ href: swell_media.edit_page_path( page ) }
-										%i.fa.fa-pencil
-								%td{ style: 'width:20px;'}
-									%a{ href: swell_media.preview_page_path( page ) }
-										%i.fa.fa-eye
-
-				.panel-footer
-
-		.col-sm-6
-			.panel.panel-default
-				.panel-heading
-					.pull-left
-						%h3.panel-title
-							= link_to 'Contacts', swell_media.admin_contacts_path
-					.clearfix
-				.panel-body
-					%table.table
-						- @contacts.each do |contact|
-							%tr
-								%td
-									= contact.contact_type || 'contact'
-								%td
-									%a{ href: swell_media.edit_contact_path( contact ) }
-										= contact.email
-								%td{ style: 'width:20px;'}
-									%a{ href: swell_media.edit_contact_path( contact ) }
-										%i.fa.fa-pencil
-						- if @contacts.empty?
-							%tr
-								%td
-									No Contacts Yet
-
-				.panel-footer
-
-
-= render 'swell_media/articles/new_modal'
-= render 'swell_media/pages/new_modal'
 
 
 

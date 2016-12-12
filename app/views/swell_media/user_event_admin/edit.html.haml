@@ -1,0 +1,86 @@
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					= link_to 'User Events', user_event_admin_index_path
+				%li
+					%strong
+						= raw "#{@event.user} #{@event.content}"
+		.col-xs-2
+
+
+	.row
+		.col-xs-12
+			%table.table
+				%thead
+					%th
+					%th
+				%tbody
+					%tr
+						%td
+							User
+						%td
+							= @event.user
+					%tr
+						%td
+							Content
+						%td
+							= raw @event.content
+					%tr
+						%td
+							Controller / Action
+						%td
+							= "#{@event.parent_controller}##{@event.parent_action}##{@event.context}"
+
+					%tr
+						%td
+							UI
+						%td
+							= "#{@event.ui}"
+
+					%tr
+						%td
+							Session Original Referrer
+						%td
+							= "#{@event.guest_session.original_http_referrer}"
+
+					%tr
+						%td
+							Session Last Referrer
+						%td
+							= "#{@event.guest_session.last_http_referrer}"
+
+					%tr
+						%td
+							Traffic_source
+						%td
+							= "#{@event.guest_session.traffic_source}"
+
+					%tr
+						%td
+							Traffic Source Camp Medium
+						%td
+							= "#{@event.guest_session.traffic_source} | #{@event.guest_session.traffic_campaign} | #{@event.guest_session.traffic_medium}"
+
+					%tr
+						%td
+							Cached Visit Count
+						%td
+							= "#{@event.guest_session.cached_visit_count}"
+
+
+
+
+
+
+
+
+
+
+
+
+

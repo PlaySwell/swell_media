@@ -1,0 +1,71 @@
+
+.container-fluid
+	.row
+		.col-xs-10
+			%ul.breadcrumb
+				%li
+					= link_to 'Admin', admin_index_path
+				%li
+					= link_to 'Page Admin', page_admin_index_path
+				%li
+					%strong
+						Edit
+						= @page.title
+		.col-xs-2
+			%a.btn.btn-primary{ href: preview_page_admin_path( @page.id ), target: '_new' }
+				%i.fa.fa-eye
+				Preview
+	
+	= form_for @page, url: page_admin_path( @page ) do |f|
+	
+		.row
+			.col-xs-8
+				.form-group
+					= f.text_field :title, class: 'form-control'
+
+				.form-group
+					.input-group
+						= f.label :slug_pref, 'URL for this page:'
+						%span.input-group-addon
+							http://playswell.com/
+						= f.text_field :slug_pref, class: 'form-control', placeholder: @page.slug
+
+				
+				.form-group
+					.input-group
+					= f.label :avatar, 'Image:'
+					.row
+						.col-sm-2
+							= image_tag @page.avatar, class: 'img-responsive', id: 'media_avatar'
+							%div{ style: 'text-align:center;padding:0.3em;' }
+								%a{ href: '#', data: { toggle: :assetup, for: '#page_avatar_asset_url,#media_avatar', asset: { asset_type: 'image', use: 'avatar', status: 'active', parent_obj_id: @page.id, parent_obj_type: @page.class.base_class.name }.to_json, params: { authenticity_token: form_authenticity_token() }.to_json } }
+									%i.fa.fa-upload
+									upload
+						.col-sm-10
+							= f.hidden_field :avatar_asset_url, class: 'form-control'
+							= text_field_tag :avatar_text_field, '', class: 'form-control', placeholder: 'Full Path to Image', data: { inputfor: '#page_avatar_asset_url' }
+
+				.form-group
+					= f.text_area :content, class: 'form-control wysiwyg', rows: 12
+
+
+			.col-xs-4
+				.well
+					.form-group
+						= f.label :publish_at
+						= f.text_field :publish_at, value: @page.publish_at.to_s( :full_time ), class: 'form-control datepicker'
+					.form-group
+						= f.label :status
+						= f.collection_select :status, SwellMedia::Page.statuses, :first, :first, {}, class: 'form-control'
+					.form-group
+						= f.label :availability
+						= f.collection_select :availability, SwellMedia::Page.availabilities, :first, :first, {}, class: 'form-control'
+					.form-group
+						= f.check_box :show_title, {}, 'true', 'false'
+						Show Title?
+					.form-group
+						= f.check_box :is_commentable, {}, 'true', 'false'
+						Allow Comments?
+					.form-group
+						= f.submit 'Update', class: 'btn btn-primary'
+						.pull-right= link_to 'Cancel', :back, class: 'btn btn-default btn-sm'

@@ -1,0 +1,20 @@
+.container
+	.row
+		.col-xs-12
+			= form_tag swell_media.oauth_email_collector_index_path, method: :post do |f|
+				= hidden_field_tag 'ga_client_id', '', :class => 'ga-client-id'
+				= hidden_field_tag :response, @response.encrypt
+				= hidden_field_tag :email_collected, 1
+
+				%h1.text-center.swell-heading>
+					= SwellMedia.app_name
+				%h2.text-center.swell-subheading
+					Welcome #{@response.full_name}
+
+				%p.text-center
+					To complete your sign up, please enter your email address:
+
+				= text_field_tag :email, '', class: 'form-control input-lg ready-focus', placeholder: 'Email address'
+
+				.text-center{ style: 'padding: 1em 0;' }
+					= submit_tag 'Complete Sign Up', class: 'btn btn-pink t03e'

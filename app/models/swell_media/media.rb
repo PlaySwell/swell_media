@@ -3,47 +3,47 @@ module SwellMedia
 	class Media < ActiveRecord::Base
 		self.table_name = 'media'
 
+		include SwellMedia::Concerns::URLConcern
+		include SwellMedia::Concerns::AvatarAsset
+		include SwellMedia::Concerns::TagArrayConcern
+		include SwellMedia::Concerns::ExpiresCache
+
+		mounted_at '/'
+
+		expires_cache :user_id, :managed_by_id, :public_id, :category_id, :avatar_asset_id, :parent_id, :lft, :rgt, :type, :sub_type, :title, :subtitle, :avatar, :cover_path, :avatar_caption, :layout, :template, :description, :content, :slug, :is_commentable, :is_sticky, :show_title, :modified_at, :keywords, :duration, :price, :status, :availability, :publish_at, :tags
+
+
 		enum status: { 'draft' => 0, 'active' => 1, 'archive' => 2, 'trash' => 3 }
-		enum availability: { 'anyone' => 0, 'logged_in_users' => 1, 'just_me' => 2 }
+		enum availability: { 'anyone' => 1, 'logged_in_users' => 2, 'just_me' => 3 }
 
 		before_save	:set_publish_at, :set_keywords_and_tags , :set_cached_counts
 
-		after_save :reslug
-		after_create {
-			@created = true
-			reslug
-			@created = false
-		}
-
-		validates		:title, presence: true, unless: :allow_blank_title
+		validates		:title, presence: true, unless: :allow_blank_title?
 
 		attr_accessor	:slug_pref
 
-		belongs_to	:user
+		belongs_to	:user, class_name: SwellMedia.registered_user_class
 		belongs_to 	:managed_by, class_name: 'User'
 		belongs_to 	:category
 
 		has_many	:assets, as: :parent_obj, dependent: :destroy
 
+		belongs_to 	:avatar_asset, class_name: Asset.name
+
 		include FriendlyId
-		friendly_id :slugger, use: :slugged
+		friendly_id :slugger, use: [ :slugged, :history ]
 
 		acts_as_nested_set
 
-		acts_as_taggable
+		acts_as_taggable_array_on :tags
 
-		def self.friendly
-			super.all.extending(FinderMethods)
-		end
-
-		def self.find(*args)
-			id = args.first
-			return super if args.count != 1 || FinderMethods.id_from_slug(id).nil?
-			super(FinderMethods.id_from_slug(id))
-		end
 
 		def self.published( args = {} )
-			where( "#{args[:table_name] || 'media'}.publish_at <= :now", now: Time.zone.now ).active.anyone
+			where( "media.publish_at <= :now", now: Time.zone.now ).active.anyone
+		end
+
+		def published?
+			active? && anyone? && publish_at < Time.zone.now
 		end
 
 
@@ -60,105 +60,65 @@ module SwellMedia
 			end
 		end
 
-		def avatar_asset_file=( file )
-			return false unless file.present?
-			asset = ImageAsset.new(use: 'avatar', asset_type: 'image', status: 'active')
-			asset.uploader = file
-			asset.save
-			asset.parent_obj = self
-			assets << asset
-			self.avatar = asset.try(:url)
-		end
-
-		def avatar_asset_url
-			nil
-		end
-
-		def avatar_asset_url=( url )
-			return false unless url.present?
-			asset = ImageAsset.initialize_from_url(url, use: 'avatar', asset_type: 'image', status: 'active')
-			unless asset.nil?
-				asset.save
-
-				asset.parent_obj = self
-				assets << asset
-			end
-			puts "avatar_asset_url= asset: #{asset}"
-			self.avatar = asset.try(:url) || url
-		end
-
 		def char_count
 			return 0 if self.content.blank?
-			self.sanitized_content.size
+			self.sanitized_content.gsub(URI.regexp(['http', 'https']), '').size
 		end
 
-		def path( args={} )
-			path = "/#{self.slug}"
-
-			if args.present? && args.delete_if{ |k, v| k.blank? || v.blank? }
-				path += '?' unless args.empty?
-				path += args.map{ |k,v| "#{k}=#{v}"}.join( '&' )
-			end
-			return path
+		def comments( args = {} )
+			user_posts = SwellSocial::UserPost.where( parent_obj_id: self.id, parent_obj_type: self.class.name )
+			user_posts.order( created_at: (args[:order] || :desc) )
 		end
 
-		def plain_slug?
-			!ENV['SLUGS_INCLUDE_HASHID']
-		end
-
-		def slugger
-
-			the_slug = self.slug_pref.present? ? self.slug_pref : self.title
-
-			if self.id && !self.plain_slug?
-				if the_slug.blank?
-					the_slug = SwellMedia::HASHIDS.encode(self.id)
-				else
-					the_slug = "#{the_slug} #{SwellMedia::HASHIDS.encode(self.id)}"
-				end
+		def page_meta
+			if self.title.present?
+				title = "#{self.title} | #{SwellMedia.app_name}"
+			else
+				title = SwellMedia.app_name
 			end
 
-			the_slug
+			return {
+				title: title,
+				description: self.sanitized_description,
+				image: self.avatar,
+				url: self.url,
+				twitter_format: 'summary_large_image',
+				fb_type: 'article'
+			}
 		end
 
 		def sanitized_content
 			ActionView::Base.full_sanitizer.sanitize( self.content )
 		end
 
-		def static_slug?
-			!ENV['SLUGS_UPDATE']
+		def sanitized_description
+			ActionView::Base.full_sanitizer.sanitize( self.description )
+		end
+
+		def should_generate_new_friendly_id?
+			self.slug.nil? || self.slug_pref.present?
+		end
+
+		def slugger
+			if self.slug_pref.present? 
+				self.slug = nil # friendly_id 5.0 only updates slug if slug field is nil
+				return self.slug_pref
+			else
+				return self.title
+			end
 		end
 
 		def to_s
-			self.title
-		end
-
-		def url( args={} )
-			domain = ( args.present? && args.delete( :domain ) ) || ENV['APP_DOMAIN'] || 'localhost:3000'
-			protocol = ( args.present? && args.delete( :protocol ) ) || 'http'
-			path = self.path( args )
-			url = "#{protocol}://#{domain}#{self.path( args )}"
-
-			return url
-
+			self.title.present? ? self.title : self.slug
 		end
 
 		def word_count
 			return 0 if self.content.blank?
-			self.sanitized_content.scan(/[\w-]+/).size
+			self.sanitized_content.gsub(URI.regexp(['http', 'https']), '').scan(/[\w-]+/).size
 		end
 
 
 		private
-
-			def reslug
-				if !@reslugged && ( !self.static_slug? || (@created && !self.plain_slug?) )
-					self.slug = nil
-					@reslugged = true
-					self.save!
-					@reslugged = false
-				end
-			end
 
 			def set_cached_counts
 				if self.respond_to?( :cached_word_count )
@@ -179,42 +139,27 @@ module SwellMedia
 				common_terms = ["able", "about", "above", "across", "after", "almost", "also", "among", "around", "back", "because", "been", "below", "came", "cannot", "come", "cool", "could", "dear", "does", "down", "each", "either", "else", "ever", "every", "find", "first", "from", "from", "gave", "give", "goodhave", "have", "hers", "however", "inside", "into", "its", "just", "least", "like", "likely", "little", "live", "long", "made", "make", "many", "might", "more", "most", "must", "neither", "number", "often", "only", "other", "our", "outside", "over", "part", "people", "place", "rather", "said", "says", "should", "show", "side", "since", "some", "sound", "take", "than", "that", "the", "their", "them",  "then", "there", "these", "they", "thing", "this", "those", "time", "twas", "under", "upon", "was", "wants", "were", "what", "whatever", "when", "where", "which", "while", "whom", "will", "with", "within", "work", "would", "write", "year", "you", "your"]
 				
 				# auto-tag hashtags
-				unless self.content.blank?
-					hashtags = self.sanitized_content.scan( /#\w+/ ).flatten.each{ |tag| tag[0]='' } 
-					self.tag_list << hashtags
+				unless self.description.blank?
+					# hashtags must start with a # and must contain at least one letter
+					hashtags = self.sanitized_description.scan( /#([a-zA-Z_0-9]*[a-zA-Z][a-zA-Z_0-9]*)/ ).flatten.uniq
+					new_tags = (hashtags + self.tags).uniq.sort
+
+					self.tags = new_tags unless new_tags & (self.tags || []) == new_tags
 				end
 
-				self.keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
-				self.tag_list.each{ |tag| self.keywords << tag.to_s }
+				new_keywords = "#{self.author} #{self.title}".downcase.split( /\W/ ).delete_if{ |elem| elem.length <= 2 }.delete_if{ |elem| common_terms.include?( elem ) }.uniq
+				self.tags.each{ |tag| new_keywords << tag.to_s unless new_keywords.include?( tag.to_s )}
 
-				
+				new_keywords = new_keywords.uniq.sort
+
+				self.keywords = new_keywords unless new_keywords & (self.keywords || []) == new_keywords
 
 			end
 
-			def allow_blank_title
-				false
+			def allow_blank_title?
+				self.slug_pref.present?
 			end
 				
-
-
-	end
-
-	module FinderMethods
-
-
-		def find(*args)
-			id = args.first
-			return super if args.count != 1 || FinderMethods.id_from_slug(id).nil?
-			super(FinderMethods.id_from_slug(id))
-		end
-
-		def self.id_from_slug( slug )
-			#puts "id_from_slug #{slug} #{slug.class.name}"
-			return nil if slug.nil? || !slug.is_a?(String)
-			hashid = slug.split('-').last
-			#puts "id_from_slug #{slug}, #{hashid}, #{SwellMedia::HASHIDS.decrypt(hashid).first}"
-			SwellMedia::HASHIDS.decode(hashid).first
-		end
 
 	end
 

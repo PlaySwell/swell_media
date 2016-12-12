@@ -5,6 +5,7 @@
 //[if gt IE 8] <html class="no-js">
 %html{ lang: :en }
 	%head
+		= render 'application/fb_login_popup_closer'
 		= render 'application/html_head', args: {}
 		= render 'application/header_styles'
 
@@ -22,3 +23,4 @@
 
 		%footer#footer
 			= render 'application/footer'
+
